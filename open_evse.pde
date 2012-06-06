@@ -33,12 +33,9 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "0.6.0"
+#define VERSTR "0.6.0RC1"
 
 //-- begin features
-
-// debugging states via serial
-//#define SERDBG
 
 // enable watchdog timer
 //#define WATCHDOG
@@ -303,6 +300,7 @@ typedef struct calibdata {
 #define ECF_L2                 0x01 // service level 2
 #define ECF_DIODE_CHK_DISABLED 0x02 // no diode check
 #define ECF_VENT_REQ_DISABLED  0x04 // no vent required state
+#define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
 #define ECF_DEFAULT            0x00
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
@@ -394,6 +392,10 @@ public:
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
 #endif // GFI
+  uint8_t SerDbgEnabled() { 
+    return (m_bFlags & ECF_SERIAL_DBG) ? 1 : 0;
+  }
+  void EnableSerDbg(uint8_t tf);
 };
 
 #ifdef BTN_MENU
@@ -511,6 +513,7 @@ void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
   EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
+  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
 }
 
 #ifdef SERIALCLI
@@ -591,7 +594,16 @@ void CLI::getInput()
         Serial.println("Set Commands - Usage: set amp");
         Serial.println("");
         Serial.println("amp  --  Set the EVSE Current Capacity"); // print to the terminal
+	Serial.println("serdbg on/off - turn serial debugging on/off");
        } 
+      else if (strcmp(m_CLIinstr, "set serdbg on") == 0){
+	g_EvseController.EnableSerDbg(1);
+	Serial.println("Serial Debugging Enabled");
+      }
+      else if (strcmp(m_CLIinstr, "set serdbg off") == 0){
+	g_EvseController.EnableSerDbg(0);
+	Serial.println("Serial Debugging Disabled");
+      }
       else if (strcmp(m_CLIinstr, "set amp") == 0){ // string compare
         Serial.println("WARNING - DO NOT SET CURRENT HIGHER THAN 80%");
 	Serial.println("OF YOUR CIRCUIT BREAKER OR"); 
@@ -613,7 +625,7 @@ void CLI::getInput()
         Serial.print(" Amps");
       } 
       else if (strcmp(m_CLIinstr, "save") == 0){ // string compare
-        Serial.println("Saving Settings"); // print to the terminal
+        Serial.println("Saving Settings to EEPROM"); // print to the terminal
         SaveSettings();
       } 
       else { // if the input text doesn't match any defined above
@@ -995,6 +1007,16 @@ void J1772EVSEController::EnableVentReq(uint8_t tf)
   }
 }
 
+void J1772EVSEController::EnableSerDbg(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags |= ECF_SERIAL_DBG;
+  }
+  else {
+    m_bFlags &= ~ECF_SERIAL_DBG;
+  }
+}
+
 void J1772EVSEController::Enable()
 {
   m_PrevEvseState = EVSE_STATE_DISABLED;
@@ -1282,16 +1304,16 @@ void J1772EVSEController::Update()
       chargingOff(); // turn off charging current
     }
 
-#ifdef SERDBG
-    Serial.print("state: ");
-    Serial.print(prevevsestate);
-    Serial.print("->");
-    Serial.print(m_EvseState);
-    Serial.print(" p ");
-    Serial.print(plow);
-    Serial.print(" ");
-    Serial.println(phigh);
-#endif // SERDBG
+    if (SerDbgEnabled()) {
+      Serial.print("state: ");
+      Serial.print(prevevsestate);
+      Serial.print("->");
+      Serial.print(m_EvseState);
+      Serial.print(" p ");
+      Serial.print(plow);
+      Serial.print(" ");
+      Serial.println(phigh);
+    }
   }
 
   m_PrevEvseState = prevevsestate;
