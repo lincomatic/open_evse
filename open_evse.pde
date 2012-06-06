@@ -302,6 +302,7 @@ typedef struct calibdata {
 // J1772EVSEController m_bFlags bits - saved to EEPROM
 #define ECF_L2                 0x01 // service level 2
 #define ECF_DIODE_CHK_DISABLED 0x02 // no diode check
+#define ECF_VENT_REQ_DISABLED  0x04 // no vent required state
 #define ECF_DEFAULT            0x00
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
@@ -385,6 +386,10 @@ public:
     return (m_bFlags & ECF_DIODE_CHK_DISABLED) ? 0 : 1;
   }
   void EnableDiodeCheck(uint8_t tf);
+  uint8_t VentReqEnabled() { 
+    return (m_bFlags & ECF_VENT_REQ_DISABLED) ? 0 : 1;
+  }
+  void EnableVentReq(uint8_t tf);
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
@@ -452,6 +457,15 @@ public:
 class DiodeChkMenu : public Menu {
 public:
   DiodeChkMenu();
+  void Init();
+  void ShortPress();
+  Menu *LongPress();
+};
+
+
+class VentReqMenu : public Menu {
+public:
+  VentReqMenu();
   void Init();
   void ShortPress();
   Menu *LongPress();
@@ -971,6 +985,16 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
   }
 }
 
+void J1772EVSEController::EnableVentReq(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags &= ~ECF_VENT_REQ_DISABLED;
+  }
+  else {
+    m_bFlags |= ECF_VENT_REQ_DISABLED;
+  }
+}
+
 void J1772EVSEController::Enable()
 {
   m_PrevEvseState = EVSE_STATE_DISABLED;
@@ -1188,7 +1212,8 @@ void J1772EVSEController::Update()
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
     }
-    else if (phigh  >= m_ThreshData.m_ThreshCD) {
+    else if ((phigh  >= m_ThreshData.m_ThreshCD) ||
+	     (!VentReqEnabled() && (phigh > m_ThreshData.m_ThreshD))) {
       // 6V ready to charge
       tmpevsestate = EVSE_STATE_C;
     }
@@ -1584,6 +1609,7 @@ SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
+VentReqMenu g_VentReqMenu;
 ResetMenu g_ResetMenu;
 char *g_sExit = "Exit";
 
@@ -1614,7 +1640,7 @@ void SetupMenu::Init()
 
 void SetupMenu::ShortPress()
 {
-  if (++m_CurIdx >= 5) {
+  if (++m_CurIdx >= 6) {
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
@@ -1631,6 +1657,9 @@ void SetupMenu::ShortPress()
     title = g_DiodeChkMenu.m_Title;
     break;
   case 3:
+    title = g_VentReqMenu.m_Title;
+    break;
+  case 4:
     title = g_ResetMenu.m_Title;
     break;
   default:
@@ -1652,6 +1681,9 @@ Menu *SetupMenu::LongPress()
     return &g_DiodeChkMenu;
   }
   else if (m_CurIdx == 3) {
+    return &g_VentReqMenu;
+  }
+  else if (m_CurIdx == 4) {
     return &g_ResetMenu;
   }
   else {
@@ -1806,6 +1838,53 @@ Menu *DiodeChkMenu::LongPress()
   g_OBD.LcdPrint(g_DiodeChkMenuItems[m_CurIdx]);
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
+
+  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+
+char *g_VentReqMenuItems[] = {"Yes","No"};
+VentReqMenu::VentReqMenu()
+{
+  m_Title = "Vent Req'd Check";
+}
+
+void VentReqMenu::Init()
+{
+  g_OBD.LcdClearLine(0);
+  g_OBD.LcdSetCursor(0,0);
+  g_OBD.LcdPrint(m_Title);
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  m_CurIdx = g_EvseController.VentReqEnabled() ? 0 : 1;
+  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
+}
+
+void VentReqMenu::ShortPress()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.VentReqEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
+}
+
+Menu *VentReqMenu::LongPress()
+{
+  g_OBD.LcdSetCursor(0,1);
+  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
 
   EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
 
