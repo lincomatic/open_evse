@@ -594,13 +594,13 @@ void CLI::getInput()
         Serial.println("Set Commands - Usage: set amp");
         Serial.println("");
         Serial.println("amp  --  Set the EVSE Current Capacity"); // print to the terminal
-	Serial.println("serdbg on/off - turn serial debugging on/off");
+	Serial.println("sdbg on/off - turn serial debugging on/off");
        } 
-      else if (strcmp(m_CLIinstr, "set serdbg on") == 0){
+      else if (strcmp(m_CLIinstr, "set sdbg on") == 0){
 	g_EvseController.EnableSerDbg(1);
 	Serial.println("Serial Debugging Enabled");
       }
-      else if (strcmp(m_CLIinstr, "set serdbg off") == 0){
+      else if (strcmp(m_CLIinstr, "set sdbg off") == 0){
 	g_EvseController.EnableSerDbg(0);
 	Serial.println("Serial Debugging Disabled");
       }
