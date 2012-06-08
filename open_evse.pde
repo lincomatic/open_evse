@@ -1099,6 +1099,9 @@ void J1772EVSEController::Init()
   if (rflgs == 0xff) { // uninitialized EEPROM
     m_bFlags = ECF_DEFAULT;
   }
+  else {
+    m_bFlags = rflgs;
+  }
 
   m_bVFlags = ECVF_DEFAULT;
 
