@@ -53,7 +53,7 @@
 #define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
-//#define ADVPWR
+#define ADVPWR
 
 // single button menus (needs LCD enabled)
 // connect an SPST button between BTN_PIN and GND via a 2K resistor
@@ -116,6 +116,10 @@
 // must transition to state A from contacts closed in < 100ms according to spec
 // but Leaf sometimes bounces from 3->1 so we will debounce it a little anyway
 #define DELAY_STATE_TRANSITION_A 25
+
+// for ADVPWR
+#define GROUND_CHK_DELAY  1000 // delay after charging started to test, ms
+#define STUCK_RELAY_DELAY 1000 // delay after charging opened to test, ms
 
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
@@ -324,6 +328,8 @@ class J1772EVSEController {
   uint8_t m_TmpEvseState;
   unsigned long m_TmpEvseStateStart;
   uint8_t m_CurrentCapacity; // max amps we can output
+  unsigned long m_ChargeStartTimeMS;
+  unsigned long m_ChargeOffTimeMS;
   time_t m_ChargeStartTime;
   time_t m_ChargeOffTime;
   time_t m_ElapsedChargeTime;
@@ -961,6 +967,7 @@ void J1772EVSEController::chargingOn()
   m_bVFlags |= ECVF_CHARGING_ON;
   
   m_ChargeStartTime = now();
+  m_ChargeStartTimeMS = millis();
 }
 
 void J1772EVSEController::chargingOff()
@@ -969,6 +976,7 @@ void J1772EVSEController::chargingOff()
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
   m_ChargeOffTime = now();
+  m_ChargeOffTimeMS = millis();
 } 
 
 #ifdef GFI
@@ -1151,7 +1159,7 @@ void J1772EVSEController::Update()
 
   if (chargingIsOn()) { // ground check - can only test when relay closed
     
-    if (((now()-m_ChargeStartTime) > 0) && (PS1state == HIGH) && (PS2state == HIGH)) {
+    if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
       // bad ground
       
       tmpevsestate = EVSE_STATE_NO_GROUND;
@@ -1162,7 +1170,7 @@ void J1772EVSEController::Update()
     }
   }
   else { // stuck relay check - can test only when relay open
-    if (((now()-m_ChargeOffTime) > 0) &&
+    if (((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) &&
 	((PS1state == LOW) || (PS2state == LOW))) {
       // stuck relay
       
@@ -1306,9 +1314,9 @@ void J1772EVSEController::Update()
 
     if (SerDbgEnabled()) {
       Serial.print("state: ");
-      Serial.print(prevevsestate);
+      Serial.print((int)prevevsestate);
       Serial.print("->");
-      Serial.print(m_EvseState);
+      Serial.print((int)m_EvseState);
       Serial.print(" p ");
       Serial.print(plow);
       Serial.print(" ");
