@@ -53,7 +53,7 @@
 #define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
-#define ADVPWR
+//#define ADVPWR
 
 // single button menus (needs LCD enabled)
 // connect an SPST button between BTN_PIN and GND via a 2K resistor
@@ -73,15 +73,8 @@
 
 //-- begin configuration
 
-#define DEFAULT_SERVICE_LEVEL_DISABLED 0xff
-
-// we don't use DEFAULT_SERVICE_LEVEL with BTN_MENU (set via menus)
-// or ADVPWR (set automatically)
-#if defined(BTN_MENU) || defined(ADVPWR)
-#define DEFAULT_SERVICE_LEVEL DEFAULT_SERVICE_LEVEL_DISABLED // disabled
-#else
+// n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
 #define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
-#endif
 
 // current capacity in amps
 #define DEFAULT_CURRENT_CAPACITY_L1 12
@@ -91,7 +84,7 @@
 #define MIN_CURRENT_CAPACITY 6
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 16
+#define MAX_CURRENT_CAPACITY_L1 15 // NEMA 5-15
 #define MAX_CURRENT_CAPACITY_L2 80
 
 //J1772EVSEController
@@ -1053,6 +1046,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
     m_bFlags |= ECF_L2; // set to Level 2
   }
   else {
+    svclvl = 1;
     m_bFlags &= ~ECF_L2; // set to Level 1
   }
 
@@ -1093,7 +1087,7 @@ void J1772EVSEController::Init()
   pinMode(CHARGING_PIN,OUTPUT);
   chargingOff();
 
-  char svclvl = DEFAULT_SERVICE_LEVEL;
+  uint8_t svclvl = (uint8_t)DEFAULT_SERVICE_LEVEL;
 
   uint8_t rflgs = EEPROM.read(EOFS_FLAGS);
   if (rflgs == 0xff) { // uninitialized EEPROM
@@ -1101,6 +1095,7 @@ void J1772EVSEController::Init()
   }
   else {
     m_bFlags = rflgs;
+    svclvl = GetCurSvcLevel();
   }
 
   m_bVFlags = ECVF_DEFAULT;
@@ -1113,12 +1108,9 @@ void J1772EVSEController::Init()
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
+
 #ifdef ADVPWR  // Power on Self Test for Advanced Power Supply
-  svclvl = doPost();
-#else
-  if (svclvl == DEFAULT_SERVICE_LEVEL_DISABLED) {
-    svclvl = GetCurSvcLevel();
-  }
+  svclvl = doPost(); // auto detect service level overrides any saved values
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
@@ -1391,16 +1383,18 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
 
 int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
 {
+  int rc = 0;
   if ((amps >= MIN_CURRENT_CAPACITY) && (amps <= ((GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2))) {
     m_CurrentCapacity = amps;
-    if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
-      m_Pilot.SetPWM(amps);
-    }
-    return 0;
   }
   else {
-    return 1;
+    m_CurrentCapacity = MIN_CURRENT_CAPACITY;
   }
+
+  if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
+    m_Pilot.SetPWM(amps);
+  }
+  return rc;
 }
 
 
@@ -1771,7 +1765,7 @@ Menu *SvcLevelMenu::LongPress()
   return &g_SetupMenu;
 }
 
-uint8_t g_L1MaxAmps[] = {6,10,12,15,20};
+uint8_t g_L1MaxAmps[] = {6,10,12,15};
 uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80};
 MaxCurrentMenu::MaxCurrentMenu()
 {
