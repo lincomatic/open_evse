@@ -207,6 +207,10 @@ public:
   void LcdPrint(const char *s) { 
     m_Lcd.print(s); 
   }
+  void LcdPrint(int x,int y,const char *s) { 
+    m_Lcd.setCursor(x,y);
+    m_Lcd.print(s); 
+  }
   void LcdPrint(int i) { 
     m_Lcd.print(i); 
   }
@@ -406,11 +410,11 @@ public:
 #define BTN_STATE_LONG  2 // long press
 class Btn {
   uint8_t buttonState;
-
   long lastDebounceTime;  // the last time the output pin was toggled
   
 public:
   Btn();
+
   void read();
   uint8_t shortPress();
   uint8_t longPress();
@@ -426,7 +430,8 @@ public:
   void init(const char *firstitem);
 
   Menu();
-  virtual void Init();
+
+  virtual void Init() = 0;
   virtual void ShortPress() = 0;
   virtual Menu *LongPress() = 0;
 };
@@ -661,11 +666,9 @@ void OnboardDisplay::Init()
 #ifdef LCD16X2 //Adafruit RGB LCD  
   LcdBegin(16, 2);
  
-  LcdSetCursor(0, 0);
-  LcdPrint("Open EVSE       ");
+  LcdPrint(0,0,"Open EVSE       ");
   delay(500);
-  LcdSetCursor(0, 1);
-  LcdPrint("Version ");
+  LcdPrint(0,1,"Version ");
   LcdPrint(VERSTR);
   LcdPrint("   ");
   delay(1500);
@@ -697,17 +700,14 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("Ready");
+      LcdPrint(0,0,"Ready");
 
-      LcdSetCursor(10,0);
-      LcdPrint("L");
+      LcdPrint(10,0,"L");
       LcdPrint(svclvl);
       LcdPrint(":");
       LcdPrint((int)g_EvseController.GetCurrentCapacity());
       LcdPrint("A");
-      LcdSetCursor(0, 1);
-      LcdPrint("Not Connected  ");
+      LcdPrint(0,1,"Not Connected  ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -717,16 +717,13 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("Ready");
-      LcdSetCursor(10,0);
-      LcdPrint("L");
+      LcdPrint(0,0,"Ready");
+      LcdPrint(10,0,"L");
       LcdPrint(svclvl);
       LcdPrint(":");
       LcdPrint((int)g_EvseController.GetCurrentCapacity());
       LcdPrint("A");
-      LcdSetCursor(0, 1);
-      LcdPrint("Waiting for EV   ");
+      LcdPrint(0,1,"Waiting for EV   ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -736,8 +733,7 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(BLUE);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("Charging     ");
+      LcdPrint(0,0,"Charging     ");
       LcdSetCursor(10,0);
       LcdPrint("L");
       LcdPrint(svclvl);
@@ -753,10 +749,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("EVSE ERROR      ");
-      LcdSetCursor(0, 1);
-      LcdPrint("VENT REQUIRED   ");
+      LcdPrint(0,0,"EVSE ERROR      ");
+      LcdPrint(0,1,"VENT REQUIRED   ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -766,10 +760,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("EVSE ERROR      ");
-      LcdSetCursor(0, 1);
-      LcdPrint("DIODE CHK FAILED");
+      LcdPrint(0,0,"EVSE ERROR      ");
+      LcdPrint(0,1,"DIODE CHK FAILED");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -779,10 +771,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("EVSE ERROR     ");
-      LcdSetCursor(0, 1);
-      LcdPrint("GFCI FAULT      ");
+      LcdPrint(0,0,"EVSE ERROR     ");
+      LcdPrint(0,1,"GFCI FAULT      ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -792,10 +782,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("EVSE ERROR      ");
-      LcdSetCursor(0, 1);
-      LcdPrint("NO GROUND       ");
+      LcdPrint(0,0,"EVSE ERROR      ");
+      LcdPrint(0,1,"NO GROUND       ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -805,10 +793,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("EVSE ERROR      ");
-      LcdSetCursor(0, 1);
-      LcdPrint("STUCK RELAY      ");
+      LcdPrint(0,0,"EVSE ERROR      ");
+      LcdPrint(0,1,"STUCK RELAY      ");
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -817,8 +803,7 @@ void OnboardDisplay::Update()
       SetRedLed(HIGH);
 #ifdef LCD16X2
       LcdClear();
-      LcdSetCursor(0, 0);
-      LcdPrint("Stopped");
+      LcdPrint(0,0,"Stopped");
 #endif // LCD16X2
       break;
     default:
@@ -1106,11 +1091,9 @@ uint8_t J1772EVSEController::doPost()
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in write early so it will stabilize before reading.
   g_OBD.SetRedLed(HIGH); // Red LED on for ADVPWR
 #ifdef LCD16X2 //Adafruit RGB LCD
-  g_OBD.LcdSetCursor(0, 0);
-  g_OBD.LcdPrint("Power On        ");
+  g_OBD.LcdPrint(0,0,"Power On        ");
   delay(100);
-  g_OBD.LcdSetCursor(0, 1);
-  g_OBD.LcdPrint("Self Test       ");
+  g_OBD.LcdPrint(0,1,"Self Test       ");
   delay(1500);
 #endif //Adafruit RGB LCD 
   if (SerDbgEnabled()) {
@@ -1130,20 +1113,16 @@ uint8_t J1772EVSEController::doPost()
     m_Pilot.SetState(PILOT_STATE_N12);
 #ifdef LCD16X2 //Adafruit RGB LCD
     g_OBD.LcdSetBacklightColor(RED);
-    g_OBD.LcdSetCursor(0, 0);
-    g_OBD.LcdPrint("--Stuck Relay-- ");
-    g_OBD.LcdSetCursor(0, 1);
-    g_OBD.LcdPrint("Test: Failed    ");
+    g_OBD.LcdPrint(0,0,"--Stuck Relay-- ");
+    g_OBD.LcdPrint(0,1,"Test: Failed    ");
 #endif  //Adafruit RGB LCD
   } 
   else {
     int reading = 1;
 
 #ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetCursor(0, 0);
-    g_OBD.LcdPrint("--Stuck Relay-- ");
-    g_OBD.LcdSetCursor(0, 1);
-    g_OBD.LcdPrint("Test: Passed    ");
+    g_OBD.LcdPrint(0,0,"--Stuck Relay-- ");
+    g_OBD.LcdPrint(0,1,"Test: Passed    ");
     delay(1000);
 #endif //Adafruit RGB LCD
  
@@ -1160,23 +1139,17 @@ uint8_t J1772EVSEController::doPost()
 	// m_EvseState = EVSE_STATE_NO_GROUND;
 #ifdef LCD16X2 //Adafruit RGB LCD
 	g_OBD.LcdSetBacklightColor(RED); 
-	g_OBD.LcdSetCursor(0, 0);
-	g_OBD.LcdPrint("--Earth Ground--");
-	g_OBD.LcdSetCursor(0, 1);
-	g_OBD.LcdPrint("Test: Failed    ");
+	g_OBD.LcdPrint(0,0,"--Earth Ground--");
+	g_OBD.LcdPrint(0,1,"Test: Failed    ");
 #endif  //Adafruit RGB LCD
       } 
       else if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
 #ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdSetCursor(0, 0);
-	g_OBD.LcdPrint("--Earth Ground--");
-	g_OBD.LcdSetCursor(0, 1);
-	g_OBD.LcdPrint("Test: Passed    ");
+	g_OBD.LcdPrint(0,0,"--Earth Ground--");
+	g_OBD.LcdPrint(0,1,"Test: Passed    ");
 	delay(1000);
-	g_OBD.LcdSetCursor(0, 0);
-	g_OBD.LcdPrint("--EVSE Charge-- ");
-	g_OBD.LcdSetCursor(0, 1);
-	g_OBD.LcdPrint("Rate: L2        ");
+	g_OBD.LcdPrint(0,0,"--EVSE Charge-- ");
+	g_OBD.LcdPrint(0,1,"Rate: L2        ");
 	delay(1000);
 #endif //Adafruit RGB LCD
 
@@ -1188,15 +1161,11 @@ uint8_t J1772EVSEController::doPost()
 	  Serial.println("ground OK L1");
 	}
 #ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdSetCursor(0, 0);
-	g_OBD.LcdPrint("--Earth Ground--");
-	g_OBD.LcdSetCursor(0, 1);
-	g_OBD.LcdPrint("Test: Passed    ");
+	g_OBD.LcdPrint(0,0,"--Earth Ground--");
+	g_OBD.LcdPrint(0,1,"Test: Passed    ");
 	delay(1000);
-	g_OBD.LcdSetCursor(0, 0);
-	g_OBD.LcdPrint("--EVSE Charge-- ");
-	g_OBD.LcdSetCursor(0, 1);
-	g_OBD.LcdPrint("Rate: L1        ");
+	g_OBD.LcdPrint(0,0,"--EVSE Charge-- ");
+	g_OBD.LcdPrint(0,1,"Rate: L1        ");
 	delay(1000);
 #endif //Adafruit RGB LCD
 	svclvl = 1; // L1
@@ -1649,11 +1618,9 @@ void Menu::init(const char *firstitem)
 {
   m_CurIdx = 0;
   g_OBD.LcdClearLine(0);
-  g_OBD.LcdSetCursor(0,0);
-  g_OBD.LcdPrint(m_Title);
+  g_OBD.LcdPrint(0,0,m_Title);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint(firstitem);
+  g_OBD.LcdPrint(0,1,firstitem);
 }
 
 SetupMenu::SetupMenu()
@@ -1672,7 +1639,6 @@ void SetupMenu::ShortPress()
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
   const char *title;
   switch(m_CurIdx) {
   case 0:
@@ -1694,7 +1660,7 @@ void SetupMenu::ShortPress()
     title = g_sExit;
     break;
   }
-  g_OBD.LcdPrint(title);
+  g_OBD.LcdPrint(0,1,title);
 }
 
 Menu *SetupMenu::LongPress()
@@ -1730,12 +1696,10 @@ SvcLevelMenu::SvcLevelMenu()
 void SvcLevelMenu::Init()
 {
   g_OBD.LcdClearLine(0);
-  g_OBD.LcdSetCursor(0,0);
-  g_OBD.LcdPrint(m_Title);
+  g_OBD.LcdPrint(0,0,m_Title);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
   m_CurIdx = (g_EvseController.GetCurSvcLevel() == 1) ? 0 : 1;
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
@@ -1755,8 +1719,7 @@ void SvcLevelMenu::ShortPress()
 Menu *SvcLevelMenu::LongPress()
 {
   g_EvseController.SetSvcLevel(m_CurIdx+1);
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
   EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
@@ -1778,7 +1741,6 @@ void MaxCurrentMenu::Init()
 {
   m_CurIdx = 0;
   g_OBD.LcdClearLine(0);
-  g_OBD.LcdSetCursor(0,0);
   uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
   m_MaxAmpsList = (cursvclvl == 1) ? g_L1MaxAmps : g_L2MaxAmps;
   m_MaxCurrent = 0;
@@ -1792,11 +1754,10 @@ void MaxCurrentMenu::Init()
     }
   } while (m_MaxCurrent < currentlimit);
   
-  g_OBD.LcdPrint((cursvclvl == 1) ? "L1" : "L2");
+  g_OBD.LcdPrint(0,0,(cursvclvl == 1) ? "L1" : "L2");
   g_OBD.LcdPrint(" Max Current");
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
 }
@@ -1817,8 +1778,7 @@ void MaxCurrentMenu::ShortPress()
 
 Menu *MaxCurrentMenu::LongPress()
 {
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
   delay(500);
@@ -1836,12 +1796,10 @@ DiodeChkMenu::DiodeChkMenu()
 void DiodeChkMenu::Init()
 {
   g_OBD.LcdClearLine(0);
-  g_OBD.LcdSetCursor(0,0);
-  g_OBD.LcdPrint(m_Title);
+  g_OBD.LcdPrint(0,0,m_Title);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
   m_CurIdx = g_EvseController.DiodeCheckEnabled() ? 0 : 1;
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_DiodeChkMenuItems[m_CurIdx]);
 }
 
@@ -1861,8 +1819,7 @@ void DiodeChkMenu::ShortPress()
 
 Menu *DiodeChkMenu::LongPress()
 {
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_DiodeChkMenuItems[m_CurIdx]);
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
@@ -1883,12 +1840,10 @@ VentReqMenu::VentReqMenu()
 void VentReqMenu::Init()
 {
   g_OBD.LcdClearLine(0);
-  g_OBD.LcdSetCursor(0,0);
-  g_OBD.LcdPrint(m_Title);
+  g_OBD.LcdPrint(0,0,m_Title);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
   m_CurIdx = g_EvseController.VentReqEnabled() ? 0 : 1;
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
 }
 
@@ -1908,8 +1863,7 @@ void VentReqMenu::ShortPress()
 
 Menu *VentReqMenu::LongPress()
 {
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
@@ -1932,10 +1886,8 @@ void ResetMenu::Init()
   m_CurIdx = 0;
   g_OBD.LcdClearLine(0);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,0);
-  g_OBD.LcdPrint("Reset Now?");
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint(g_ResetMenuItems[0]);
+  g_OBD.LcdPrint(0,0,"Reset Now?");
+  g_OBD.LcdPrint(0,1,g_ResetMenuItems[0]);
 }
 
 void ResetMenu::ShortPress()
@@ -1944,14 +1896,12 @@ void ResetMenu::ShortPress()
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint(g_ResetMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(0,1,g_ResetMenuItems[m_CurIdx]);
 }
 
 Menu *ResetMenu::LongPress()
 {
-  g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_ResetMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
