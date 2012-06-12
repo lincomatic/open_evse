@@ -53,7 +53,7 @@
 #define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
-//#define ADVPWR
+#define ADVPWR
 
 // single button menus (needs LCD enabled)
 // connect an SPST button between BTN_PIN and GND via a 2K resistor
@@ -74,7 +74,7 @@
 //-- begin configuration
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
-#define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
+#define DEFAULT_SERVICE_LEVEL 1 // 1=L1, 2=L2
 
 // current capacity in amps
 #define DEFAULT_CURRENT_CAPACITY_L1 12
@@ -88,8 +88,8 @@
 #define MAX_CURRENT_CAPACITY_L2 80
 
 //J1772EVSEController
-#define CURRENT_PIN 0 // analog current reading pin
-#define VOLT_PIN 1 // analog voltage reading pin
+//#define CURRENT_PIN 0 // analog current reading pin A0
+#define VOLT_PIN 1 // analog voltage reading pin A1
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
@@ -144,7 +144,7 @@
 #endif // I2CLCD
 
 
-#define BTN_PIN 3 // button sensing pin
+#define BTN_PIN 2 // button sensing pin A2
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
 
@@ -328,6 +328,9 @@ class J1772EVSEController {
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
 
+#ifdef ADVPWR
+  uint8_t doPost();
+#endif // ADVPWR
   void chargingOn();
   void chargingOff();
   uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
@@ -652,8 +655,21 @@ void OnboardDisplay::Init()
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
 
-  g_OBD.SetGreenLed(LOW);
-  g_OBD.SetRedLed(LOW);
+  SetGreenLed(LOW);
+  SetRedLed(LOW);
+  
+#ifdef LCD16X2 //Adafruit RGB LCD  
+  LcdBegin(16, 2);
+ 
+  LcdSetCursor(0, 0);
+  LcdPrint("Open EVSE       ");
+  delay(500);
+  LcdSetCursor(0, 1);
+  LcdPrint("Version ");
+  LcdPrint(VERSTR);
+  LcdPrint("   ");
+  delay(1500);
+#endif // LCD16X2
 }
 
 
@@ -1042,6 +1058,10 @@ void J1772EVSEController::LoadThresholds()
 
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
 {
+  if (SerDbgEnabled()) {
+    Serial.print("SetSvcLevel: ");Serial.println((int)svclvl);
+  }
+
   if (svclvl == 2) {
     m_bFlags |= ECF_L2; // set to Level 2
   }
@@ -1079,13 +1099,131 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
 }
 
 #ifdef ADVPWR
-char doPost();
-#endif
+uint8_t J1772EVSEController::doPost()
+{
+  uint8_t svclvl = 0;
+    
+  m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in write early so it will stabilize before reading.
+  g_OBD.SetRedLed(HIGH); // Red LED on for ADVPWR
+#ifdef LCD16X2 //Adafruit RGB LCD
+  g_OBD.LcdSetCursor(0, 0);
+  g_OBD.LcdPrint("Power On        ");
+  delay(100);
+  g_OBD.LcdSetCursor(0, 1);
+  g_OBD.LcdPrint("Self Test       ");
+  delay(1500);
+#endif //Adafruit RGB LCD 
+  if (SerDbgEnabled()) {
+    Serial.println("start post");
+  }
+  pinMode(ACLINE1_PIN, INPUT);
+  pinMode(ACLINE2_PIN, INPUT);
+  digitalWrite(ACLINE1_PIN, HIGH);
+  digitalWrite(ACLINE2_PIN, HIGH);
+  int PS1state = HIGH;
+  int PS2state = HIGH;
+
+  PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
+  PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
+
+  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
+    m_Pilot.SetState(PILOT_STATE_N12);
+#ifdef LCD16X2 //Adafruit RGB LCD
+    g_OBD.LcdSetBacklightColor(RED);
+    g_OBD.LcdSetCursor(0, 0);
+    g_OBD.LcdPrint("--Stuck Relay-- ");
+    g_OBD.LcdSetCursor(0, 1);
+    g_OBD.LcdPrint("Test: Failed    ");
+#endif  //Adafruit RGB LCD
+  } 
+  else {
+    int reading = 1;
+
+#ifdef LCD16X2 //Adafruit RGB LCD
+    g_OBD.LcdSetCursor(0, 0);
+    g_OBD.LcdPrint("--Stuck Relay-- ");
+    g_OBD.LcdSetCursor(0, 1);
+    g_OBD.LcdPrint("Test: Passed    ");
+    delay(1000);
+#endif //Adafruit RGB LCD
+ 
+
+    reading = analogRead(VOLT_PIN); //read pilot
+    m_Pilot.SetState(PILOT_STATE_N12);
+    if (reading > 0) {              // IF no EV is plugged in its Okay to open the relay the do the L1/L2 and ground Check
+      digitalWrite(CHARGING_PIN, HIGH);
+      delay(500);
+      PS1state = digitalRead(ACLINE1_PIN);
+      PS2state = digitalRead(ACLINE2_PIN);
+      digitalWrite(CHARGING_PIN, LOW);
+      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
+	// m_EvseState = EVSE_STATE_NO_GROUND;
+#ifdef LCD16X2 //Adafruit RGB LCD
+	g_OBD.LcdSetBacklightColor(RED); 
+	g_OBD.LcdSetCursor(0, 0);
+	g_OBD.LcdPrint("--Earth Ground--");
+	g_OBD.LcdSetCursor(0, 1);
+	g_OBD.LcdPrint("Test: Failed    ");
+#endif  //Adafruit RGB LCD
+      } 
+      else if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
+#ifdef LCD16X2 //Adafruit RGB LCD
+	g_OBD.LcdSetCursor(0, 0);
+	g_OBD.LcdPrint("--Earth Ground--");
+	g_OBD.LcdSetCursor(0, 1);
+	g_OBD.LcdPrint("Test: Passed    ");
+	delay(1000);
+	g_OBD.LcdSetCursor(0, 0);
+	g_OBD.LcdPrint("--EVSE Charge-- ");
+	g_OBD.LcdSetCursor(0, 1);
+	g_OBD.LcdPrint("Rate: L2        ");
+	delay(1000);
+#endif //Adafruit RGB LCD
+
+	svclvl = 2; // L2
+      }  
+      else if (((PS1state == LOW) && (PS2state == HIGH)) ||  //L1   
+	       ((PS1state == HIGH) && (PS2state == LOW))) {  //L1   
+	if (SerDbgEnabled()) {
+	  Serial.println("ground OK L1");
+	}
+#ifdef LCD16X2 //Adafruit RGB LCD
+	g_OBD.LcdSetCursor(0, 0);
+	g_OBD.LcdPrint("--Earth Ground--");
+	g_OBD.LcdSetCursor(0, 1);
+	g_OBD.LcdPrint("Test: Passed    ");
+	delay(1000);
+	g_OBD.LcdSetCursor(0, 0);
+	g_OBD.LcdPrint("--EVSE Charge-- ");
+	g_OBD.LcdSetCursor(0, 1);
+	g_OBD.LcdPrint("Rate: L1        ");
+	delay(1000);
+#endif //Adafruit RGB LCD
+	svclvl = 1; // L1
+      }  
+    } 
+  }
+  
+  g_OBD.SetRedLed(HIGH); // Red LED off for ADVPWR
+
+  if (svclvl == 0) {
+     while (1); // error, wait forever
+  }
+
+  if (SerDbgEnabled()) {
+    Serial.println("post passed");
+  }
+  return svclvl;
+}
+#endif // ADVPWR
 
 void J1772EVSEController::Init()
 {
   pinMode(CHARGING_PIN,OUTPUT);
+
   chargingOff();
+
+  m_Pilot.Init(); // init the pilot
 
   uint8_t svclvl = (uint8_t)DEFAULT_SERVICE_LEVEL;
 
@@ -1115,7 +1253,6 @@ void J1772EVSEController::Init()
 
   SetSvcLevel(svclvl);
 
-  m_Pilot.Init(); // init the pilot
 #ifdef GFI
   m_Gfi.Init();
 #endif // GFI
@@ -1400,20 +1537,6 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
 
 //-- end J1772EVSEController
 
-#ifdef LCD16X2 //Adafruit RGB LCD 
-void lcdWelcome()
-{
-  g_OBD.LcdSetCursor(0, 0);
-  g_OBD.LcdPrint("Open EVSE       ");
-  delay(500);
-  g_OBD.LcdSetCursor(0, 1);
-  g_OBD.LcdPrint("Version ");
-  g_OBD.LcdPrint(VERSTR);
-  g_OBD.LcdPrint("   ");
-  delay(1500);
-}
-#endif // LCD16X2
-
 #ifdef RGBLCD
 void doRgbLcdBtns()
 {   
@@ -1443,139 +1566,11 @@ void doRgbLcdBtns()
 }
 #endif //Adafruit RGB LCD
 
-#ifdef ADVPWR
-char doPost()
-{
-  char svclvl = 0;
-
-  pinMode(RED_LED_PIN, OUTPUT);
-  pinMode(PILOT_PIN, OUTPUT);
-  pinMode(CHARGING_PIN, OUTPUT);
-  pinMode(VOLT_PIN, INPUT);
-
-  digitalWrite(PILOT_PIN, HIGH); //check to see if EV is plugged in write early so it will stabelize before reading.
-  digitalWrite(RED_LED_PIN, HIGH); // Red LED on for ADVPWR
-  #ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetCursor(0, 0);
-    g_OBD.LcdPrint("Power On        ");
-    delay(100);
-    g_OBD.LcdSetCursor(0, 1);
-    g_OBD.LcdPrint("Self Test       ");
-    delay(1500);
-  #endif //Adafruit RGB LCD 
-  pinMode(ACLINE1_PIN, INPUT);
-  pinMode(ACLINE2_PIN, INPUT);
-  digitalWrite(ACLINE1_PIN, HIGH);
-  digitalWrite(ACLINE2_PIN, HIGH);
-  int PS1state = HIGH;
-  int PS2state = HIGH;
-    
-  PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
-  PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
-  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
-    //m_EvseState = EVSE_STATE_STUCK_RELAY;
-    digitalWrite(PILOT_PIN, LOW);
-    #ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetBacklightColor(RED);
-    g_OBD.LcdSetCursor(0, 0);
-    g_OBD.LcdPrint("--Stuck Relay-- ");
-    g_OBD.LcdSetCursor(0, 1);
-    g_OBD.LcdPrint("Test: Failed    ");
-    #endif  //Adafruit RGB LCD
-  } 
-  else {
-    #ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetCursor(0, 0);
-    g_OBD.LcdPrint("--Stuck Relay-- ");
-    g_OBD.LcdSetCursor(0, 1);
-    g_OBD.LcdPrint("Test: Passed    ");
-    delay(1000);
-    #endif //Adafruit RGB LCD
-    int reading = 1;
-    reading = analogRead(VOLT_PIN); //read pilot
-    digitalWrite(PILOT_PIN, LOW);
-    if (reading > 0) {              // IF no EV is plugged in its Okay to open the relay the do the L1/L2 and ground Check
-        digitalWrite(CHARGING_PIN, HIGH);
-        delay(500);
-        PS1state = digitalRead(ACLINE1_PIN);
-        PS2state = digitalRead(ACLINE2_PIN);
-        digitalWrite(CHARGING_PIN, LOW);
-          if ((PS1state == HIGH) && (PS2state == HIGH)) {     
-             // m_EvseState = EVSE_STATE_NO_GROUND;
-               #ifdef LCD16X2 //Adafruit RGB LCD
-                g_OBD.LcdSetBacklightColor(RED); 
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--Earth Ground--");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Test: Failed    ");
-               #endif  //Adafruit RGB LCD
-          } 
-          else if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
-              #ifdef LCD16X2 //Adafruit RGB LCD
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--Earth Ground--");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Test: Passed    ");
-                delay(1000);
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--EVSE Charge-- ");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Rate: L2        ");
-                delay(1000);
-               #endif //Adafruit RGB LCD
-
-		svclvl = 2; // L2
-          }  
-          else if ((PS1state == LOW) && (PS2state == HIGH)) {  //L1   
-              #ifdef LCD16X2 //Adafruit RGB LCD
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--Earth Ground--");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Test: Passed    ");
-                delay(1000);
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--EVSE Charge-- ");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Rate: L1        ");
-                delay(1000);
-               #endif //Adafruit RGB LCD
-              svclvl = 1; // L1
-          }  
-          else if ((PS1state == HIGH) && (PS2state == LOW)) {  //L1   
-              #ifdef LCD16X2 //Adafruit RGB LCD
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--Earth Ground--");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Test: Passed    ");
-                delay(1000);
-                g_OBD.LcdSetCursor(0, 0);
-                g_OBD.LcdPrint("--EVSE Charge-- ");
-                g_OBD.LcdSetCursor(0, 1);
-                g_OBD.LcdPrint("Rate: L1        ");
-                delay(1000);
-               #endif //Adafruit RGB LCD
-
-		svclvl = 1; // L1
-          }   
-     } 
-  }
-  
-  digitalWrite(RED_LED_PIN, LOW); // Red LED off for ADVPWR  
-
-  if (svclvl == 0) {
-    while (1); // error, wait forever
-  }
-
-  return svclvl;
-}
-#endif // ADVPWR
-
 #ifdef BTN_MENU
 Btn::Btn()
 {
   buttonState = BTN_STATE_OFF;
   lastDebounceTime = 0;
-  pinMode(BTN_PIN,INPUT);
 }
 
 void Btn::read()
@@ -1638,6 +1633,12 @@ MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
 VentReqMenu g_VentReqMenu;
 ResetMenu g_ResetMenu;
+char *g_sSetup = "Setup";
+char *g_sSvcLevel = "Service Level";
+char *g_sMaxCurrent = "Max Current";
+char *g_sDiodeCheck = "Diode Check";
+char *g_sVentReqChk = "Vent Req'd Check";
+char *g_sReset = "Reset";
 char *g_sExit = "Exit";
 
 Menu::Menu()
@@ -1657,7 +1658,7 @@ void Menu::init(const char *firstitem)
 
 SetupMenu::SetupMenu()
 {
-  m_Title = "Setup";
+  m_Title = g_sSetup;
 }
 
 void SetupMenu::Init()
@@ -1723,7 +1724,7 @@ Menu *SetupMenu::LongPress()
 char *g_SvcLevelMenuItems[] = {"Level 1","Level 2"};
 SvcLevelMenu::SvcLevelMenu()
 {
-  m_Title = "Service Level";
+  m_Title = g_sSvcLevel;
 }
 
 void SvcLevelMenu::Init()
@@ -1769,7 +1770,7 @@ uint8_t g_L1MaxAmps[] = {6,10,12,15};
 uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80};
 MaxCurrentMenu::MaxCurrentMenu()
 {
-  m_Title = "Max Current";
+  m_Title = g_sMaxCurrent;
 }
 
 
@@ -1829,7 +1830,7 @@ Menu *MaxCurrentMenu::LongPress()
 char *g_DiodeChkMenuItems[] = {"Yes","No"};
 DiodeChkMenu::DiodeChkMenu()
 {
-  m_Title = "Diode Check";
+  m_Title = g_sDiodeCheck;
 }
 
 void DiodeChkMenu::Init()
@@ -1876,7 +1877,7 @@ Menu *DiodeChkMenu::LongPress()
 char *g_VentReqMenuItems[] = {"Yes","No"};
 VentReqMenu::VentReqMenu()
 {
-  m_Title = "Vent Req'd Check";
+  m_Title = g_sVentReqChk;
 }
 
 void VentReqMenu::Init()
@@ -1923,7 +1924,7 @@ Menu *VentReqMenu::LongPress()
 char *g_ResetMenuItems[] = {"Yes","No"};
 ResetMenu::ResetMenu()
 {
-  m_Title = "Reset";
+  m_Title = g_sReset;
 }
 
 void ResetMenu::Init()
@@ -2013,15 +2014,9 @@ void BtnHandler::ChkBtn()
 
 void EvseReset()
 {
-#ifdef LCD16X2 //Adafruit RGB LCD  
- g_OBD.LcdBegin(16, 2);
- 
- lcdWelcome();
-#endif //Adafruit RGB LCD 
+  g_OBD.Init();
 
   g_EvseController.Init();
-
-  g_OBD.Init();
 
 #ifdef SERIALCLI
   g_CLI.Init();
@@ -2071,19 +2066,19 @@ void loop()
 #ifdef BTN_MENU
   g_BtnHandler.ChkBtn();
 
-  /*  debugging code
-      g_Btn.read();
+  //  debugging code
+   /*   g_Btn.read();
   if (g_Btn.shortPress()) {
     g_OBD.LcdSetCursor(0,0);
     g_OBD.LcdPrint("short");
-    delay(100);
+    delay(1000);
     g_OBD.LcdSetCursor(0,0);
     g_OBD.LcdPrint("     ");
   }
   else if (g_Btn.longPress()) {
     g_OBD.LcdSetCursor(0,0);
     g_OBD.LcdPrint("long");
-    delay(100);
+    delay(1000);
     g_OBD.LcdSetCursor(0,0);
     g_OBD.LcdPrint("    ");
   }
