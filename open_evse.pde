@@ -924,6 +924,43 @@ void J1772Pilot::SetState(PILOT_STATE state)
 //
 int J1772Pilot::SetPWM(int amps)
 {
+  uint8_t ocr1b = 0;
+  if ((amps >= 6) && (amps < 51)) {
+    ocr1b = (int)(((float)amps) * 4.14F);
+  }
+  else if ((amps > 51) && (amps <= 80)) {
+    ocr1b = amps + 159;
+  }
+  else {
+    return 1; // error
+  }
+
+  if (ocr1b) {
+    // Timer1 initialization:
+    // 16MHz / 64 / (OCR1A+1) / 2 on digital 9
+    // 16MHz / 64 / (OCR1A+1) on digital 10
+    // 1KHz variable duty cycle on digital 10, 500Hz fixed 50% on digital 9
+    // pin 10 duty cycle = (OCR1B+1)/(OCR1A+1)
+    uint8_t oldSREG = SREG;
+    cli();
+
+    TCCR1A = _BV(COM1A0) | _BV(COM1B1) | _BV(WGM11) | _BV(WGM10);
+    TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11) | _BV(CS10);
+    OCR1A = 249;
+
+    // 10% = 24 , 96% = 239
+    OCR1B = ocr1b;
+
+    SREG = oldSREG;
+
+    m_State = PILOT_STATE_PWM;
+    return 0;
+  }
+  else { // !duty
+    // invalid amps
+    return 1;
+  }
+/* old code
   float duty = 0.0;
   float famps = (float) amps;
   if ((amps >= 6) && (amps < 51)) {
@@ -962,6 +999,7 @@ int J1772Pilot::SetPWM(int amps)
     // invalid amps
     return 1;
   }
+*/
 }
 
 //-- end J1772Pilot
