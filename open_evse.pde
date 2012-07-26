@@ -144,9 +144,11 @@
 #endif //Adafruit RGB LCD
 
 #ifdef I2CLCD
-// N.B. must use Adafruit's LiquidCrystal library, not Arduino's.
-// https://github.com/adafruit/LiquidCrystal
-#include <LiquidCrystal.h>
+// N.B. must use Adafruit's LiquidCrystal library
+// I had to rename it to AdaLiquidCrystal because it was causing compile
+// errors in my AT90CANxxx projects.
+// unzip AdaLiquidCrystal.zip into your sketchbook/libraries folder
+#include <AdaLiquidCrystal.h>
 #define LCD_I2C_ADDR 0 // for adafruit LCD backpack
 #endif // I2CLCD
 
@@ -194,7 +196,7 @@ class OnboardDisplay
 Adafruit_RGBLCDShield m_Lcd;
 #endif //Adafruit RGB LCD
 #ifdef I2CLCD
-LiquidCrystal m_Lcd; 
+AdaLiquidCrystal m_Lcd; 
 #endif // I2CLCD
 
 
