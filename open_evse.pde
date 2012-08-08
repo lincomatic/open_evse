@@ -1827,7 +1827,6 @@ void MaxCurrentMenu::Init()
     m_MaxCurrent = m_MaxAmpsList[++m_MaxIdx];
     if (m_MaxCurrent == g_EvseController.GetCurrentCapacity()) {
       m_CurIdx = m_MaxIdx;
-      break;
     }
   } while (m_MaxCurrent < currentlimit);
   
