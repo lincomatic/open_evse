@@ -930,7 +930,7 @@ int J1772Pilot::SetPWM(int amps)
   if ((amps >= 6) && (amps < 51)) {
     ocr1b = (int)(((float)amps) * 4.14F);
   }
-  else if ((amps > 51) && (amps <= 80)) {
+  else if ((amps >= 51) && (amps <= 80)) {
     ocr1b = amps + 159;
   }
   else {
