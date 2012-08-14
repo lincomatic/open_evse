@@ -575,13 +575,13 @@ CLI::CLI()
 
 void CLI::Init()
 {
-  Serial.println("Open EVSE"); // CLI print prompt when serial is ready
-  Serial.println("Hardware - Atmel ATMEGA328P-AU"); //CLI Info
-  Serial.print("Software - Open EVSE "); //CLI info
+  //Serial.println("Open EVSE"); // CLI print prompt when serial is ready
+  //Serial.println("Hardware - Atmel ATMEGA328P-AU"); //CLI Info
+  Serial.print("OpenEVSE "); //CLI info
   Serial.println(VERSTR);
   Serial.println("");
 
-  g_CLI.println("type ? or help for command list");
+  g_CLI.println("help - type ?");
   g_CLI.print("Open_EVSE>"); // CLI Prompt
   g_CLI.flush();
 
@@ -617,49 +617,42 @@ void CLI::getInput()
       Serial.println(""); // print a newline
       if (strcmp(m_CLIinstr, "show") == 0){ //if match SHOW 
 
-        Serial.println("Open EVSE"); // CLI print prompt when serial is ready
-        Serial.println("Hardware - Atmel ATMEGA328P-AU"); //CLI Info
-        Serial.print("Software - Open EVSE ");
+        //Serial.println("Open EVSE"); // CLI print prompt when serial is ready
+        //Serial.println("Hardware - Atmel ATMEGA328P-AU"); //CLI Info
+        Serial.print("OpenEVSE ");
 	Serial.println(VERSTR);
-        Serial.println("EVSE Settings");
-        Serial.print("EVSE current capacity (Amps) = ");
+        //Serial.println("EVSE Settings");
+        Serial.print("EVSE pilot (Amps) = ");
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
-        Serial.print("Min EVSE Current Capacity = ");
+        Serial.print("Min Current = ");
         Serial.println(MIN_CURRENT_CAPACITY);
-        Serial.print("Max EVSE Current Capacity = ");
+        Serial.print("Max Current = ");
         Serial.println(MAX_CURRENT_CAPACITY_L2);
         char s[80];
         int i;
         sscanf(s,"%d",&i);
            
       } 
-      else if ((strcmp(m_CLIinstr, "help") == 0) || (strcmp(m_CLIinstr, "?") == 0)){ // string compare
-        Serial.println("Help Commands");
-        Serial.println("");
-        Serial.println("help  --   Display commands"); // print to the terminal
-        Serial.println("set   --   Change Settings");
-        Serial.println("show  --   Display settings and values");
-        Serial.println("save  --   Write settings to EEPROM");
-      } 
+       
       else if (strcmp(m_CLIinstr, "set") == 0){ // string compare
         Serial.println("Set Commands - Usage: set amp");
         Serial.println("");
-        Serial.println("amp  --  Set the EVSE Current Capacity"); // print to the terminal
-	Serial.println("sdbg on/off - turn serial debugging on/off");
+        Serial.println("amp - Set EVSE Current"); // print to the terminal
+	Serial.println("sdbg on/off - serial debugging");
        } 
       else if (strcmp(m_CLIinstr, "set sdbg on") == 0){
 	g_EvseController.EnableSerDbg(1);
-	Serial.println("Serial Debugging Enabled");
+	Serial.println("Debug Enabled");
       }
       else if (strcmp(m_CLIinstr, "set sdbg off") == 0){
 	g_EvseController.EnableSerDbg(0);
-	Serial.println("Serial Debugging Disabled");
+	Serial.println("Debug Disabled");
       }
       else if (strcmp(m_CLIinstr, "set amp") == 0){ // string compare
-        Serial.println("WARNING - DO NOT SET CURRENT HIGHER THAN 80%");
-	Serial.println("OF YOUR CIRCUIT BREAKER OR"); 
-        Serial.println("GREATER THAN THE RATED VALUE OF THE EVSE");
-        Serial.println("");
+        //Serial.println("WARNING - DO NOT SET CURRENT HIGHER THAN 80%");
+	//Serial.println("OF YOUR CIRCUIT BREAKER OR"); 
+        //Serial.println("GREATER THAN THE RATED VALUE OF THE EVSE");
+        //Serial.println("");
         Serial.print("Enter amps (");
         Serial.print(MIN_CURRENT_CAPACITY);
         Serial.print("-");
@@ -668,19 +661,19 @@ void CLI::getInput()
 	amp = getInt();
 	Serial.println((int)amp);
         if(g_EvseController.SetCurrentCapacity(amp,1)) {
-	  Serial.println("Invalid Current Capacity");
+	  Serial.println("Invalid Current");
 	}
 
-        Serial.print("\nEVSE Current Capacity now: "); // print to the terminal
+        Serial.print("Current now: "); // print to the terminal
         Serial.print((int)g_EvseController.GetCurrentCapacity());
         Serial.print(" Amps");
       } 
       else if (strcmp(m_CLIinstr, "save") == 0){ // string compare
-        Serial.println("Saving Settings to EEPROM"); // print to the terminal
+        Serial.println("Saving to EEPROM"); // print to the terminal
         SaveSettings();
       } 
       else { // if the input text doesn't match any defined above
-        Serial.println("Unknown Command -- type ? or help for command list"); // echo back to the terminal
+        Serial.println("type ? for help"); // echo back to the terminal
       } 
       Serial.println("");
       Serial.println("");
@@ -696,7 +689,6 @@ void CLI::getInput()
 }
 
 #endif // SERIALCLI
-
 
 
 void OnboardDisplay::Init()
