@@ -548,7 +548,6 @@ CLI g_CLI;
 #endif // SERIALCLI
 
 #ifdef LCD16X2
-prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
 #ifdef ADVPWR
 prog_char g_psPwrOn[] PROGMEM = "Power On";
 prog_char g_psSelfTest[] PROGMEM = "Self Test";
@@ -560,6 +559,7 @@ prog_char g_psTestPassed[] PROGMEM = "Test Passed";
 prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
 prog_char g_psEvseSvc[] PROGMEM = "--ServiceLevel--";
 #endif // ADVPWR
+prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
@@ -637,6 +637,8 @@ void CLI::getInput()
         print_P(PSTR("Software - Open EVSE "));
 	println(VERSTR);
         println_P(PSTR("Settings"));
+	print_P(PSTR("Service level = "));
+	Serial.println((int)g_EvseController.GetCurSvcLevel()); 
         print_P(PSTR("Current capacity (Amps) = "));
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
         print_P(PSTR("Min Current Capacity = "));
@@ -1162,7 +1164,7 @@ void J1772EVSEController::LoadThresholds()
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
 {
   if (SerDbgEnabled()) {
-    Serial.print("SetSvcLevel: ");Serial.println((int)svclvl);
+    g_CLI.print_P(PSTR("SetSvcLevel: "));Serial.println((int)svclvl);
   }
 
   if (svclvl == 2) {
@@ -1519,13 +1521,13 @@ void J1772EVSEController::Update()
     }
 
     if (SerDbgEnabled()) {
-      Serial.print("state: ");
+      g_CLI.print_P(PSTR("state: "));
       Serial.print((int)prevevsestate);
-      Serial.print("->");
+      g_CLI.print_P(PSTR("->"));
       Serial.print((int)m_EvseState);
-      Serial.print(" p ");
+      g_CLI.print_P(PSTR(" p "));
       Serial.print(plow);
-      Serial.print(" ");
+      g_CLI.print_P(PSTR(" "));
       Serial.println(phigh);
     }
   }
@@ -1757,9 +1759,9 @@ SvcLevelMenu::SvcLevelMenu()
 
 void SvcLevelMenu::Init()
 {
+  g_OBD.LcdPrint_P(0,m_Title);
   m_CurIdx = (g_EvseController.GetCurSvcLevel() == 1) ? 0 : 1;
   sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
-  g_OBD.LcdPrint_P(0,m_Title);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
@@ -1852,9 +1854,9 @@ DiodeChkMenu::DiodeChkMenu()
 
 void DiodeChkMenu::Init()
 {
+  g_OBD.LcdPrint_P(0,m_Title);
   m_CurIdx = g_EvseController.DiodeCheckEnabled() ? 0 : 1;
   sprintf(g_sTmp,"+%s",g_DiodeChkMenuItems[m_CurIdx]);
-  g_OBD.LcdPrint_P(0,m_Title);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
@@ -1894,9 +1896,9 @@ VentReqMenu::VentReqMenu()
 
 void VentReqMenu::Init()
 {
+  g_OBD.LcdPrint_P(0,m_Title);
   m_CurIdx = g_EvseController.VentReqEnabled() ? 0 : 1;
   sprintf(g_sTmp,"+%s",g_VentReqMenuItems[m_CurIdx]);
-  g_OBD.LcdPrint_P(0,m_Title);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
