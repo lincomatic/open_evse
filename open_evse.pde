@@ -567,6 +567,7 @@ prog_char g_psNoGround[] PROGMEM = "NO GROUND";
 prog_char g_psEStuckRelay[] PROGMEM = "STUCK RELAY";
 prog_char g_psStopped[] PROGMEM = "Stopped";
 prog_char g_psEvConnected[] PROGMEM = "EV Connected";
+prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
 #endif // LCD16X2
 
 //-- end global variables
@@ -822,7 +823,7 @@ void OnboardDisplay::Update()
       LcdSetBacklightColor(GREEN);
       sprintf(g_sTmp,"Ready     L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       LcdPrint(0,g_sTmp);
-      LcdPrint_P(1,g_psEvConnected);
+      LcdPrint_P(1,g_psEvNotConnected);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -896,7 +897,7 @@ void OnboardDisplay::Update()
       SetGreenLed(LOW);
       SetRedLed(HIGH);
 #ifdef LCD16X2
-      LcdPrint(0,g_psStopped);
+      LcdPrint_P(0,g_psStopped);
 #endif // LCD16X2
       break;
     default:
