@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "0.6.0RC2"
+#define VERSTR "0.6.1RC1"
 
 //-- begin features
 
@@ -57,14 +57,18 @@
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
-// connect an SPST button between BTN_PIN and GND via a 2K resistor
+// connect an SPST button between BTN_PIN and GND via a 2K resistor or enable ADAFRUIT_BTN to use the 
+// select button of the Adafruit RGB LCD 
 // How to use 1-button menu
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // When within menus, short press cycles menu items, long press selects and exits current submenu
-// N.B. CURRENTLY, BTN_MENU AND ADVPWR DON'T WORK TOGETHER.  YOU CAN ENABLE ONLY ONE OF THEM AT AT TIME.  I'M HAVING A LOT OF TROUBLE FIGURING OUT THE PROBLEM - SAM
 #define BTN_MENU
+
 // use Adafruit RGB LCD select button
-//#define ADAFRUIT_BTN
+#ifdef RGBLCD
+#define ADAFRUIT_BTN
+#endif // RGBLCD
+#endif // BTN_MENU
 
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
@@ -88,8 +92,8 @@
 #define MIN_CURRENT_CAPACITY 6
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 15 // NEMA 5-15
-#define MAX_CURRENT_CAPACITY_L2 80
+#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit
+#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
 
 //J1772EVSEController
 //#define CURRENT_PIN 0 // analog current reading pin A0
@@ -450,24 +454,24 @@ public:
   Menu();
 
   virtual void Init() = 0;
-  virtual void ShortPress() = 0;
-  virtual Menu *LongPress() = 0;
+  virtual void Next() = 0;
+  virtual Menu *Select() = 0;
 };
 
 class SetupMenu : public Menu {
 public:
   SetupMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 class SvcLevelMenu : public Menu {
 public:
   SvcLevelMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 class MaxCurrentMenu  : public Menu {
@@ -477,16 +481,16 @@ class MaxCurrentMenu  : public Menu {
 public:
   MaxCurrentMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 class DiodeChkMenu : public Menu {
 public:
   DiodeChkMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 
@@ -494,8 +498,8 @@ class VentReqMenu : public Menu {
 public:
   VentReqMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 
@@ -503,8 +507,8 @@ class ResetMenu : public Menu {
 public:
   ResetMenu();
   void Init();
-  void ShortPress();
-  Menu *LongPress();
+  void Next();
+  Menu *Select();
 };
 
 
@@ -688,7 +692,7 @@ void CLI::getInput()
 	  println_P(PSTR("Invalid Current Capacity"));
 	}
 
-        print_P(PSTR("\nEVSE Current Capacity now: ")); // print to the terminal
+        print_P(PSTR("Current Capacity now: ")); // print to the terminal
         Serial.print((int)g_EvseController.GetCurrentCapacity());
         print_P(PSTR(" Amps"));
       } 
@@ -751,7 +755,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(0,1,PSTR("Version "));
   LcdPrint(VERSTR);
   LcdPrint_P(PSTR("   "));
-  delay(1500);
+  delay(500);
 #endif // LCD16X2
 }
 
@@ -1213,24 +1217,24 @@ uint8_t J1772EVSEController::doPost()
   g_OBD.SetRedLed(HIGH); 
 #ifdef LCD16X2 //Adafruit RGB LCD
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
-  delay(1000);
+  
 #endif //Adafruit RGB LCD 
 
-  PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
-  PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
+  //  PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
+  //  PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
 
-  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
-    m_Pilot.SetState(PILOT_STATE_N12);
-#ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetBacklightColor(RED);
-    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-#endif  //Adafruit RGB LCD
-  } 
-  else {
-#ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
-    delay(1000);
-#endif //Adafruit RGB LCD
+//  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
+//    m_Pilot.SetState(PILOT_STATE_N12);
+// #ifdef LCD16X2 //Adafruit RGB LCD
+//    g_OBD.LcdSetBacklightColor(RED);
+//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+// #endif  //Adafruit RGB LCD
+//  } 
+//  else {
+// #ifdef LCD16X2 //Adafruit RGB LCD
+//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
+//    delay(1000);
+// #endif //Adafruit RGB LCD
  
 
     int reading = analogRead(VOLT_PIN); //read pilot
@@ -1241,23 +1245,23 @@ uint8_t J1772EVSEController::doPost()
       PS1state = digitalRead(ACLINE1_PIN);
       PS2state = digitalRead(ACLINE2_PIN);
       digitalWrite(CHARGING_PIN, LOW);
-      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
+//      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
 	// m_EvseState = EVSE_STATE_NO_GROUND;
-#ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdSetBacklightColor(RED); 
-	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-#endif  //Adafruit RGB LCD
-      } 
-      else {
-#ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestPassed);
-	delay(1000);
-#endif  //Adafruit RGB LCD
+//  #ifdef LCD16X2 //Adafruit RGB LCD
+//	g_OBD.LcdSetBacklightColor(RED); 
+//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
+//  #endif  //Adafruit RGB LCD
+//      } 
+//      else {
+//   #ifdef LCD16X2 //Adafruit RGB LCD
+//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestPassed);
+//	delay(1000);
+//   #endif  //Adafruit RGB LCD
 
 	if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
 #ifdef LCD16X2 //Adafruit RGB LCD
 	  g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel2);
-	  delay(1000);
+	  delay(500);
 #endif //Adafruit RGB LCD
 
 	  svclvl = 2; // L2
@@ -1265,22 +1269,23 @@ uint8_t J1772EVSEController::doPost()
 	else { // L1
 #ifdef LCD16X2 //Adafruit RGB LCD
 	 g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel1);
-	 delay(1000);
+	 delay(500);
 #endif //Adafruit RGB LCD
 	  svclvl = 1; // L1
 	}
       }  
-    } 
-  }
+//    } 
+//  }
   
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
 
   if (svclvl == 0) {
-    while (1); // error, wait forever
+    // couldn't determine service level, default to L1
+    svclvl = 1;
   }
-  else {
+
     m_Pilot.SetState(PILOT_STATE_P12);
-  }
+  
 
   return svclvl;
 }
@@ -1700,7 +1705,7 @@ void SetupMenu::Init()
   init(g_SvcLevelMenu.m_Title);
 }
 
-void SetupMenu::ShortPress()
+void SetupMenu::Next()
 {
   if (++m_CurIdx >= 6) {
     m_CurIdx = 0;
@@ -1729,7 +1734,7 @@ void SetupMenu::ShortPress()
   g_OBD.LcdPrint_P(1,title);
 }
 
-Menu *SetupMenu::LongPress()
+Menu *SetupMenu::Select()
 {
   if (m_CurIdx == 0) {
     return &g_SvcLevelMenu;
@@ -1765,7 +1770,7 @@ void SvcLevelMenu::Init()
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
-void SvcLevelMenu::ShortPress()
+void SvcLevelMenu::Next()
 {
   if (++m_CurIdx >= 2) {
     m_CurIdx = 0;
@@ -1778,7 +1783,7 @@ void SvcLevelMenu::ShortPress()
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
-Menu *SvcLevelMenu::LongPress()
+Menu *SvcLevelMenu::Select()
 {
   g_EvseController.SetSvcLevel(m_CurIdx+1);
   g_OBD.LcdPrint(0,1,"+");
@@ -1821,7 +1826,7 @@ void MaxCurrentMenu::Init()
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
-void MaxCurrentMenu::ShortPress()
+void MaxCurrentMenu::Next()
 {
   if (++m_CurIdx > m_MaxIdx) {
     m_CurIdx = 0;
@@ -1835,7 +1840,7 @@ void MaxCurrentMenu::ShortPress()
   g_OBD.LcdPrint("A");
 }
 
-Menu *MaxCurrentMenu::LongPress()
+Menu *MaxCurrentMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
@@ -1846,7 +1851,7 @@ Menu *MaxCurrentMenu::LongPress()
   return &g_SetupMenu;
 }
 
-char *g_DiodeChkMenuItems[] = {"Yes","No"};
+char *g_YesNoMenuItems[] = {"Yes","No"};
 DiodeChkMenu::DiodeChkMenu()
 {
   m_Title = g_psDiodeCheck;
@@ -1856,11 +1861,11 @@ void DiodeChkMenu::Init()
 {
   g_OBD.LcdPrint_P(0,m_Title);
   m_CurIdx = g_EvseController.DiodeCheckEnabled() ? 0 : 1;
-  sprintf(g_sTmp,"+%s",g_DiodeChkMenuItems[m_CurIdx]);
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
-void DiodeChkMenu::ShortPress()
+void DiodeChkMenu::Next()
 {
   if (++m_CurIdx >= 2) {
     m_CurIdx = 0;
@@ -1871,13 +1876,13 @@ void DiodeChkMenu::ShortPress()
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
     g_OBD.LcdPrint("+");
   }
-  g_OBD.LcdPrint(g_DiodeChkMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
-Menu *DiodeChkMenu::LongPress()
+Menu *DiodeChkMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
-  g_OBD.LcdPrint(g_DiodeChkMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
 
@@ -1888,7 +1893,6 @@ Menu *DiodeChkMenu::LongPress()
   return &g_SetupMenu;
 }
 
-char *g_VentReqMenuItems[] = {"Yes","No"};
 VentReqMenu::VentReqMenu()
 {
   m_Title = g_psVentReqChk;
@@ -1898,11 +1902,11 @@ void VentReqMenu::Init()
 {
   g_OBD.LcdPrint_P(0,m_Title);
   m_CurIdx = g_EvseController.VentReqEnabled() ? 0 : 1;
-  sprintf(g_sTmp,"+%s",g_VentReqMenuItems[m_CurIdx]);
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
-void VentReqMenu::ShortPress()
+void VentReqMenu::Next()
 {
   if (++m_CurIdx >= 2) {
     m_CurIdx = 0;
@@ -1913,10 +1917,10 @@ void VentReqMenu::ShortPress()
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
     g_OBD.LcdPrint("+");
   }
-  g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
-Menu *VentReqMenu::LongPress()
+Menu *VentReqMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
@@ -1930,7 +1934,6 @@ Menu *VentReqMenu::LongPress()
   return &g_SetupMenu;
 }
 
-char *g_ResetMenuItems[] = {"Yes","No"};
 ResetMenu::ResetMenu()
 {
   m_Title = g_psReset;
@@ -1939,22 +1942,22 @@ ResetMenu::ResetMenu()
 void ResetMenu::Init()
 {
   m_CurIdx = 0;
-  g_OBD.LcdMsg("Reset Now?",g_ResetMenuItems[0]);
+  g_OBD.LcdMsg("Reset Now?",g_YesNoMenuItems[0]);
 }
 
-void ResetMenu::ShortPress()
+void ResetMenu::Next()
 {
   if (++m_CurIdx >= 2) {
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdPrint(0,1,g_ResetMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
 }
 
-Menu *ResetMenu::LongPress()
+Menu *ResetMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
-  g_OBD.LcdPrint(g_ResetMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
     // hardware reset by forcing watchdog to timeout
@@ -1974,7 +1977,7 @@ void BtnHandler::ChkBtn()
   m_Btn.read();
   if (m_Btn.shortPress()) {
     if (m_CurMenu) {
-      m_CurMenu->ShortPress();
+      m_CurMenu->Next();
     }
     else {
       if (g_EvseController.GetState() == EVSE_STATE_DISABLED) {
@@ -1987,7 +1990,7 @@ void BtnHandler::ChkBtn()
   }
   else if (m_Btn.longPress()) {
     if (m_CurMenu) {
-      m_CurMenu = m_CurMenu->LongPress();
+      m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
 	uint8_t curidx;
 	if (m_CurMenu == &g_SetupMenu) {
@@ -1997,7 +2000,7 @@ void BtnHandler::ChkBtn()
 	if (m_CurMenu == &g_SetupMenu) {
 	  // restore prev menu item
 	  g_SetupMenu.m_CurIdx = curidx-1;
-	  g_SetupMenu.ShortPress();
+	  g_SetupMenu.Next();
 	}
       }
       else {
