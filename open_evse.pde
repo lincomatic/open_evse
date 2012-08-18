@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "0.6.0RC2"
+#define VERSTR "0.6.1RC1"
 
 //-- begin features
 
@@ -57,11 +57,12 @@
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
-// connect an SPST button between BTN_PIN and GND via a 2K resistor
+// connect an SPST button between BTN_PIN and GND via a 2K resistor or enable ADAFRUIT_BTN to use the 
+// select button of the Adafruit RGB LCD 
 // How to use 1-button menu
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // When within menus, short press cycles menu items, long press selects and exits current submenu
-// N.B. CURRENTLY, BTN_MENU AND ADVPWR DON'T WORK TOGETHER.  YOU CAN ENABLE ONLY ONE OF THEM AT AT TIME.  I'M HAVING A LOT OF TROUBLE FIGURING OUT THE PROBLEM - SAM
+
 #define BTN_MENU
 // use Adafruit RGB LCD select button
 //#define ADAFRUIT_BTN
@@ -88,8 +89,8 @@
 #define MIN_CURRENT_CAPACITY 6
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 15 // NEMA 5-15
-#define MAX_CURRENT_CAPACITY_L2 80
+#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit
+#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
 
 //J1772EVSEController
 //#define CURRENT_PIN 0 // analog current reading pin A0
@@ -688,7 +689,7 @@ void CLI::getInput()
 	  println_P(PSTR("Invalid Current Capacity"));
 	}
 
-        print_P(PSTR("\nEVSE Current Capacity now: ")); // print to the terminal
+        print_P(PSTR("EVSE Current Capacity now: ")); // print to the terminal
         Serial.print((int)g_EvseController.GetCurrentCapacity());
         print_P(PSTR(" Amps"));
       } 
@@ -751,7 +752,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(0,1,PSTR("Version "));
   LcdPrint(VERSTR);
   LcdPrint_P(PSTR("   "));
-  delay(1500);
+  delay(500);
 #endif // LCD16X2
 }
 
@@ -1213,24 +1214,24 @@ uint8_t J1772EVSEController::doPost()
   g_OBD.SetRedLed(HIGH); 
 #ifdef LCD16X2 //Adafruit RGB LCD
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
-  delay(1000);
+  
 #endif //Adafruit RGB LCD 
 
   PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
   PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
 
-  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
-    m_Pilot.SetState(PILOT_STATE_N12);
-#ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdSetBacklightColor(RED);
-    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-#endif  //Adafruit RGB LCD
-  } 
-  else {
-#ifdef LCD16X2 //Adafruit RGB LCD
-    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
-    delay(1000);
-#endif //Adafruit RGB LCD
+//  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
+//    m_Pilot.SetState(PILOT_STATE_N12);
+// #ifdef LCD16X2 //Adafruit RGB LCD
+//    g_OBD.LcdSetBacklightColor(RED);
+//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+// #endif  //Adafruit RGB LCD
+//  } 
+//  else {
+// #ifdef LCD16X2 //Adafruit RGB LCD
+//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
+//    delay(1000);
+// #endif //Adafruit RGB LCD
  
 
     int reading = analogRead(VOLT_PIN); //read pilot
@@ -1241,23 +1242,23 @@ uint8_t J1772EVSEController::doPost()
       PS1state = digitalRead(ACLINE1_PIN);
       PS2state = digitalRead(ACLINE2_PIN);
       digitalWrite(CHARGING_PIN, LOW);
-      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
-	// m_EvseState = EVSE_STATE_NO_GROUND;
-#ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdSetBacklightColor(RED); 
-	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-#endif  //Adafruit RGB LCD
-      } 
-      else {
-#ifdef LCD16X2 //Adafruit RGB LCD
-	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestPassed);
-	delay(1000);
-#endif  //Adafruit RGB LCD
+//      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
+//	 m_EvseState = EVSE_STATE_NO_GROUND;
+//  #ifdef LCD16X2 //Adafruit RGB LCD
+//	g_OBD.LcdSetBacklightColor(RED); 
+//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
+//  #endif  //Adafruit RGB LCD
+//      } 
+//      else {
+//   #ifdef LCD16X2 //Adafruit RGB LCD
+//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestPassed);
+//	delay(1000);
+//   #endif  //Adafruit RGB LCD
 
 	if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
 #ifdef LCD16X2 //Adafruit RGB LCD
 	  g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel2);
-	  delay(1000);
+	  delay(500);
 #endif //Adafruit RGB LCD
 
 	  svclvl = 2; // L2
@@ -1265,22 +1266,22 @@ uint8_t J1772EVSEController::doPost()
 	else { // L1
 #ifdef LCD16X2 //Adafruit RGB LCD
 	 g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel1);
-	 delay(1000);
+	 delay(500);
 #endif //Adafruit RGB LCD
 	  svclvl = 1; // L1
 	}
       }  
-    } 
-  }
+//    } 
+//  }
   
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
 
-  if (svclvl == 0) {
-    while (1); // error, wait forever
-  }
-  else {
-    m_Pilot.SetState(PILOT_STATE_P12);
-  }
+//  if (svclvl == 0) {
+//  \\  while (1); // error, wait forever
+// }
+//  else {
+   m_Pilot.SetState(PILOT_STATE_P12);
+//  }
 
   return svclvl;
 }
