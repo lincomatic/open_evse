@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "1.0.0RC1"
+#define VERSTR "1.0.0RC2"
 
 //-- begin features
 
@@ -50,7 +50,7 @@
 //Adafruit RGBLCD
 #define RGBLCD
 
- // Adafruit LCD backpack in I2C mode
+// Adafruit LCD backpack in I2C mode
 //#define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
