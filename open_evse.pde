@@ -48,10 +48,10 @@
 #define SERIALCLI
 
 //Adafruit RGBLCD
-//#define RGBLCD
+#define RGBLCD
 
  // Adafruit LCD backpack in I2C mode
-#define I2CLCD
+//#define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -552,10 +552,10 @@ prog_char g_psSvcLevel[] PROGMEM = "Service Level";
 prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
 prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
 prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
-#ifdef ADVPWR
-prog_char g_psGndChk[] PROGMEM = "Ground Check";
 prog_char g_psEnabled[] PROGMEM = "enabled";
 prog_char g_psDisabled[] PROGMEM = "disabled";
+#ifdef ADVPWR
+prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Reset";
 prog_char g_psExit[] PROGMEM = "Exit";
@@ -731,11 +731,11 @@ void CLI::getInput()
 	  p += 8;
 	  print_P(PSTR("vent required "));
 	  if (!strcmp(p,"on")) {
-	    g_EvseController.EnableGndChk(1);
+	    g_EvseController.EnableVentReq(1);
 	    println_P(g_psEnabled);
 	  }
 	  else {
-	    g_EvseController.EnableGndChk(0);
+	    g_EvseController.EnableVentReq(0);
 	    println_P(g_psDisabled);
 	  }
 	}
