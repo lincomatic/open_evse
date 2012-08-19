@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "0.6.2RC1"
+#define VERSTR "1.0.0RC1"
 
 //-- begin features
 
@@ -166,9 +166,8 @@
 //-- begin class definitions
 
 #ifdef SERIALCLI
-#define CLI_BUFLEN 13
+#define CLI_BUFLEN 16
 class CLI {
-  int m_CLIinByte; // CLI byte being read in
   char m_CLIinstr[CLI_BUFLEN]; // CLI byte being read in
   int m_CLIstrCount; //CLI string counter
   char *m_strBuf;
@@ -326,6 +325,8 @@ typedef struct calibdata {
 #define ECF_DIODE_CHK_DISABLED 0x02 // no diode check
 #define ECF_VENT_REQ_DISABLED  0x04 // no vent required state
 #define ECF_GND_CHK_DISABLED   0x08 // no chk for ground fault
+#define ECF_STUCK_RELAY_CHK_DISABLED 0x10 // no chk for stuck relay
+#define ECF_AUTO_SVC_LEVEL_DISABLED  0x20 // auto detect svc level - requires ADVPWR
 #define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
 #define ECF_DEFAULT            0x00
 
@@ -424,6 +425,12 @@ public:
     return (m_bFlags & ECF_GND_CHK_DISABLED) ? 0 : 1;
   }
   void EnableGndChk(uint8_t tf);
+  void EnableStuckRelayChk(uint8_t tf);
+  uint8_t StuckRelayChkEnabled() { 
+    return (m_bFlags & ECF_STUCK_RELAY_CHK_DISABLED) ? 0 : 1;
+  }
+  uint8_t AutoSvcLevelEnabled() { return (m_bFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
+  void EnableAutoSvcLevel(uint8_t tf);
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
@@ -547,6 +554,8 @@ prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
 prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
+prog_char g_psEnabled[] PROGMEM = "enabled";
+prog_char g_psDisabled[] PROGMEM = "disabled";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Reset";
 prog_char g_psExit[] PROGMEM = "Exit";
@@ -556,6 +565,9 @@ SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
 VentReqMenu g_VentReqMenu;
+#ifdef ADVPWR
+GndChkMenu g_GndChkMenu;
+#endif // ADVPWR
 ResetMenu g_ResetMenu;
 
 BtnHandler g_BtnHandler;
@@ -649,14 +661,14 @@ void CLI::getInput()
   int currentreading;
   uint8_t amp;
   if(Serial.available()) { // if byte(s) are available to be read
-    m_CLIinByte = Serial.read(); // read the byte
-    Serial.print(char(m_CLIinByte));
-    if(m_CLIinByte != 13) {
-      m_CLIinstr[m_CLIstrCount] = char(m_CLIinByte);
+    char inbyte = (char) Serial.read(); // read the byte
+    Serial.print(inbyte);
+    if(inbyte != 13) {
+      m_CLIinstr[m_CLIstrCount] = inbyte;
       m_CLIstrCount++;
     }
 
-    if(m_CLIinByte == 13) { // if enter was pressed or max chars reached
+    if(inbyte == 13) { // if enter was pressed or max chars reached
       Serial.println(""); // print a newline
       if (strcmp(m_CLIinstr, "show") == 0){ //if match SHOW 
 
@@ -665,66 +677,124 @@ void CLI::getInput()
         print_P(PSTR("Software - Open EVSE "));
 	println(VERSTR);
         println_P(PSTR("Settings"));
-	print_P(PSTR("Service level = "));
+	print_P(PSTR("Service level: "));
 	Serial.println((int)g_EvseController.GetCurSvcLevel()); 
-        print_P(PSTR("Current capacity (Amps) = "));
+        print_P(PSTR("Current capacity (Amps): "));
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
-        print_P(PSTR("Min Current Capacity = "));
+        print_P(PSTR("Min Current Capacity: "));
         Serial.println(MIN_CURRENT_CAPACITY);
-        print_P(PSTR("Max Current Capacity = "));
+        print_P(PSTR("Max Current Capacity: "));
         Serial.println(MAX_CURRENT_CAPACITY_L2);
-        char s[80];
-        int i;
-        sscanf(s,"%d",&i);
-           
+	print_P(PSTR("Vent Required: "));
+	println_P(g_EvseController.VentReqEnabled() ? g_psEnabled : g_psDisabled);
+#ifdef ADVPWR
+	print_P(PSTR("Ground Check: "));
+	println_P(g_EvseController.GndChkEnabled() ? g_psEnabled : g_psDisabled);
+	print_P(PSTR("Stuck Relay Check: "));
+	println_P(g_EvseController.StuckRelayChkEnabled() ? g_psEnabled : g_psDisabled);
+#endif // ADVPWR           
       } 
       else if ((strcmp(m_CLIinstr, "help") == 0) || (strcmp(m_CLIinstr, "?") == 0)){ // string compare
         println_P(PSTR("Help Commands"));
         println("");
-        println_P(PSTR("help -- Display commands")); // print to the terminal
-        println_P(PSTR("set  -- Change Settings"));
-        println_P(PSTR("show -- Display settings and values"));
-        println_P(PSTR("save -- Write settings to EEPROM"));
+        println_P(PSTR("help - Display commands")); // print to the terminal
+        println_P(PSTR("set  - Change Settings"));
+        println_P(PSTR("show - Display settings and values"));
+        println_P(PSTR("save - Write settings to EEPROM"));
       } 
-      else if (strcmp(m_CLIinstr, "set") == 0){ // string compare
+      else if (strcmp(m_CLIinstr, "set") == 0) { // string compare
         println_P(PSTR("Set Commands - Usage: set amp"));
         println("");
-        println_P(PSTR("amp  --  Set the EVSE Current Capacity")); // print to the terminal
+        println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
+	println_P(PSTR("ventreq on/off - enable/disable vent required state"));
+#ifdef ADVPWR
+	println_P(PSTR("gndchk on/off - turn ground check on/off"));
+	println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
+#endif // ADVPWR
 	println_P(PSTR("sdbg on/off - turn serial debugging on/off"));
-       } 
-      else if (strcmp(m_CLIinstr, "set sdbg on") == 0){
-	g_EvseController.EnableSerDbg(1);
-	println_P(PSTR("Serial Debugging Enabled"));
       }
-      else if (strcmp(m_CLIinstr, "set sdbg off") == 0){
-	g_EvseController.EnableSerDbg(0);
-	println_P(PSTR("Serial Debugging Disabled"));
-      }
-      else if (strcmp(m_CLIinstr, "set amp") == 0){ // string compare
-        println_P(PSTR("WARNING - DO NOT SET CURRENT HIGHER THAN 80%"));
-	println_P(PSTR("OF YOUR CIRCUIT BREAKER OR")); 
-        println_P(PSTR("GREATER THAN THE RATED VALUE OF THE EVSE"));
-        println("");
-        print_P(PSTR("Enter amps ("));
-        Serial.print(MIN_CURRENT_CAPACITY);
-        print("-");
-        Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2);
-	print("): ");
-	amp = getInt();
-	Serial.println((int)amp);
-        if(g_EvseController.SetCurrentCapacity(amp,1)) {
-	  println_P(PSTR("Invalid Current Capacity"));
+      else if (strncmp(m_CLIinstr, "set ",4) == 0) {
+	char *p = m_CLIinstr + 4;
+	if (!strncmp(p,"sdbg ",5)) {
+	  p += 5;
+	  print_P(PSTR("serial debugging "));
+	  if (!strcmp(p,"on")) {
+	    g_EvseController.EnableSerDbg(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableSerDbg(0);
+	    println_P(g_psDisabled);
+	  }
 	}
-
-        print_P(PSTR("Current Capacity now: ")); // print to the terminal
-        Serial.print((int)g_EvseController.GetCurrentCapacity());
-        print_P(PSTR(" Amps"));
-      } 
+	else if (!strncmp(p,"ventreq ",8)) {
+	  p += 8;
+	  print_P(PSTR("vent required "));
+	  if (!strcmp(p,"on")) {
+	    g_EvseController.EnableGndChk(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableGndChk(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+#ifdef ADVPWR
+	else if (!strncmp(p,"gndchk ",7)) {
+	  p += 7;
+	  print_P(PSTR("ground check "));
+	  if (!strcmp(p,"on")) {
+	    g_EvseController.EnableGndChk(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableGndChk(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+	else if (!strncmp(p,"rlychk ",7)) {
+	  p += 7;
+	  print_P(PSTR("stuck relay check "));
+	  if (!strcmp(p,"on")) {
+	    g_EvseController.EnableStuckRelayChk(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableStuckRelayChk(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+#endif // ADVPWR
+	else if (!strcmp(p,"amp")){ // string compare
+	  println_P(PSTR("WARNING - DO NOT SET CURRENT HIGHER THAN 80%"));
+	  println_P(PSTR("OF YOUR CIRCUIT BREAKER OR")); 
+	  println_P(PSTR("GREATER THAN THE RATED VALUE OF THE EVSE"));
+	  println("");
+	  print_P(PSTR("Enter amps ("));
+	  Serial.print(MIN_CURRENT_CAPACITY);
+	  print("-");
+	  Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2);
+	  print("): ");
+	  amp = getInt();
+	  Serial.println((int)amp);
+	  if(g_EvseController.SetCurrentCapacity(amp,1)) {
+	    println_P(PSTR("Invalid Current Capacity"));
+	  }
+	  
+	  print_P(PSTR("Current Capacity now: ")); // print to the terminal
+	  Serial.print((int)g_EvseController.GetCurrentCapacity());
+	  print_P(PSTR("A"));
+	} 
+	else {
+	  goto unknown;
+	}
+      }
       else if (strcmp(m_CLIinstr, "save") == 0){ // string compare
         println_P(PSTR("Saving Settings to EEPROM")); // print to the terminal
         SaveSettings();
       } 
       else { // if the input text doesn't match any defined above
+      unknown:
         println_P(PSTR("Unknown Command -- type ? or help for command list")); // echo back to the terminal
       } 
       println("");
@@ -732,10 +802,7 @@ void CLI::getInput()
       print_P(PSTR("Open_EVSE>"));
       g_CLI.flush();
       m_CLIstrCount = 0; // get ready for new input... reset strCount
-      m_CLIinByte = 0; // reset the inByte variable
-      for(int i = 0; m_CLIinstr[i] != '\0'; i++) { // while the string does not have null
-        m_CLIinstr[i] = '\0'; // fill it with null to erase it
-      }
+      m_CLIinstr[0] = '\0'; // set to null to erase it
     }
   }
 }
@@ -837,7 +904,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 }
 #endif // LCD16X2
 
-
+char g_sRdyLAstr[] = "Ready     L%d:%dA";
 void OnboardDisplay::Update()
 {
   uint8_t curstate = g_EvseController.GetState();
@@ -851,7 +918,7 @@ void OnboardDisplay::Update()
       SetRedLed(LOW);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
-      sprintf(g_sTmp,"Ready     L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       LcdPrint(0,g_sTmp);
       LcdPrint_P(1,g_psEvNotConnected);
       #endif //Adafruit RGB LCD
@@ -862,7 +929,7 @@ void OnboardDisplay::Update()
       SetRedLed(HIGH);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
-      sprintf(g_sTmp,"Ready     L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       LcdPrint(0,g_sTmp);
       LcdPrint_P(1,g_psEvConnected);
       #endif //Adafruit RGB LCD
@@ -1165,6 +1232,28 @@ void J1772EVSEController::EnableGndChk(uint8_t tf)
     m_bFlags |= ECF_GND_CHK_DISABLED;
   }
 }
+
+void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags &= ~ECF_STUCK_RELAY_CHK_DISABLED;
+  }
+  else {
+    m_bFlags |= ECF_STUCK_RELAY_CHK_DISABLED;
+  }
+}
+
+void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags &= ~ECF_AUTO_SVC_LEVEL_DISABLED;
+  }
+  else {
+    m_bFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
+  }
+}
+
+
 #endif // ADVPWR
 
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
@@ -1269,8 +1358,8 @@ uint8_t J1772EVSEController::doPost()
 //    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
 //    delay(1000);
 // #endif //Adafruit RGB LCD
- 
-
+  
+  if (AutoSvcLevelEnabled()) {
     int reading = analogRead(VOLT_PIN); //read pilot
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 0) {              // IF no EV is plugged in its Okay to open the relay the do the L1/L2 and ground Check
@@ -1308,17 +1397,13 @@ uint8_t J1772EVSEController::doPost()
 	  svclvl = 1; // L1
 	}
       }  
+  }
 //    } 
 //  }
   
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
 
-  if (svclvl == 0) {
-    // couldn't determine service level, default to L1
-    svclvl = 1;
-  }
-
-    m_Pilot.SetState(PILOT_STATE_P12);
+  m_Pilot.SetState(PILOT_STATE_P12);
   
 
   return svclvl;
@@ -1363,7 +1448,10 @@ void J1772EVSEController::Init()
 
 
 #ifdef ADVPWR  // Power on Self Test for Advanced Power Supply
-  svclvl = doPost(); // auto detect service level overrides any saved values
+  uint8_t psvclvl = doPost(); // auto detect service level overrides any saved values
+  if (psvclvl != 0) {
+    svclvl = psvclvl;
+  }
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
@@ -1418,14 +1506,16 @@ void J1772EVSEController::Update()
     }
   }
   else { // stuck relay check - can test only when relay open
-    if (((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) &&
-	((PS1state == LOW) || (PS2state == LOW))) {
-      // stuck relay
-      
-      tmpevsestate = EVSE_STATE_STUCK_RELAY;
-      m_EvseState = EVSE_STATE_STUCK_RELAY;
-      
-      nofault = 0;
+    if (StuckRelayChkEnabled()) {
+      if (((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) &&
+	  ((PS1state == LOW) || (PS2state == LOW))) {
+	// stuck relay
+	
+	tmpevsestate = EVSE_STATE_STUCK_RELAY;
+	m_EvseState = EVSE_STATE_STUCK_RELAY;
+	
+	nofault = 0;
+      }
     }
   }
 #endif // ADVPWR
@@ -1744,9 +1834,15 @@ void SetupMenu::Init()
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx >= 6) {
+  if (++m_CurIdx >= 7) {
     m_CurIdx = 0;
   }
+#ifndef ADVPWR
+  if (m_CurIdx == 4) {
+    m_CurIdx++;
+  }
+#endif // !ADVPWR
+
   const prog_char *title;
   switch(m_CurIdx) {
   case 0:
@@ -1761,7 +1857,12 @@ void SetupMenu::Next()
   case 3:
     title = g_VentReqMenu.m_Title;
     break;
+#ifdef ADVPWR
   case 4:
+    title = g_GndChkMenu.m_Title;
+    break;
+#endif // ADVPWR
+  case 5:
     title = g_ResetMenu.m_Title;
     break;
   default:
@@ -1785,7 +1886,12 @@ Menu *SetupMenu::Select()
   else if (m_CurIdx == 3) {
     return &g_VentReqMenu;
   }
+#ifdef ADVPWR
   else if (m_CurIdx == 4) {
+    return &g_GndChkMenu;
+  }
+#endif // ADVPWR
+  else if (m_CurIdx == 5) {
     return &g_ResetMenu;
   }
   else {
@@ -1793,7 +1899,20 @@ Menu *SetupMenu::Select()
   }
 }
 
-const char *g_SvcLevelMenuItems[] = {"Level 1","Level 2"};
+#ifdef ADVPWR
+#define SVC_LVL_MNU_ITEMCNT 3
+#else
+#define SVC_LVL_MNU_ITEMCNT 2
+#endif // ADVPWR
+const char *g_SvcLevelMenuItems[] = {
+#ifdef ADVPWR
+  "Auto",
+#endif // ADVPWR
+  "Level 1",
+  "Level 2"
+};
+
+
 SvcLevelMenu::SvcLevelMenu()
 {
   m_Title = g_psSvcLevel;
@@ -1802,14 +1921,23 @@ SvcLevelMenu::SvcLevelMenu()
 void SvcLevelMenu::Init()
 {
   g_OBD.LcdPrint_P(0,m_Title);
+#ifdef ADVPWR
+  if (g_EvseController.AutoSvcLevelEnabled()) {
+    m_CurIdx = 0;
+  }
+  else {
+    m_CurIdx = g_EvseController.GetCurSvcLevel();
+  }
+#else
   m_CurIdx = (g_EvseController.GetCurSvcLevel() == 1) ? 0 : 1;
+#endif // ADVPWR
   sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
 void SvcLevelMenu::Next()
 {
-  if (++m_CurIdx >= 2) {
+  if (++m_CurIdx >= SVC_LVL_MNU_ITEMCNT) {
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
@@ -1822,7 +1950,17 @@ void SvcLevelMenu::Next()
 
 Menu *SvcLevelMenu::Select()
 {
+#ifdef ADVPWR
+  if (m_CurIdx == 0) {
+    g_EvseController.EnableAutoSvcLevel(1);
+  }
+  else {
+    g_EvseController.SetSvcLevel(m_CurIdx);
+    g_EvseController.EnableAutoSvcLevel(0);
+  }
+#else
   g_EvseController.SetSvcLevel(m_CurIdx+1);
+#endif // ADVPWR
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
