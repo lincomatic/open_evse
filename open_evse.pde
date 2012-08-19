@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "0.6.1RC1"
+#define VERSTR "0.6.2RC1"
 
 //-- begin features
 
@@ -48,10 +48,10 @@
 #define SERIALCLI
 
 //Adafruit RGBLCD
-#define RGBLCD
+//#define RGBLCD
 
  // Adafruit LCD backpack in I2C mode
-//#define I2CLCD
+#define I2CLCD
 
  // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -64,6 +64,7 @@
 // When within menus, short press cycles menu items, long press selects and exits current submenu
 #define BTN_MENU
 
+#ifdef BTN_MENU
 // use Adafruit RGB LCD select button
 #ifdef RGBLCD
 #define ADAFRUIT_BTN
@@ -171,6 +172,7 @@ class CLI {
   char m_CLIinstr[CLI_BUFLEN]; // CLI byte being read in
   int m_CLIstrCount; //CLI string counter
   char *m_strBuf;
+  int m_strBufLen;
 
 public:
   CLI();
@@ -323,6 +325,7 @@ typedef struct calibdata {
 #define ECF_L2                 0x01 // service level 2
 #define ECF_DIODE_CHK_DISABLED 0x02 // no diode check
 #define ECF_VENT_REQ_DISABLED  0x04 // no vent required state
+#define ECF_GND_CHK_DISABLED   0x08 // no chk for ground fault
 #define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
 #define ECF_DEFAULT            0x00
 
@@ -416,6 +419,12 @@ public:
     return (m_bFlags & ECF_VENT_REQ_DISABLED) ? 0 : 1;
   }
   void EnableVentReq(uint8_t tf);
+#ifdef ADVPWR
+  uint8_t GndChkEnabled() { 
+    return (m_bFlags & ECF_GND_CHK_DISABLED) ? 0 : 1;
+  }
+  void EnableGndChk(uint8_t tf);
+#endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
@@ -503,6 +512,17 @@ public:
 };
 
 
+#ifdef ADVPWR
+class GndChkMenu : public Menu {
+public:
+  GndChkMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+
+
+#endif // ADVPWR
 class ResetMenu : public Menu {
 public:
   ResetMenu();
@@ -525,6 +545,9 @@ prog_char g_psSvcLevel[] PROGMEM = "Service Level";
 prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
 prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
 prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
+#ifdef ADVPWR
+prog_char g_psGndChk[] PROGMEM = "Ground Check";
+#endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Reset";
 prog_char g_psExit[] PROGMEM = "Exit";
 
@@ -541,7 +564,7 @@ BtnHandler g_BtnHandler;
 // -- end class definitions
 //-- begin global variables
 
-char g_sTmp[25];
+char g_sTmp[64];
 
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 J1772EVSEController g_EvseController;
@@ -590,6 +613,7 @@ CLI::CLI()
 {
   m_CLIstrCount = 0; 
   m_strBuf = g_sTmp;
+  m_strBufLen = sizeof(g_sTmp);
 }
 
 void CLI::Init()
@@ -718,13 +742,13 @@ void CLI::getInput()
 
 void CLI::println_P(prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
+  strncpy_P(m_strBuf,s,m_strBufLen);
   println(m_strBuf);
 }
 
 void CLI::print_P(prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
+  strncpy_P(m_strBuf,s,m_strBufLen);
   print(m_strBuf);
 }
 
@@ -937,8 +961,6 @@ void gfi_isr()
 
 void Gfi::Init()
 {
-  m_GfiFault = 0;
-
   Reset();
 }
 
@@ -1133,6 +1155,18 @@ void J1772EVSEController::EnableVentReq(uint8_t tf)
   }
 }
 
+#ifdef ADVPWR
+void J1772EVSEController::EnableGndChk(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags &= ~ECF_GND_CHK_DISABLED;
+  }
+  else {
+    m_bFlags |= ECF_GND_CHK_DISABLED;
+  }
+}
+#endif // ADVPWR
+
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
 {
   if (tf) {
@@ -1179,9 +1213,9 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
     m_bFlags &= ~ECF_L2; // set to Level 1
   }
 
-  int ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
+  uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
 
-  if ((ampacity == 255) || (ampacity == 0)) {
+  if ((ampacity == 0xff) || (ampacity == 0)) {
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
   }
   
@@ -1371,15 +1405,16 @@ void J1772EVSEController::Update()
   int PS2state = digitalRead(ACLINE2_PIN);
 
   if (chargingIsOn()) { // ground check - can only test when relay closed
-    
-    if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
-      // bad ground
-      
-      tmpevsestate = EVSE_STATE_NO_GROUND;
-      m_EvseState = EVSE_STATE_NO_GROUND;
-      
-      chargingOff(); // open the relay
-      nofault = 0;
+    if (GndChkEnabled()) {
+      if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
+	// bad ground
+	
+	tmpevsestate = EVSE_STATE_NO_GROUND;
+	m_EvseState = EVSE_STATE_NO_GROUND;
+	
+	chargingOff(); // open the relay
+	nofault = 0;
+      }
     }
   }
   else { // stuck relay check - can test only when relay open
@@ -1692,7 +1727,7 @@ void Menu::init(const char *firstitem)
 {
   m_CurIdx = 0;
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint(firstitem);
+  g_OBD.LcdPrint(1,firstitem);
 }
 
 SetupMenu::SetupMenu()
@@ -1702,7 +1737,9 @@ SetupMenu::SetupMenu()
 
 void SetupMenu::Init()
 {
-  init(g_SvcLevelMenu.m_Title);
+  m_CurIdx = 0;
+  g_OBD.LcdPrint_P(0,m_Title);
+  g_OBD.LcdPrint_P(1,g_SvcLevelMenu.m_Title);
 }
 
 void SetupMenu::Next()
@@ -1923,7 +1960,7 @@ void VentReqMenu::Next()
 Menu *VentReqMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
-  g_OBD.LcdPrint(g_VentReqMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
 
@@ -1933,6 +1970,49 @@ Menu *VentReqMenu::Select()
 
   return &g_SetupMenu;
 }
+
+#ifdef ADVPWR
+GndChkMenu::GndChkMenu()
+{
+  m_Title = g_psGndChk;
+}
+
+void GndChkMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.GndChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void GndChkMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.GndChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *GndChkMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
+
+  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+#endif // ADVPWR
 
 ResetMenu::ResetMenu()
 {
