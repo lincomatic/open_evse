@@ -1516,7 +1516,7 @@ void J1772EVSEController::Update()
   }
   else { // stuck relay check - can test only when relay open
     if (StuckRelayChkEnabled()) {
-      if (((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) &&
+      if (((prevevsestate == EVSE_STATE_STUCK_RELAY) || ((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY)) &&
 	  ((PS1state == LOW) || (PS2state == LOW))) {
 	// stuck relay
 	
