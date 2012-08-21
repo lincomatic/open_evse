@@ -643,7 +643,7 @@ void CLI::Init()
 {
   info();
   println_P(PSTR("type ? or help for command list"));
-  print_P(PSTR("Open_EVSE>")); // CLI Prompt
+  print_P(PSTR("Open_EVSE> ")); // CLI Prompt
   flush();
 
 }
@@ -672,15 +672,21 @@ void CLI::getInput()
 {
   int currentreading;
   uint8_t amp;
-  if(Serial.available()) { // if byte(s) are available to be read
+  if (Serial.available()) { // if byte(s) are available to be read
     char inbyte = (char) Serial.read(); // read the byte
     Serial.print(inbyte);
-    if(inbyte != 13) {
-      m_CLIinstr[m_CLIstrCount] = inbyte;
-      m_CLIstrCount++;
+    if (inbyte != 13) { // CR
+      if (((inbyte >= 'a') && (inbyte <= 'z')) || ((inbyte >= '0') && (inbyte <= '9') || (inbyte == ' ')) ) {
+	m_CLIinstr[m_CLIstrCount] = inbyte;
+	m_CLIstrCount++;
+      }
+      else if (m_CLIstrCount && ((inbyte == 8) || (inbyte == 127))) {
+	m_CLIstrCount--;
+      }
     }
 
-    if(inbyte == 13) { // if enter was pressed or max chars reached
+    if ((inbyte == 13) || (m_CLIstrCount == CLI_BUFLEN-1)) { // if enter was pressed or max chars reached
+      m_CLIinstr[m_CLIstrCount] = '\0';
       printlnn(); // print a newline
       if (strcmp_P(m_CLIinstr, PSTR("show")) == 0){ //if match SHOW 
         info();
@@ -715,7 +721,7 @@ void CLI::getInput()
         println_P(PSTR("Set Commands - Usage: set amp"));
         printlnn();
         println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
-	println_P(PSTR("ventreq on/off - enable/disable vent required state"));
+	println_P(PSTR("vntreq on/off - enable/disable vent required state"));
 #ifdef ADVPWR
 	println_P(PSTR("gndchk on/off - turn ground check on/off"));
 	println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
@@ -736,8 +742,8 @@ void CLI::getInput()
 	    println_P(g_psDisabled);
 	  }
 	}
-	else if (!strncmp_P(p,PSTR("ventreq "),8)) {
-	  p += 8;
+	else if (!strncmp_P(p,PSTR("vntreq "),7)) {
+	  p += 7;
 	  print_P(PSTR("vent required "));
 	  if (!strcmp_P(p,g_pson)) {
 	    g_EvseController.EnableVentReq(1);
@@ -808,7 +814,7 @@ void CLI::getInput()
       } 
       printlnn();
       printlnn();
-      print_P(PSTR("Open_EVSE>"));
+      print_P(PSTR("Open_EVSE> "));
       g_CLI.flush();
       m_CLIstrCount = 0; // get ready for new input... reset strCount
       m_CLIinstr[0] = '\0'; // set to null to erase it
