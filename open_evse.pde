@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSTR "1.0.0RC2"
+prog_char VERSTR[] PROGMEM = "1.0.0RC3";
 
 //-- begin features
 
@@ -53,7 +53,7 @@
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
 
- // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
+// Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
@@ -173,6 +173,7 @@ class CLI {
   char *m_strBuf;
   int m_strBufLen;
 
+  void info();
 public:
   CLI();
   void Init();
@@ -184,6 +185,7 @@ public:
     Serial.print(s); 
   }
   void print_P(prog_char *s);
+  void printlnn();
   void flush() { 
     Serial.flush(); 
   }
@@ -628,14 +630,18 @@ CLI::CLI()
   m_strBufLen = sizeof(g_sTmp);
 }
 
-void CLI::Init()
+void CLI::info()
 {
   println_P(PSTR("Open EVSE")); // CLI print prompt when serial is ready
   println_P(PSTR("Hardware - Atmel ATMEGA328P-AU")); //CLI Info
   println_P(PSTR("Software - Open EVSE ")); //CLI info
-  println(VERSTR);
-  println("");
+  println_P(VERSTR);
+  printlnn();
+}
 
+void CLI::Init()
+{
+  info();
   println_P(PSTR("type ? or help for command list"));
   print_P(PSTR("Open_EVSE>")); // CLI Prompt
   flush();
@@ -656,6 +662,12 @@ uint8_t CLI::getInt()
   return num;
 }
 
+void CLI::printlnn()
+{
+  println("");
+}
+
+prog_char g_pson[] PROGMEM = "on";
 void CLI::getInput()
 {
   int currentreading;
@@ -669,13 +681,10 @@ void CLI::getInput()
     }
 
     if(inbyte == 13) { // if enter was pressed or max chars reached
-      Serial.println(""); // print a newline
-      if (strcmp(m_CLIinstr, "show") == 0){ //if match SHOW 
-
-        println_P(PSTR("Open EVSE")); // CLI print prompt when serial is ready
-        println_P(PSTR("Hardware - Atmel ATMEGA328P-AU")); //CLI Info
-        print_P(PSTR("Software - Open EVSE "));
-	println(VERSTR);
+      printlnn(); // print a newline
+      if (strcmp_P(m_CLIinstr, PSTR("show")) == 0){ //if match SHOW 
+        info();
+        
         println_P(PSTR("Settings"));
 	print_P(PSTR("Service level: "));
 	Serial.println((int)g_EvseController.GetCurSvcLevel()); 
@@ -694,17 +703,17 @@ void CLI::getInput()
 	println_P(g_EvseController.StuckRelayChkEnabled() ? g_psEnabled : g_psDisabled);
 #endif // ADVPWR           
       } 
-      else if ((strcmp(m_CLIinstr, "help") == 0) || (strcmp(m_CLIinstr, "?") == 0)){ // string compare
+      else if ((strcmp_P(m_CLIinstr, PSTR("help")) == 0) || (strcmp_P(m_CLIinstr, PSTR("?")) == 0)){ // string compare
         println_P(PSTR("Help Commands"));
-        println("");
+        printlnn();
         println_P(PSTR("help - Display commands")); // print to the terminal
         println_P(PSTR("set  - Change Settings"));
         println_P(PSTR("show - Display settings and values"));
         println_P(PSTR("save - Write settings to EEPROM"));
       } 
-      else if (strcmp(m_CLIinstr, "set") == 0) { // string compare
+      else if (strcmp_P(m_CLIinstr, PSTR("set")) == 0) { // string compare
         println_P(PSTR("Set Commands - Usage: set amp"));
-        println("");
+        printlnn();
         println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
 	println_P(PSTR("ventreq on/off - enable/disable vent required state"));
 #ifdef ADVPWR
@@ -713,12 +722,12 @@ void CLI::getInput()
 #endif // ADVPWR
 	println_P(PSTR("sdbg on/off - turn serial debugging on/off"));
       }
-      else if (strncmp(m_CLIinstr, "set ",4) == 0) {
+      else if (strncmp_P(m_CLIinstr, PSTR("set "),4) == 0) {
 	char *p = m_CLIinstr + 4;
-	if (!strncmp(p,"sdbg ",5)) {
+	if (!strncmp_P(p,PSTR("sdbg "),5)) {
 	  p += 5;
 	  print_P(PSTR("serial debugging "));
-	  if (!strcmp(p,"on")) {
+	  if (!strcmp_P(p,g_pson)) {
 	    g_EvseController.EnableSerDbg(1);
 	    println_P(g_psEnabled);
 	  }
@@ -727,10 +736,10 @@ void CLI::getInput()
 	    println_P(g_psDisabled);
 	  }
 	}
-	else if (!strncmp(p,"ventreq ",8)) {
+	else if (!strncmp_P(p,PSTR("ventreq "),8)) {
 	  p += 8;
 	  print_P(PSTR("vent required "));
-	  if (!strcmp(p,"on")) {
+	  if (!strcmp_P(p,g_pson)) {
 	    g_EvseController.EnableVentReq(1);
 	    println_P(g_psEnabled);
 	  }
@@ -740,10 +749,10 @@ void CLI::getInput()
 	  }
 	}
 #ifdef ADVPWR
-	else if (!strncmp(p,"gndchk ",7)) {
+	else if (!strncmp_P(p,PSTR("gndchk "),7)) {
 	  p += 7;
 	  print_P(PSTR("ground check "));
-	  if (!strcmp(p,"on")) {
+	  if (!strcmp_P(p,g_pson)) {
 	    g_EvseController.EnableGndChk(1);
 	    println_P(g_psEnabled);
 	  }
@@ -752,10 +761,10 @@ void CLI::getInput()
 	    println_P(g_psDisabled);
 	  }
 	}
-	else if (!strncmp(p,"rlychk ",7)) {
+	else if (!strncmp_P(p,PSTR("rlychk "),7)) {
 	  p += 7;
 	  print_P(PSTR("stuck relay check "));
-	  if (!strcmp(p,"on")) {
+	  if (!strcmp_P(p,g_pson)) {
 	    g_EvseController.EnableStuckRelayChk(1);
 	    println_P(g_psEnabled);
 	  }
@@ -765,16 +774,16 @@ void CLI::getInput()
 	  }
 	}
 #endif // ADVPWR
-	else if (!strcmp(p,"amp")){ // string compare
+	else if (!strcmp_P(p,PSTR("amp"))){ // string compare
 	  println_P(PSTR("WARNING - DO NOT SET CURRENT HIGHER THAN 80%"));
 	  println_P(PSTR("OF YOUR CIRCUIT BREAKER OR")); 
 	  println_P(PSTR("GREATER THAN THE RATED VALUE OF THE EVSE"));
-	  println("");
+	  printlnn();
 	  print_P(PSTR("Enter amps ("));
 	  Serial.print(MIN_CURRENT_CAPACITY);
-	  print("-");
+	  print_P(PSTR("-"));
 	  Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2);
-	  print("): ");
+	  print_P(PSTR("): "));
 	  amp = getInt();
 	  Serial.println((int)amp);
 	  if(g_EvseController.SetCurrentCapacity(amp,1)) {
@@ -789,7 +798,7 @@ void CLI::getInput()
 	  goto unknown;
 	}
       }
-      else if (strcmp(m_CLIinstr, "save") == 0){ // string compare
+      else if (strcmp_P(m_CLIinstr, PSTR("save")) == 0){ // string compare
         println_P(PSTR("Saving Settings to EEPROM")); // print to the terminal
         SaveSettings();
       } 
@@ -797,8 +806,8 @@ void CLI::getInput()
       unknown:
         println_P(PSTR("Unknown Command -- type ? or help for command list")); // echo back to the terminal
       } 
-      println("");
-      println("");
+      printlnn();
+      printlnn();
       print_P(PSTR("Open_EVSE>"));
       g_CLI.flush();
       m_CLIstrCount = 0; // get ready for new input... reset strCount
@@ -844,7 +853,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(0,PSTR("Open EVSE       "));
   delay(500);
   LcdPrint_P(0,1,PSTR("Version "));
-  LcdPrint(VERSTR);
+  LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
   delay(500);
 #endif // LCD16X2
@@ -1971,8 +1980,8 @@ Menu *SvcLevelMenu::Select()
   return &g_SetupMenu;
 }
 
-uint8_t g_L1MaxAmps[] = {6,10,12,15};
-uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80};
+uint8_t g_L1MaxAmps[] = {6,10,12,15,16,20,0};
+uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80,0};
 MaxCurrentMenu::MaxCurrentMenu()
 {
   m_Title = g_psMaxCurrent;
@@ -1987,13 +1996,15 @@ void MaxCurrentMenu::Init()
   m_MaxCurrent = 0;
   uint8_t currentlimit = (cursvclvl == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
 
-  m_MaxIdx = -1;
-  do {
-    m_MaxCurrent = m_MaxAmpsList[++m_MaxIdx];
-    if (m_MaxCurrent == g_EvseController.GetCurrentCapacity()) {
-      m_CurIdx = m_MaxIdx;
+  for (m_MaxIdx=0;m_MaxAmpsList[m_MaxIdx] != 0;m_MaxIdx++);
+  m_MaxCurrent = m_MaxAmpsList[--m_MaxIdx];
+
+  for (uint8_t i=0;i < m_MaxIdx;i++) {
+    if (m_MaxAmpsList[i] == g_EvseController.GetCurrentCapacity()) {
+      m_CurIdx = i;
+      break;
     }
-  } while (m_MaxCurrent < currentlimit);
+  }
   
   sprintf(g_sTmp,"%s Max Current",(cursvclvl == 1) ? "L1" : "L2");
   g_OBD.LcdPrint(0,g_sTmp);
