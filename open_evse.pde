@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.0RC4";
+prog_char VERSTR[] PROGMEM = "1.0.0";
 
 //-- begin features
 
@@ -48,10 +48,10 @@ prog_char VERSTR[] PROGMEM = "1.0.0RC4";
 #define SERIALCLI
 
 //Adafruit RGBLCD
-#define RGBLCD
+//#define RGBLCD
 
 // Adafruit LCD backpack in I2C mode
-//#define I2CLCD
+#define I2CLCD
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -600,13 +600,13 @@ CLI g_CLI;
 #ifdef ADVPWR
 prog_char g_psPwrOn[] PROGMEM = "Power On";
 prog_char g_psSelfTest[] PROGMEM = "Self Test";
-prog_char g_psLevel1[] PROGMEM = "       L1";
-prog_char g_psLevel2[] PROGMEM = "       L2";
-prog_char g_psStuckRelay[] PROGMEM = "--Stuck Relay--";
-prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
-prog_char g_psTestPassed[] PROGMEM = "Test Passed";
-prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
-prog_char g_psEvseSvc[] PROGMEM = "--ServiceLevel--";
+prog_char g_psAutoDetect[] PROGMEM = "Auto Detect";
+prog_char g_psLevel1[] PROGMEM = "Svc Level: L1";
+prog_char g_psLevel2[] PROGMEM = "Svc Level: L2";
+//prog_char g_psStuckRelay[] PROGMEM = "--Stuck Relay--";
+//prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
+//prog_char g_psTestPassed[] PROGMEM = "Test Passed";
+//prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
 #endif // ADVPWR
 prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
@@ -1423,7 +1423,7 @@ uint8_t J1772EVSEController::doPost()
 
 	if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
 #ifdef LCD16X2 //Adafruit RGB LCD
-	  g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel2);
+	  g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
 	  delay(500);
 #endif //Adafruit RGB LCD
 
@@ -1431,7 +1431,7 @@ uint8_t J1772EVSEController::doPost()
 	}  
 	else { // L1
 #ifdef LCD16X2 //Adafruit RGB LCD
-	 g_OBD.LcdMsg_P(g_psEvseSvc,g_psLevel1);
+	 g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	 delay(500);
 #endif //Adafruit RGB LCD
 	  svclvl = 1; // L1
@@ -2236,15 +2236,27 @@ void ResetMenu::Next()
   g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
 }
 
+// wdt_init turns off the watchdog timer after we use it
+// to reboot
+void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
+void wdt_init(void)
+{
+    MCUSR = 0;
+    wdt_disable();
+
+    return;
+}
+
 Menu *ResetMenu::Select()
 {
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
+    g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
     // hardware reset by forcing watchdog to timeout
-    wdt_enable(WDTO_500MS);   // enable watchdog timer
-    delay(2000);
+    wdt_enable(WDTO_1S);   // enable watchdog timer
+    while (1);
   }
   return NULL;
 }
