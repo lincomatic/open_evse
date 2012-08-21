@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.0RC3";
+prog_char VERSTR[] PROGMEM = "1.0.0RC4";
 
 //-- begin features
 
@@ -333,6 +333,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x00
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x80 // gfi has tripped at least once
 #define ECVF_DEFAULT            0x00
@@ -345,6 +346,11 @@ class J1772EVSEController {
   unsigned long m_GfiRetryCnt;
   uint8_t m_GfiTripCnt;
 #endif // GFI
+#ifdef ADVPWR
+  unsigned long m_NoGndTimeout;
+  unsigned long m_NoGndRetryCnt;
+  uint8_t m_NoGndTripCnt;
+#endif // ADVPWR
   uint8_t m_bFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
   THRESH_DATA m_ThreshData;
@@ -433,6 +439,8 @@ public:
   }
   uint8_t AutoSvcLevelEnabled() { return (m_bFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
   void EnableAutoSvcLevel(uint8_t tf);
+  void SetNoGndTripped();
+  uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
@@ -702,6 +710,9 @@ void CLI::getInput()
         Serial.println(MAX_CURRENT_CAPACITY_L2);
 	print_P(PSTR("Vent Required: "));
 	println_P(g_EvseController.VentReqEnabled() ? g_psEnabled : g_psDisabled);
+         print_P(PSTR("Diode Check: "));
+	println_P(g_EvseController.DiodeCheckEnabled() ? g_psEnabled : g_psDisabled);
+
 #ifdef ADVPWR
 	print_P(PSTR("Ground Check: "));
 	println_P(g_EvseController.GndChkEnabled() ? g_psEnabled : g_psDisabled);
@@ -722,6 +733,8 @@ void CLI::getInput()
         printlnn();
         println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
 	println_P(PSTR("vntreq on/off - enable/disable vent required state"));
+        println_P(PSTR("diochk on/off - enable/disable diode check"));
+
 #ifdef ADVPWR
 	println_P(PSTR("gndchk on/off - turn ground check on/off"));
 	println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
@@ -751,6 +764,18 @@ void CLI::getInput()
 	  }
 	  else {
 	    g_EvseController.EnableVentReq(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+            else if (!strncmp_P(p,PSTR("diochk "),7)) {
+	  p += 7;
+	  print_P(PSTR("diode check "));
+	  if (!strcmp_P(p,g_pson)) {
+	    g_EvseController.EnableDiodeCheck(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableDiodeCheck(0);
 	    println_P(g_psDisabled);
 	  }
 	}
@@ -1457,6 +1482,10 @@ void J1772EVSEController::Init()
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = 0;
 #endif // GFI
+#ifdef ADVPWR
+  m_NoGndRetryCnt = 0;
+  m_NoGndTripCnt = 0;
+#endif // ADVPWR
 
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
@@ -1507,7 +1536,7 @@ void J1772EVSEController::Update()
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
 
-  if (chargingIsOn()) { // ground check - can only test when relay closed
+ if (chargingIsOn()) { // ground check - can only test when relay closed
     if (GndChkEnabled()) {
       if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
@@ -1516,12 +1545,30 @@ void J1772EVSEController::Update()
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
 	chargingOff(); // open the relay
+
+	if (m_NoGndTripCnt < 255) {
+	  m_NoGndTripCnt++;
+	}
+	m_NoGndTimeout = millis() + GFI_TIMEOUT;
+
 	nofault = 0;
       }
     }
   }
-  else { // stuck relay check - can test only when relay open
-    if (StuckRelayChkEnabled()) {
+  else { // !chargingIsOn() - relay open
+    if (prevevsestate == EVSE_STATE_NO_GROUND) {
+      if ((m_NoGndRetryCnt < GFI_RETRY_COUNT) &&
+	  (millis() >= m_NoGndTimeout)) {
+	m_NoGndRetryCnt++;
+      }
+      else {
+	tmpevsestate = EVSE_STATE_NO_GROUND;
+	m_EvseState = EVSE_STATE_NO_GROUND;
+	
+	nofault = 0;
+      }
+    }
+    else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
       if (((prevevsestate == EVSE_STATE_STUCK_RELAY) || ((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY)) &&
 	  ((PS1state == LOW) || (PS2state == LOW))) {
 	// stuck relay
@@ -1986,7 +2033,7 @@ Menu *SvcLevelMenu::Select()
   return &g_SetupMenu;
 }
 
-uint8_t g_L1MaxAmps[] = {6,10,12,15,16,20,0};
+uint8_t g_L1MaxAmps[] = {6,10,12,14,15,16,0};
 uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80,0};
 MaxCurrentMenu::MaxCurrentMenu()
 {
