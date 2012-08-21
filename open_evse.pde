@@ -702,6 +702,9 @@ void CLI::getInput()
         Serial.println(MAX_CURRENT_CAPACITY_L2);
 	print_P(PSTR("Vent Required: "));
 	println_P(g_EvseController.VentReqEnabled() ? g_psEnabled : g_psDisabled);
+         print_P(PSTR("Diode Check: "));
+	println_P(g_EvseController.DiodeCheckEnabled() ? g_psEnabled : g_psDisabled);
+
 #ifdef ADVPWR
 	print_P(PSTR("Ground Check: "));
 	println_P(g_EvseController.GndChkEnabled() ? g_psEnabled : g_psDisabled);
@@ -721,7 +724,9 @@ void CLI::getInput()
         println_P(PSTR("Set Commands - Usage: set amp"));
         printlnn();
         println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
-	println_P(PSTR("vntreq on/off - enable/disable vent required state"));
+        println_P(PSTR("vntreq on/off - enable/disable vent required state"));
+        println_P(PSTR("diochk on/off - enable/disable diode check"));
+
 #ifdef ADVPWR
 	println_P(PSTR("gndchk on/off - turn ground check on/off"));
 	println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
@@ -751,6 +756,18 @@ void CLI::getInput()
 	  }
 	  else {
 	    g_EvseController.EnableVentReq(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+            else if (!strncmp_P(p,PSTR("diochk "),7)) {
+	  p += 7;
+	  print_P(PSTR("diode check "));
+	  if (!strcmp_P(p,g_pson)) {
+	    g_EvseController.EnableDiodeCheck(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableDiodeCheck(0);
 	    println_P(g_psDisabled);
 	  }
 	}
