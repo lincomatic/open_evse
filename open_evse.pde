@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.0";
+prog_char VERSTR[] PROGMEM = "1.0.1";
 
 //-- begin features
 
@@ -48,10 +48,10 @@ prog_char VERSTR[] PROGMEM = "1.0.0";
 #define SERIALCLI
 
 //Adafruit RGBLCD
-//#define RGBLCD
+#define RGBLCD
 
 // Adafruit LCD backpack in I2C mode
-#define I2CLCD
+//#define I2CLCD
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -1794,6 +1794,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
   }
   else {
     m_CurrentCapacity = MIN_CURRENT_CAPACITY;
+    rc = 1;
   }
 
   if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
