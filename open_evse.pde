@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.1";
+prog_char VERSTR[] PROGMEM = "1.0.2";
 
 //-- begin features
 
@@ -1798,7 +1798,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
   }
 
   if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
-    m_Pilot.SetPWM(amps);
+    m_Pilot.SetPWM(m_CurrentCapacity);
   }
   return rc;
 }
