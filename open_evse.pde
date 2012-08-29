@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.2";
+prog_char VERSTR[] PROGMEM = "1.0.3";
 
 //-- begin features
 
@@ -2275,12 +2275,15 @@ void BtnHandler::ChkBtn()
       m_CurMenu->Next();
     }
     else {
+      /* uncomment this to use short press when no menus active as
+	 emergency kill
       if (g_EvseController.GetState() == EVSE_STATE_DISABLED) {
 	g_EvseController.Enable();
       }
       else {
 	g_EvseController.Disable();
       }
+      */
     }
   }
   else if (m_Btn.longPress()) {
@@ -2303,9 +2306,12 @@ void BtnHandler::ChkBtn()
       }
     }
     else {
-      g_EvseController.Disable();
-      g_SetupMenu.Init();
-      m_CurMenu = &g_SetupMenu;
+      uint8_t curstate = g_EvseController.GetState();
+      if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
+	g_EvseController.Disable();
+	g_SetupMenu.Init();
+	m_CurMenu = &g_SetupMenu;
+      }
     }
   }
 }
