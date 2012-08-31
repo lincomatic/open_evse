@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.3";
+prog_char VERSTR[] PROGMEM = "1.0.4";
 
 //-- begin features
 
@@ -60,9 +60,13 @@ prog_char VERSTR[] PROGMEM = "1.0.3";
 // connect an SPST button between BTN_PIN and GND via a 2K resistor or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
 // How to use 1-button menu
-// When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
+// Long press activates menu
 // When within menus, short press cycles menu items, long press selects and exits current submenu
 #define BTN_MENU
+
+// When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
+// also allows menus to be manipulated even when in State B/C
+//#define BTN_ENABLE_TOGGLE
 
 #ifdef BTN_MENU
 // use Adafruit RGB LCD select button
@@ -1123,12 +1127,11 @@ void J1772Pilot::SetState(PILOT_STATE state)
 int J1772Pilot::SetPWM(int amps)
 {
   uint8_t ocr1b = 0;
-  if ((amps >= 6) && (amps < 51)) {
-    ocr1b = (int)(((float)amps) * 4.14F);
-  }
-  else if ((amps >= 51) && (amps <= 80)) {
-    ocr1b = amps + 159;
-  }
+  if ((amps >= 6) && (amps <= 51)) {
+    ocr1b = 25 * amps / 6 - 1;  // J1772 states "Available current = (duty cycle %) X 0.6"
+   } else if ((amps > 51) && (amps <= 80)) {
+     ocr1b = amps + 159;  // J1772 states "Available current = (duty cycle % - 64) X 2.5"
+   }
   else {
     return 1; // error
   }
@@ -2275,15 +2278,14 @@ void BtnHandler::ChkBtn()
       m_CurMenu->Next();
     }
     else {
-      /* uncomment this to use short press when no menus active as
-	 emergency kill
+#ifdef BTN_ENABLE_TOGGLE
       if (g_EvseController.GetState() == EVSE_STATE_DISABLED) {
 	g_EvseController.Enable();
       }
       else {
 	g_EvseController.Disable();
       }
-      */
+#endif // BTN_ENABLE_TOGGLE
     }
   }
   else if (m_Btn.longPress()) {
@@ -2306,12 +2308,16 @@ void BtnHandler::ChkBtn()
       }
     }
     else {
+#ifndef BTN_ENABLE_TOGGLE
       uint8_t curstate = g_EvseController.GetState();
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
+#endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Disable();
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
+#ifndef BTN_ENABLE_TOGGLE
       }
+#endif // !BTN_ENABLE_TOGGLE
     }
   }
 }

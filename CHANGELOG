@@ -1,5 +1,9 @@
 Change Log
 
+v1.0.4 SCL
+- BTN_ENABLE_TOGGLE reverts code from v1.0.3
+- refine duty cycle calc in SetPWM() (thanks to Lee Howard)
+	
 v1.0.3 SCL
 - short press no longer does anything when menus not active
   instead of emergency start/stop
