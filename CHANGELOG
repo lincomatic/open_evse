@@ -1,5 +1,9 @@
 Change Log
 
+v1.0.5 SCL
+- move g_psEnabled/g_psEnabled to #ifdef SERIALCLI to fix compile
+  error when LCD and BTN_MENU disabled
+	
 v1.0.4 SCL
 - BTN_ENABLE_TOGGLE reverts code from v1.0.3
 - refine duty cycle calc in SetPWM() (thanks to Lee Howard)

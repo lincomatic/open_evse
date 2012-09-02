@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.4";
+prog_char VERSTR[] PROGMEM = "1.0.5";
 
 //-- begin features
 
@@ -566,8 +566,6 @@ prog_char g_psSvcLevel[] PROGMEM = "Service Level";
 prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
 prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
 prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
-prog_char g_psEnabled[] PROGMEM = "enabled";
-prog_char g_psDisabled[] PROGMEM = "disabled";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
@@ -598,6 +596,9 @@ OnboardDisplay g_OBD;
 
 #ifdef SERIALCLI
 CLI g_CLI;
+
+prog_char g_psEnabled[] PROGMEM = "enabled";
+prog_char g_psDisabled[] PROGMEM = "disabled";
 #endif // SERIALCLI
 
 #ifdef LCD16X2
