@@ -1,5 +1,9 @@
 Change Log
 
+v1.0.6 SCL
+- switch LCD library to LiquidTWI2 to save memory, speed up LCD
+  writing, and decrease latency
+	
 v1.0.5 SCL
 - move g_psEnabled/g_psEnabled to #ifdef SERIALCLI to fix compile
   error when LCD and BTN_MENU disabled

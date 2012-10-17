@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.5";
+prog_char VERSTR[] PROGMEM = "1.0.6";
 
 //-- begin features
 
@@ -145,21 +145,13 @@ prog_char VERSTR[] PROGMEM = "1.0.5";
 #define GREEN 0x2
 #define BLUE 0x6
 
-#ifdef RGBLCD //Adafruit RGB LCD
-#include <Adafruit_MCP23017.h>
-#include <Adafruit_RGBLCDShield.h>
-
-#endif //Adafruit RGB LCD
-
-#ifdef I2CLCD
-// N.B. must use Adafruit's LiquidCrystal library
-// I had to rename it to AdaLiquidCrystal because it was causing compile
-// errors in my AT90CANxxx projects.
-// unzip AdaLiquidCrystal.zip into your sketchbook/libraries folder
-#include <AdaLiquidCrystal.h>
+#if defined(RGBLCD) || defined(I2CLCD)
+// Using LiquidTWI2 for both types if I2C LCD's
+// see http://blog.lincomatic.com/?p=956 for installation instructions
+#include <Wire.h>
+#include <LiquidTWI2.h>
 #define LCD_I2C_ADDR 0 // for adafruit LCD backpack
-#endif // I2CLCD
-
+#endif // RGBLCD || I2CLCD
 
 #define BTN_PIN A3 // button sensing pin
 #define BTN_PRESS_SHORT 100  // ms
@@ -205,12 +197,9 @@ char *g_BlankLine = "                ";
 class OnboardDisplay 
 
 {
-#ifdef RGBLCD //Adafruit RGB LCD
-Adafruit_RGBLCDShield m_Lcd;
-#endif //Adafruit RGB LCD
-#ifdef I2CLCD
-AdaLiquidCrystal m_Lcd; 
-#endif // I2CLCD
+#if defined(RGBLCD) || defined(I2CLCD)
+LiquidTWI2 m_Lcd;
+#endif
   char *m_strBuf;
 
 
@@ -221,7 +210,15 @@ public:
   void SetRedLed(uint8_t state);
 #ifdef LCD16X2
   void LcdBegin(int x,int y) { 
+#ifdef I2CLCD
+    m_Lcd.setMCPType(LTI_TYPE_MCP23008);
     m_Lcd.begin(x,y); 
+    m_Lcd.setBacklight(HIGH);
+#elif defined(RGBLCD)
+    m_Lcd.setMCPType(LTI_TYPE_MCP23017);
+    m_Lcd.begin(x,y); 
+    m_Lcd.setBacklight(WHITE);
+#endif
   }
   void LcdPrint(const char *s) { 
     m_Lcd.print(s); 
@@ -867,9 +864,9 @@ void CLI::print_P(prog_char *s)
 #endif // SERIALCLI
 
 OnboardDisplay::OnboardDisplay()
-#ifdef I2CLCD
+#if defined(I2CLCD) || defined(RGBLCD)
   : m_Lcd(LCD_I2C_ADDR)
-#endif // I2CLCD
+#endif
 {
   m_strBuf = g_sTmp;
 } 
@@ -883,7 +880,7 @@ void OnboardDisplay::Init()
   SetGreenLed(LOW);
   SetRedLed(LOW);
   
-#ifdef LCD16X2 //Adafruit RGB LCD  
+#ifdef LCD16X2
   LcdBegin(16, 2);
  
   LcdPrint_P(0,PSTR("Open EVSE       "));
