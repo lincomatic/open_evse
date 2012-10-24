@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.6";
+prog_char VERSTR[] PROGMEM = "1.0.7";
 
 //-- begin features
 
@@ -2054,7 +2054,7 @@ void MaxCurrentMenu::Init()
   for (m_MaxIdx=0;m_MaxAmpsList[m_MaxIdx] != 0;m_MaxIdx++);
   m_MaxCurrent = m_MaxAmpsList[--m_MaxIdx];
 
-  for (uint8_t i=0;i < m_MaxIdx;i++) {
+  for (uint8_t i=0;i <= m_MaxIdx;i++) {
     if (m_MaxAmpsList[i] == g_EvseController.GetCurrentCapacity()) {
       m_CurIdx = i;
       break;
