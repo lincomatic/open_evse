@@ -1,5 +1,8 @@
 Change Log
 
+v1.0.8 SCL 20121025
+- change button reading from analogRead() to digitalRead(), enable internal pullup
+	
 v1.0.7 SCL 20121023
 - fix bug in Max Current Menu.. couldn't display highest selectable value
   on init

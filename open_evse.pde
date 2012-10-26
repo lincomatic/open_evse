@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.7";
+prog_char VERSTR[] PROGMEM = "1.0.8";
 
 //-- begin features
 
@@ -48,7 +48,7 @@ prog_char VERSTR[] PROGMEM = "1.0.7";
 #define SERIALCLI
 
 //Adafruit RGBLCD
-#define RGBLCD
+//#define RGBLCD
 
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
@@ -57,7 +57,7 @@ prog_char VERSTR[] PROGMEM = "1.0.7";
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
-// connect an SPST button between BTN_PIN and GND via a 2K resistor or enable ADAFRUIT_BTN to use the 
+// connect an SPST button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
 // How to use 1-button menu
 // Long press activates menu
@@ -463,6 +463,7 @@ class Btn {
   
 public:
   Btn();
+  void init();
 
   void read();
   uint8_t shortPress();
@@ -555,6 +556,7 @@ class BtnHandler {
   Menu *m_CurMenu;
 public:
   BtnHandler();
+  void init() { m_Btn.init(); }
   void ChkBtn();
 };
 
@@ -1814,13 +1816,19 @@ Btn::Btn()
   lastDebounceTime = 0;
 }
 
+void Btn::init()
+{
+  pinMode(BTN_PIN,INPUT);
+  digitalWrite(BTN_PIN,HIGH); // turn on pullup
+}
+
 void Btn::read()
 {
   uint8_t sample;
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
-  sample = (analogRead(BTN_PIN) < 10) ? 1 : 0;
+  sample = digitalRead(BTN_PIN) ? 0 : 1;
 #endif // ADAFRUIT_BTN
   if (!sample && (buttonState == BTN_STATE_LONG) && !lastDebounceTime) {
     buttonState = BTN_STATE_OFF;
@@ -2346,6 +2354,10 @@ void setup()
 #endif // GFI
 
   EvseReset();
+
+#ifdef BTN_MENU
+  g_BtnHandler.init();
+#endif // BTN_MENU
 
 #ifdef WATCHDOG
   // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
