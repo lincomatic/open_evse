@@ -48,7 +48,7 @@ prog_char VERSTR[] PROGMEM = "1.0.8";
 #define SERIALCLI
 
 //Adafruit RGBLCD
-//#define RGBLCD
+#define RGBLCD
 
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
