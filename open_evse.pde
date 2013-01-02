@@ -34,7 +34,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.8";
+prog_char VERSTR[] PROGMEM = "1.0.9";
 
 //-- begin features
 
@@ -146,11 +146,11 @@ prog_char VERSTR[] PROGMEM = "1.0.8";
 #define BLUE 0x6
 
 #if defined(RGBLCD) || defined(I2CLCD)
-// Using LiquidTWI2 for both types if I2C LCD's
+// Using LiquidTWI2 for both types of I2C LCD's
 // see http://blog.lincomatic.com/?p=956 for installation instructions
 #include <Wire.h>
 #include <LiquidTWI2.h>
-#define LCD_I2C_ADDR 0 // for adafruit LCD backpack
+#define LCD_I2C_ADDR 0x20 // for adafruit shield or backpack
 #endif // RGBLCD || I2CLCD
 
 #define BTN_PIN A3 // button sensing pin
@@ -867,7 +867,7 @@ void CLI::print_P(prog_char *s)
 
 OnboardDisplay::OnboardDisplay()
 #if defined(I2CLCD) || defined(RGBLCD)
-  : m_Lcd(LCD_I2C_ADDR)
+  : m_Lcd(LCD_I2C_ADDR,1)
 #endif
 {
   m_strBuf = g_sTmp;

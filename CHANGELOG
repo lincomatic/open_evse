@@ -1,5 +1,9 @@
 Change Log
 
+v1.0.9 SCL 20130101
+- don't hang when I2CLCD/RGBLCD enabled, and no LCD installed. requires
+  LiquidTWI2 v1.2.0+
+	
 v1.0.8 SCL 20121025
 - change button reading from analogRead() to digitalRead(), enable internal pullup
 	
