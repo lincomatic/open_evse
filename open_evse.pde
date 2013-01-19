@@ -88,7 +88,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B1";
 // Option for AutoStart Enable/Disable - GoldServe
 #define MANUALSTART
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
-#define AUTOSTART_MENU
+//#define AUTOSTART_MENU
 
 // AutoStart feature must be defined if Delay Timers are used - GoldServe
 #if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
@@ -1338,6 +1338,7 @@ void OnboardDisplay::Init()
   m_Lcd.createChar(1, (uint8_t*)g_sTmp);
   memcpy_P(g_sTmp,CustomChar_2,8);
   m_Lcd.createChar(2, (uint8_t*)g_sTmp);
+  m_Lcd.clear(); // need this to activate the custom chars
 #endif //#ifdef DELAYTIMER
 
   LcdPrint_P(0,PSTR("Open EVSE       "));
@@ -1345,7 +1346,6 @@ void OnboardDisplay::Init()
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
   delay(800);
-  // Create custom Timer and Stop icons - GoldServe
 #endif //#ifdef LCD16X2
 }
 
