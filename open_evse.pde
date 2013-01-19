@@ -88,7 +88,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B1";
 // Option for AutoStart Enable/Disable - GoldServe
 #define MANUALSTART
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
-//#define AUTOSTART_MENU
+#define AUTOSTART_MENU
 
 // AutoStart feature must be defined if Delay Timers are used - GoldServe
 #if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
@@ -1314,6 +1314,12 @@ OnboardDisplay::OnboardDisplay()
 } 
 
 
+#ifdef DELAYTIMER
+  // custom icons - GoldServe
+  prog_char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
+  prog_char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
+  prog_char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
+#endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
   pinMode (GREEN_LED_PIN, OUTPUT);
@@ -1324,30 +1330,23 @@ void OnboardDisplay::Init()
   
 #ifdef LCD16X2
   LcdBegin(16, 2);
-  LcdPrint_P(0,PSTR("Open EVSE       "));
-  LcdPrint_P(0,1,PSTR("Version "));
-  LcdPrint_P(VERSTR);
-  LcdPrint_P(PSTR("   "));
-  delay(800);
-#endif // LCD16X2
-  // Create custom Timer and Stop icons - GoldServe
+
 #ifdef DELAYTIMER
-#ifdef LCD16X2
-//  LcdPrint_P(0,PSTR("RTC and Timers"));
-//  LcdPrint_P(0,1,PSTR("by GoldServe    "));
-//  delay(1000);
-  prog_char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
-  prog_char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
-  prog_char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
   memcpy_P(g_sTmp,CustomChar_0,8);
   m_Lcd.createChar(0, (uint8_t*)g_sTmp);
   memcpy_P(g_sTmp,CustomChar_1,8);
   m_Lcd.createChar(1, (uint8_t*)g_sTmp);
   memcpy_P(g_sTmp,CustomChar_2,8);
   m_Lcd.createChar(2, (uint8_t*)g_sTmp);
-#endif //#ifdef LCD16X2
 #endif //#ifdef DELAYTIMER
-  // End create custom icons - GoldServe
+
+  LcdPrint_P(0,PSTR("Open EVSE       "));
+  LcdPrint_P(0,1,PSTR("Version "));
+  LcdPrint_P(VERSTR);
+  LcdPrint_P(PSTR("   "));
+  delay(800);
+  // Create custom Timer and Stop icons - GoldServe
+#endif //#ifdef LCD16X2
 }
 
 
