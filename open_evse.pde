@@ -290,7 +290,9 @@ public:
     m_Lcd.setCursor(0,y);
     m_Lcd.print(g_BlankLine);
   }
-  void LcdClear();
+  void LcdClear() { 
+    m_Lcd.clear();
+  }
   void LcdWrite(uint8_t data) { 
     m_Lcd.write(data);
   }
@@ -1361,14 +1363,6 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 }
 
 #ifdef LCD16X2
-void OnboardDisplay::LcdClear()
-{
-  m_Lcd.setCursor(0,0);
-  m_Lcd.print(g_BlankLine);
-  m_Lcd.setCursor(0,1);
-  m_Lcd.print(g_BlankLine);
-}
-
 void OnboardDisplay::LcdPrint_P(const prog_char *s)
 {
   strcpy_P(m_strBuf,s);
