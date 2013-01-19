@@ -2,7 +2,9 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2012 Sam C. Lin <lincomatic@gmail.com> and Chris Howell <chris1howell@msn.com>
+ * Copyright (c) 2011-2013 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2012 Chris Howell <chris1howell@msn.com>
+ * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * Maintainers: SCL/CH
 
  * This file is part of Open EVSE.
@@ -27,6 +29,8 @@
 #include <avr/pgmspace.h>
 #include <pins_arduino.h>
 #include <Wire.h>
+#include <RTClib.h>
+#include <FlexiTimer2.h> // Required for RTC and Delay Timer
 #include <Time.h>
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
@@ -34,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "1.0.9";
+prog_char VERSTR[] PROGMEM = "2.0.B1";
 
 //-- begin features
 
@@ -45,7 +49,9 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #define GFI
 
 // serial port command line
-#define SERIALCLI
+// For the RTC version, only CLI or LCD can be defined at one time. 
+// There is a directive to take care of that if you forget.
+//#define SERIALCLI
 
 //Adafruit RGBLCD
 #define RGBLCD
@@ -66,7 +72,7 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // also allows menus to be manipulated even when in State B/C
-//#define BTN_ENABLE_TOGGLE
+#define BTN_ENABLE_TOGGLE
 
 #ifdef BTN_MENU
 // use Adafruit RGB LCD select button
@@ -75,14 +81,37 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #endif // RGBLCD
 #endif // BTN_MENU
 
+#define RTC // enable RTC & timer functions
+#ifdef RTC
+// Option for Delay Timer - GoldServe
+#define DELAYTIMER
+// Option for AutoStart Enable/Disable - GoldServe
+#define MANUALSTART
+// Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
+//#define AUTOSTART_MENU
+
+// AutoStart feature must be defined if Delay Timers are used - GoldServe
+#if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
+#define MANUALSTART
+#endif
+
+#endif // RTC
+
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
 
 //-- end features
 
+
+
 #if defined(RGBLCD) || defined(I2CLCD)
 #define LCD16X2
 #endif // RGBLCD || I2CLCD
+
+//If LCD is defined, un-define it so we can save ram space.
+#if defined(RTC) && defined(LCD16X2)
+#undef SERIALCLI
+#endif
 
 //-- begin configuration
 
@@ -117,6 +146,13 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #define EOFS_CURRENT_CAPACITY_L2 1 // 1 byte
 #define EOFS_FLAGS               2 // 1 byte
 
+// EEPROM offsets for Delay Timer function - GoldServe
+#define EOFS_TIMER_FLAGS         3 // 1 byte
+#define EOFS_TIMER_START_HOUR    4 // 1 byte
+#define EOFS_TIMER_START_MIN     5 // 1 byte
+#define EOFS_TIMER_STOP_HOUR     6 // 1 byte
+#define EOFS_TIMER_STOP_MIN      7 // 1 byte
+
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
 // must transition to state A from contacts closed in < 100ms according to spec
@@ -143,7 +179,10 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #define RED 0x1
 #define YELLOW 0x3
 #define GREEN 0x2
-#define BLUE 0x6
+#define BLUE 0x4
+#define TEAL 0x6
+#define VIOLET 0x5
+#define WHITE 0x7 
 
 #if defined(RGBLCD) || defined(I2CLCD)
 // Using LiquidTWI2 for both types of I2C LCD's
@@ -157,12 +196,22 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
 
+
+#ifdef RTC
+// Default start/stop timers for un-initialized EEPROMs.
+// Makes it easy to compile in default time without need to set it up the first time.
+#define DEFAULT_START_HOUR    0x00 //Start time: 00:05
+#define DEFAULT_START_MIN     0x05
+#define DEFAULT_STOP_HOUR     0x06 //End time: 6:55
+#define DEFAULT_STOP_MIN      0x37
+#endif // RTC
+
 //-- end configuration
 
 //-- begin class definitions
 
 #ifdef SERIALCLI
-#define CLI_BUFLEN 16
+#define CLI_BUFLEN 20
 class CLI {
   char m_CLIinstr[CLI_BUFLEN]; // CLI byte being read in
   int m_CLIstrCount; //CLI string counter
@@ -241,10 +290,10 @@ public:
     m_Lcd.setCursor(0,y);
     m_Lcd.print(g_BlankLine);
   }
-  void LcdClear() { 
-    m_Lcd.clear();
+  void LcdClear();
+  void LcdWrite(uint8_t data) { 
+    m_Lcd.write(data);
   }
-
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
   void LcdSetBacklightColor(uint8_t c) {
@@ -330,6 +379,8 @@ typedef struct calibdata {
 #define ECF_GND_CHK_DISABLED   0x08 // no chk for ground fault
 #define ECF_STUCK_RELAY_CHK_DISABLED 0x10 // no chk for stuck relay
 #define ECF_AUTO_SVC_LEVEL_DISABLED  0x20 // auto detect svc level - requires ADVPWR
+// Ability set the EVSE for manual button press to start charging - GoldServe
+#define ECF_AUTO_START_DISABLED 0x40  // no auto start charging
 #define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
 #define ECF_DEFAULT            0x00
 
@@ -450,6 +501,13 @@ public:
   uint8_t SerDbgEnabled() { 
     return (m_bFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
+  // Function to suppport Auto Start feature - GoldServe
+#ifdef MANUALSTART
+  void EnableAutoStart(uint8_t tf);
+  uint8_t AutoStartEnabled() { 
+    return (m_bFlags & ECF_AUTO_START_DISABLED) ? 0 : 1;
+  }
+#endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
 };
 
@@ -471,7 +529,6 @@ public:
 };
 
 
-typedef enum {MS_NONE,MS_SETUP,MS_SVC_LEVEL,MS_MAX_CURRENT,MS_RESET} MENU_STATE;
 class Menu {
 public:
   prog_char *m_Title;
@@ -551,6 +608,104 @@ public:
 };
 
 
+#ifdef AUTOSTART_MENU
+class AutoStartMenu : public Menu {
+public:
+  AutoStartMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif //#ifdef AUTOSTART_MENU
+
+#ifdef DELAYTIMER
+class RTCMenu : public Menu {
+public:
+  RTCMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+
+class RTCMenuMonth : public Menu {
+public:
+  RTCMenuMonth();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+
+class RTCMenuDay : public Menu {
+public:
+  RTCMenuDay();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class RTCMenuYear : public Menu {
+public:
+  RTCMenuYear();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class RTCMenuHour : public Menu {
+public:
+  RTCMenuHour();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class RTCMenuMinute : public Menu {
+public:
+  RTCMenuMinute();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenu : public Menu {
+public:
+  DelayMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenuEnableDisable : public Menu {
+public:
+  DelayMenuEnableDisable();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenuStartHour : public Menu {
+public:
+  DelayMenuStartHour();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenuStartMin : public Menu {
+public:
+  DelayMenuStartMin();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenuStopHour : public Menu {
+public:
+  DelayMenuStopHour();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+class DelayMenuStopMin : public Menu {
+public:
+  DelayMenuStopMin();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif //ifdef DELAYTIMER
 class BtnHandler {
   Btn m_Btn;
   Menu *m_CurMenu;
@@ -558,6 +713,7 @@ public:
   BtnHandler();
   void init() { m_Btn.init(); }
   void ChkBtn();
+  uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
 };
 
 prog_char g_psSetup[] PROGMEM = "Setup";
@@ -570,6 +726,25 @@ prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Reset";
 prog_char g_psExit[] PROGMEM = "Exit";
+// Add additional strings - GoldServe
+#ifdef AUTOSTART_MENU
+prog_char g_psAutoStart[] PROGMEM = "Auto Start";
+#endif //#ifdef AUTOSTART_MENU
+#ifdef DELAYTIMER
+prog_char g_psRTC[] PROGMEM = "Date/Time";
+prog_char g_psRTC_Month[] PROGMEM = "Set Month";
+prog_char g_psRTC_Day[] PROGMEM = "Set Day";
+prog_char g_psRTC_Year[] PROGMEM = "Set Year";
+prog_char g_psRTC_Hour[] PROGMEM = "Set Hour";
+prog_char g_psRTC_Minute[] PROGMEM = "Set Minute";
+prog_char g_psDelayTimer[] PROGMEM = "Delay Timer";
+//prog_char g_psDelayTimerEnableDisable[] PROGMEM = "Enable/Disable Timer?";
+prog_char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
+prog_char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
+prog_char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
+prog_char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
+char *g_sHHMMfmt = "%02d:%02d";
+#endif
 
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
@@ -580,10 +755,93 @@ VentReqMenu g_VentReqMenu;
 GndChkMenu g_GndChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
+// Instantiate additional Menus - GoldServe
+#ifdef AUTOSTART_MENU
+AutoStartMenu g_AutoStartMenu;
+#endif //#ifdef AUTOSTART_MENU
+#ifdef DELAYTIMER
+RTCMenu g_RTCMenu;
+RTCMenuMonth g_RTCMenuMonth;
+RTCMenuDay g_RTCMenuDay;
+RTCMenuYear g_RTCMenuYear;
+RTCMenuHour g_RTCMenuHour;
+RTCMenuMinute g_RTCMenuMinute;
+DelayMenu g_DelayMenu;
+DelayMenuEnableDisable g_DelayMenuEnableDisable;
+DelayMenuStartHour g_DelayMenuStartHour;
+DelayMenuStopHour g_DelayMenuStopHour;
+DelayMenuStartMin g_DelayMenuStartMin;
+DelayMenuStopMin g_DelayMenuStopMin;
+#endif
 
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
 
+// Start Delay Timer class definition - GoldServe
+#ifdef DELAYTIMER
+class DelayTimer {
+  uint8_t m_DelayTimerEnabled;
+  uint8_t m_StartTimerHour;
+  uint8_t m_StartTimerMin;
+  uint8_t m_StopTimerHour;
+  uint8_t m_StopTimerMin;
+  uint8_t m_CurrHour;
+  uint8_t m_CurrMin;
+  uint8_t m_CheckNow;
+public:
+  DelayTimer(){
+    m_CheckNow = 1; //Check as soon as the EVSE initializes
+  };
+  void Init();
+  void CheckTime();
+  void CheckNow(){
+    m_CheckNow = 1;
+  };
+  void Enable();
+  void Disable();
+  uint8_t IsTimerEnabled(){
+    return m_DelayTimerEnabled; 
+  };
+  uint8_t GetStartTimerHour(){
+    return m_StartTimerHour; 
+  };
+  uint8_t GetStartTimerMin(){
+    return m_StartTimerMin; 
+  };
+  uint8_t GetStopTimerHour(){
+    return m_StopTimerHour; 
+  };
+  uint8_t GetStopTimerMin(){
+    return m_StopTimerMin; 
+  };
+  void SetStartTimer(uint8_t hour, uint8_t min){
+    m_StartTimerHour = hour;
+    m_StartTimerMin = min;
+    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    SaveSettings();
+  };
+  void SetStopTimer(uint8_t hour, uint8_t min){
+    m_StopTimerHour = hour;
+    m_StopTimerMin = min;
+    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    SaveSettings();
+  };
+  uint8_t IsTimerValid(){
+     if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
+       if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
+         return 0;
+       } else {
+         return 1;
+       }
+     } else {
+       return 0; 
+     }
+  };
+  void PrintTimerIcon();
+};
+#endif
 // -- end class definitions
 //-- begin global variables
 
@@ -592,6 +850,20 @@ char g_sTmp[64];
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 J1772EVSEController g_EvseController;
 OnboardDisplay g_OBD;
+
+// Instantiate RTC and Delay Timer - GoldServe
+#ifdef DELAYTIMER
+RTC_DS1307 g_RTC;
+DelayTimer g_DelayTimer;
+// Start variables to support RTC and Delay Timer - GoldServe
+uint16_t g_year;
+uint8_t g_month;
+uint8_t g_day;
+uint8_t g_hour;
+uint8_t g_min;
+uint8_t sec = 0;
+DateTime g_CurrTime;
+#endif
 
 #ifdef SERIALCLI
 CLI g_CLI;
@@ -654,7 +926,7 @@ void CLI::info()
 void CLI::Init()
 {
   info();
-  println_P(PSTR("type ? or help for command list"));
+  println_P(PSTR("type help for command list"));
   print_P(PSTR("Open_EVSE> ")); // CLI Prompt
   flush();
 
@@ -723,14 +995,58 @@ void CLI::getInput()
 	print_P(PSTR("Stuck Relay Check: "));
 	println_P(g_EvseController.StuckRelayChkEnabled() ? g_psEnabled : g_psDisabled);
 #endif // ADVPWR           
+        // Option to disable auto start - GoldServe
+#ifdef MANUALSTART
+        print_P(PSTR("Auto Start: "));
+	println_P(g_EvseController.AutoStartEnabled() ? g_psEnabled : g_psDisabled);
+#endif //#ifdef MANUALSTART
+        // Start Delay Timer feature - GoldServe
+#ifdef DELAYTIMER
+        print_P(PSTR("Delay Timer: "));
+        if (g_DelayTimer.IsTimerEnabled()){
+          println_P(g_psEnabled);
+        } else {
+          println_P(g_psDisabled);
+        }
+        print_P(PSTR("Start Time: "));
+        Serial.print(g_DelayTimer.GetStartTimerHour(), DEC);
+        print_P(PSTR(" hour "));
+        Serial.print(g_DelayTimer.GetStartTimerMin(), DEC);
+        println_P(PSTR(" min"));
+        print_P(PSTR("End Time: "));
+        Serial.print(g_DelayTimer.GetStopTimerHour(), DEC);
+        print_P(PSTR(" hour "));
+        Serial.print(g_DelayTimer.GetStopTimerMin(), DEC);
+        println_P(PSTR(" min"));
+        print_P(PSTR("System Date/Time: "));
+        g_CurrTime = g_RTC.now();
+        Serial.print(g_CurrTime.year(), DEC);
+        Serial.print('/');
+        Serial.print(g_CurrTime.month(), DEC);
+        Serial.print('/');
+        Serial.print(g_CurrTime.day(), DEC);
+        Serial.print(' ');
+        Serial.print(g_CurrTime.hour(), DEC);
+        Serial.print(':');
+        Serial.print(g_CurrTime.minute(), DEC);
+        Serial.print(':');
+        Serial.print(g_CurrTime.second(), DEC);
+        // End Delay Timer feature - GoldServe
+#endif //#ifdef DELAYTIMER
       } 
       else if ((strcmp_P(m_CLIinstr, PSTR("help")) == 0) || (strcmp_P(m_CLIinstr, PSTR("?")) == 0)){ // string compare
         println_P(PSTR("Help Commands"));
         printlnn();
         println_P(PSTR("help - Display commands")); // print to the terminal
-        println_P(PSTR("set  - Change Settings"));
+        println_P(PSTR("set  - Change settings"));
         println_P(PSTR("show - Display settings and values"));
         println_P(PSTR("save - Write settings to EEPROM"));
+        // Start Delay Timer feature - GoldServe
+#ifdef DELAYTIMER
+        println_P(PSTR("dt - Date/Time commands"));
+        println_P(PSTR("timer - Delay timer commands"));
+#endif //#ifdef DELAYTIMER
+        // End Delay Timer feature - GoldServe
       } 
       else if (strcmp_P(m_CLIinstr, PSTR("set")) == 0) { // string compare
         println_P(PSTR("Set Commands - Usage: set amp"));
@@ -743,6 +1059,11 @@ void CLI::getInput()
 	println_P(PSTR("gndchk on/off - turn ground check on/off"));
 	println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
 #endif // ADVPWR
+        // Start Delay Timer feature - GoldServe
+#ifdef MANUALSTART
+        println_P(PSTR("autostart on/off - enable/disable autostart"));
+#endif //#ifdef MANUALSTART
+        // End Delay Timer feature - GoldServe
 	println_P(PSTR("sdbg on/off - turn serial debugging on/off"));
       }
       else if (strncmp_P(m_CLIinstr, PSTR("set "),4) == 0) {
@@ -783,6 +1104,22 @@ void CLI::getInput()
 	    println_P(g_psDisabled);
 	  }
 	}
+        // Start Delay Timer feature - GoldServe
+#ifdef MANUALSTART
+        else if (!strncmp_P(p,PSTR("autostart "),10)) {
+	  p += 10;
+	  print_P(PSTR("autostart "));
+	  if (!strcmp_P(p,g_pson)) {
+	    g_EvseController.EnableAutoStart(1);
+	    println_P(g_psEnabled);
+	  }
+	  else {
+	    g_EvseController.EnableAutoStart(0);
+	    println_P(g_psDisabled);
+	  }
+	}
+#endif //#ifdef MANUALSTART
+        // End Delay Timer feature - GoldServe
 #ifdef ADVPWR
 	else if (!strncmp_P(p,PSTR("gndchk "),7)) {
 	  p += 7;
@@ -837,6 +1174,109 @@ void CLI::getInput()
         println_P(PSTR("Saving Settings to EEPROM")); // print to the terminal
         SaveSettings();
       } 
+      // Start Delay Timer feature - GoldServe
+#ifdef DELAYTIMER
+      else if (strncmp_P(m_CLIinstr, PSTR("dt"), 2) == 0){ // string compare
+        char *p = m_CLIinstr + 3;
+        
+        if (strncmp_P(p,PSTR("set"),3) == 0) {
+	  p += 4;
+	  println_P(PSTR("Set Date/Time (mm/dd/yy hh:mm)"));
+          print_P(PSTR("Month (mm): "));
+          g_month = getInt();
+          Serial.println(g_month);
+          print_P(PSTR("Day (dd): "));
+          g_day = getInt();
+          Serial.println(g_day);
+          print_P(PSTR("Year (yy): "));
+          g_year = getInt();
+          Serial.println(g_year);
+          print_P(PSTR("Hour (hh): "));
+          g_hour = getInt();
+          Serial.println(g_hour);
+          print_P(PSTR("Minute (mm): "));
+          g_min = getInt();
+          Serial.println(g_min);
+          
+          if (g_month + g_day + g_year + g_hour + g_min) {
+            g_RTC.adjust(DateTime(g_year, g_month, g_day, g_hour, g_min, 0));
+            println_P(PSTR("Date/Time Set"));
+          } else {
+            println_P(PSTR("Date/Time NOT Set")); 
+          }
+	}
+        else {
+          g_CurrTime = g_RTC.now();
+          Serial.print(g_CurrTime.year(), DEC);
+          Serial.print('/');
+          Serial.print(g_CurrTime.month(), DEC);
+          Serial.print('/');
+          Serial.print(g_CurrTime.day(), DEC);
+          Serial.print(' ');
+          Serial.print(g_CurrTime.hour(), DEC);
+          Serial.print(':');
+          Serial.print(g_CurrTime.minute(), DEC);
+          Serial.print(':');
+          Serial.print(g_CurrTime.second(), DEC);
+          Serial.println();
+          println_P(PSTR("Use 'dt set' to set the system date/time"));
+	}
+        
+      }
+      else if (strncmp_P(m_CLIinstr, PSTR("timer"), 5) == 0){ // string compare
+        char *p = m_CLIinstr + 6;
+        
+        if (strncmp_P(p,PSTR("set start"),9) == 0) {
+          println_P(PSTR("Set Start Time (hh:mm)"));
+          print_P(PSTR("Hour (hh): "));
+          g_hour = getInt();
+          Serial.println(g_hour);
+          print_P(PSTR("Minute (mm): "));
+          g_min = getInt();
+          Serial.println(g_min);
+          g_DelayTimer.SetStartTimer(g_hour, g_min);
+        } else if (strncmp_P(p,PSTR("set stop"),8) == 0) {
+          println_P(PSTR("Set Stop Time (hh:mm)"));
+          print_P(PSTR("Hour (hh): "));
+          g_hour = getInt();
+          Serial.println(g_hour);
+          print_P(PSTR("Minute (mm): "));
+          g_min = getInt();
+          Serial.println(g_min);
+          g_DelayTimer.SetStopTimer(g_hour, g_min);
+        } else if (strncmp_P(p,PSTR("enable"),9) == 0) {
+          println_P(PSTR("Delay timer enabled, autostart disabled"));
+          g_DelayTimer.Enable();
+        } else if (strncmp_P(p,PSTR("disable"),9) == 0) {
+          println_P(PSTR("Delay timer disabled, autostart enabled"));
+          g_DelayTimer.Disable();
+        } else {
+          print_P(PSTR("Delay Timer: "));
+          if (g_DelayTimer.IsTimerEnabled()){
+            println_P(PSTR("Enabled"));
+          } else {
+            println_P(PSTR("Disabled"));
+          }
+          print_P(PSTR("Start Time: "));
+          Serial.print(g_DelayTimer.GetStartTimerHour(), DEC);
+          print_P(PSTR(" hour "));
+          Serial.print(g_DelayTimer.GetStartTimerMin(), DEC);
+          println_P(PSTR(" min"));
+          print_P(PSTR("End Time: "));
+          Serial.print(g_DelayTimer.GetStopTimerHour(), DEC);
+          print_P(PSTR(" hour "));
+          Serial.print(g_DelayTimer.GetStopTimerMin(), DEC);
+          println_P(PSTR(" min"));
+          if (!g_DelayTimer.IsTimerValid()){
+            println_P(PSTR("Start and Stop times can not be the same!"));  
+          }
+          println_P(PSTR(""));
+          println_P(PSTR("Use 'timer enable/disable' to enable/disable timer function"));
+          println_P(PSTR("Use 'timer set start/stop' to set timer start/stop times"));
+        }
+      }
+#endif //#ifdef DELAYTIMER
+      // End Delay Timer feature - GoldServe
       else { // if the input text doesn't match any defined above
       unknown:
         println_P(PSTR("Unknown Command -- type ? or help for command list")); // echo back to the terminal
@@ -884,14 +1324,30 @@ void OnboardDisplay::Init()
   
 #ifdef LCD16X2
   LcdBegin(16, 2);
- 
   LcdPrint_P(0,PSTR("Open EVSE       "));
-  delay(500);
   LcdPrint_P(0,1,PSTR("Version "));
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
-  delay(500);
+  delay(800);
 #endif // LCD16X2
+  // Create custom Timer and Stop icons - GoldServe
+#ifdef DELAYTIMER
+#ifdef LCD16X2
+//  LcdPrint_P(0,PSTR("RTC and Timers"));
+//  LcdPrint_P(0,1,PSTR("by GoldServe    "));
+//  delay(1000);
+  prog_char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
+  prog_char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
+  prog_char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
+  memcpy_P(g_sTmp,CustomChar_0,8);
+  m_Lcd.createChar(0, (uint8_t*)g_sTmp);
+  memcpy_P(g_sTmp,CustomChar_1,8);
+  m_Lcd.createChar(1, (uint8_t*)g_sTmp);
+  memcpy_P(g_sTmp,CustomChar_2,8);
+  m_Lcd.createChar(2, (uint8_t*)g_sTmp);
+#endif //#ifdef LCD16X2
+#endif //#ifdef DELAYTIMER
+  // End create custom icons - GoldServe
 }
 
 
@@ -906,6 +1362,14 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 }
 
 #ifdef LCD16X2
+void OnboardDisplay::LcdClear()
+{
+  m_Lcd.setCursor(0,0);
+  m_Lcd.print(g_BlankLine);
+  m_Lcd.setCursor(0,1);
+  m_Lcd.print(g_BlankLine);
+}
+
 void OnboardDisplay::LcdPrint_P(const prog_char *s)
 {
   strcpy_P(m_strBuf,s);
@@ -948,22 +1412,38 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 }
 #endif // LCD16X2
 
-char g_sRdyLAstr[] = "Ready     L%d:%dA";
+char g_sRdyLAstr[] = "L%d:%dA";
+prog_char g_psReady[] PROGMEM = "Ready";
+prog_char g_psCharging[] PROGMEM = "Charging";
 void OnboardDisplay::Update()
 {
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int i;
 
+#if defined(DELAYTIMER) && defined(LCD16X2)
+  g_CurrTime = g_RTC.now();
+#endif //#ifdef DELAYTIMER
+
   if (g_EvseController.StateTransition()) {
+    // Optimize function call - GoldServe
+    sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+    
     switch(curstate) {
     case EVSE_STATE_A: // not connected
       SetGreenLed(HIGH);
       SetRedLed(LOW);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
-      sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      LcdPrint(0,g_sTmp);
+      // Display Timer and Stop Icon - GoldServe
+      //sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      g_OBD.LcdClear();
+      g_OBD.LcdSetCursor(0,0);
+#ifdef DELAYTIMER
+      g_DelayTimer.PrintTimerIcon();
+#endif //#ifdef DELAYTIMER
+      LcdPrint_P(g_psReady);
+      LcdPrint(10,0,g_sTmp);  
       LcdPrint_P(1,g_psEvNotConnected);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
@@ -973,8 +1453,15 @@ void OnboardDisplay::Update()
       SetRedLed(HIGH);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
-      sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      LcdPrint(0,g_sTmp);
+      g_OBD.LcdClear();
+      g_OBD.LcdSetCursor(0,0);
+      // Display Timer and Stop Icon - GoldServe
+#ifdef DELAYTIMER
+      //sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      g_DelayTimer.PrintTimerIcon();
+#endif //#ifdef DELAYTIMER
+      g_OBD.LcdPrint_P(g_psReady);
+      g_OBD.LcdPrint(10,0,g_sTmp);
       LcdPrint_P(1,g_psEvConnected);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
@@ -983,9 +1470,16 @@ void OnboardDisplay::Update()
       SetGreenLed(LOW);
       SetRedLed(LOW);
       #ifdef LCD16X2 //Adafruit RGB LCD
-      LcdSetBacklightColor(BLUE);
-      sprintf(g_sTmp,"Charging  L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      LcdPrint(0,g_sTmp);
+      LcdSetBacklightColor(TEAL);
+      g_OBD.LcdClear();
+      g_OBD.LcdSetCursor(0,0);
+      // Display Timer and Stop Icon - GoldServe
+#ifdef DELAYTIMER
+      //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      g_DelayTimer.PrintTimerIcon();
+#endif //#ifdef DELAYTIMER
+      g_OBD.LcdPrint_P(g_psCharging);
+      g_OBD.LcdPrint(10,0,g_sTmp);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is on
       break;
@@ -1038,7 +1532,13 @@ void OnboardDisplay::Update()
       SetGreenLed(LOW);
       SetRedLed(HIGH);
 #ifdef LCD16X2
-      LcdPrint_P(0,g_psStopped);
+      // Display Timer and Stop Icon - GoldServe
+      //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      //g_DelayTimer.PrintTimerIcon();
+      LcdSetBacklightColor(WHITE);
+      g_OBD.LcdClear();
+      g_OBD.LcdPrint_P(g_psStopped);
+      g_OBD.LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
       break;
     default:
@@ -1054,10 +1554,40 @@ void OnboardDisplay::Update()
       int h = hour(elapsedTime);
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
+#ifdef DELAYTIMER
+      g_CurrTime = g_RTC.now();
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,g_CurrTime.hour(),g_CurrTime.minute());
+#else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
+#endif //#ifdef DELAYTIMER
       LcdPrint(1,g_sTmp);
     }
   }
+  // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
+#ifdef DELAYTIMER
+#ifdef BTN_MENU
+  else if (curstate == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()) {
+#else
+  else if (curstate == EVSE_STATE_DISABLED) {
+#endif //#ifdef BTN_MENU
+    g_OBD.LcdPrint_P(0,g_psStopped);
+    g_CurrTime = g_RTC.now();
+    sprintf(g_sTmp,"%02d:%02d \0\1",g_CurrTime.hour(),g_CurrTime.minute());
+    LcdPrint(0,1,g_sTmp);
+    if (g_DelayTimer.IsTimerEnabled()){
+      g_OBD.LcdSetCursor(9,0);
+      g_OBD.LcdWrite(0x2);
+      g_OBD.LcdWrite(0x0);
+      sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
+      LcdPrint(11,0,g_sTmp);
+      g_OBD.LcdSetCursor(9,1);
+      g_OBD.LcdWrite(0x1);
+      g_OBD.LcdWrite(0x0);
+      sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
+      LcdPrint(11,1,g_sTmp);
+    }
+  }
+#endif
 #endif
 }
 
@@ -1299,6 +1829,18 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 
 #endif // ADVPWR
 
+// Functions to support Auto Start feature - GoldServe
+#ifdef MANUALSTART 
+void J1772EVSEController::EnableAutoStart(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags &= ~ECF_AUTO_START_DISABLED;
+  }
+  else {
+    m_bFlags |= ECF_AUTO_START_DISABLED;
+  }
+}
+#endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
 {
   if (tf) {
@@ -1333,10 +1875,11 @@ void J1772EVSEController::LoadThresholds()
 
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
 {
+#ifdef SERIALCLI
   if (SerDbgEnabled()) {
     g_CLI.print_P(PSTR("SetSvcLevel: "));Serial.println((int)svclvl);
   }
-
+#endif //#ifdef SERIALCLI
   if (svclvl == 2) {
     m_bFlags |= ECF_L2; // set to Level 2
   }
@@ -1507,6 +2050,15 @@ void J1772EVSEController::Init()
   m_Gfi.Init();
 #endif // GFI
 
+  // Start Manual Start Feature - GoldServe
+#ifdef MANUALSTART
+  if (AutoStartEnabled()){
+    Enable();
+  } else {
+    Disable();
+  }
+#endif //#ifdef MANUALSTART
+  // End Manual Start Feature - GoldServe
 
   g_OBD.SetGreenLed(LOW);
 }
@@ -1714,7 +2266,7 @@ void J1772EVSEController::Update()
       m_Pilot.SetState(PILOT_STATE_P12);
       chargingOff(); // turn off charging current
     }
-
+#ifdef SERIALCLI
     if (SerDbgEnabled()) {
       g_CLI.print_P(PSTR("state: "));
       Serial.print((int)prevevsestate);
@@ -1725,6 +2277,7 @@ void J1772EVSEController::Update()
       g_CLI.print_P(PSTR(" "));
       Serial.println(phigh);
     }
+#endif //#ifdef SERIALCLI
   }
 
   m_PrevEvseState = prevevsestate;
@@ -1906,7 +2459,7 @@ void SetupMenu::Init()
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx >= 7) {
+  if (++m_CurIdx >= 10) {
     m_CurIdx = 0;
   }
 #ifndef ADVPWR
@@ -1914,6 +2467,18 @@ void SetupMenu::Next()
     m_CurIdx++;
   }
 #endif // !ADVPWR
+
+#ifndef DELAYTIMER
+  if (m_CurIdx == 5) {
+    m_CurIdx += 2;
+  }
+#endif //#ifndef DELAYTIMER
+
+#ifndef AUTOSTART_MENU
+  if (m_CurIdx == 7) {
+    m_CurIdx++;
+  }
+#endif //#ifndef AUTOSTART_MENU
 
   const prog_char *title;
   switch(m_CurIdx) {
@@ -1934,9 +2499,24 @@ void SetupMenu::Next()
     title = g_GndChkMenu.m_Title;
     break;
 #endif // ADVPWR
-  case 5:
+  case 8:
     title = g_ResetMenu.m_Title;
     break;
+#ifdef DELAYTIMER
+// Add menu items to control Delay Timers - GoldServe
+  case 5:
+    title = g_RTCMenu.m_Title;
+    break;
+  case 6:
+    title = g_DelayMenu.m_Title;
+    break;
+#endif //#ifdef DELAYTIMER
+#ifdef AUTOSTART_MENU
+// Add menu items to control Auto Start - GoldServe
+  case 7:
+    title = g_AutoStartMenu.m_Title;
+    break;
+#endif //#ifdef AUTOSTART_MENU
   default:
     title = g_psExit;
     break;
@@ -1963,10 +2543,26 @@ Menu *SetupMenu::Select()
     return &g_GndChkMenu;
   }
 #endif // ADVPWR
-  else if (m_CurIdx == 5) {
+  else if (m_CurIdx == 8) {
     return &g_ResetMenu;
   }
+#ifdef DELAYTIMER
+// Add menu items to control Delay Timers - GoldServe
+  else if (m_CurIdx == 5) {
+    return &g_RTCMenu;
+  }
+  else if (m_CurIdx == 6) {
+    return &g_DelayMenu;
+  }
+#endif //#ifdef DELAYTIMER
+#ifdef AUTOSTART_MENU
+// Add menu items to control Auto Start - GoldServe
+  else if (m_CurIdx == 7) {
+    return &g_AutoStartMenu;
+  }
+#endif //#ifdef AUTOSTART_MENU
   else {
+    g_OBD.LcdClear();
     return NULL;
   }
 }
@@ -2003,8 +2599,11 @@ void SvcLevelMenu::Init()
 #else
   m_CurIdx = (g_EvseController.GetCurSvcLevel() == 1) ? 0 : 1;
 #endif // ADVPWR
-  sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
-  g_OBD.LcdPrint(1,g_sTmp);
+  //sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
+  //g_OBD.LcdPrint(1,g_sTmp);
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
 void SvcLevelMenu::Next()
@@ -2231,10 +2830,12 @@ ResetMenu::ResetMenu()
   m_Title = g_psReset;
 }
 
+prog_char g_psResetNow[] PROGMEM = "Reset Now?";
 void ResetMenu::Init()
 {
   m_CurIdx = 0;
-  g_OBD.LcdMsg("Reset Now?",g_YesNoMenuItems[0]);
+  g_OBD.LcdPrint_P(0,g_psResetNow);
+  g_OBD.LcdPrint(1,g_YesNoMenuItems[0]);
 }
 
 void ResetMenu::Next()
@@ -2245,6 +2846,467 @@ void ResetMenu::Next()
   g_OBD.LcdClearLine(1);
   g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
 }
+
+#ifdef DELAYTIMER
+// Start Menu Definition for Date/Time, Delay, and AutoStart Menus
+char g_DateTimeStr[] = "%02d/%02d/%02d %02d:%02d";
+char g_DateTimeStr_Month[] = "+%02d/%02d/%02d %02d:%02d";
+char g_DateTimeStr_Day[] = "%02d/+%02d/%02d %02d:%02d";
+char g_DateTimeStr_Year[] = "%02d/%02d/+%02d %02d:%02d";
+char g_DateTimeStr_Hour[] = "%02d/%02d/%02d +%02d:%02d";
+char g_DateTimeStr_Min[] = "%02d/%02d/%02d %02d:+%02d";
+RTCMenu::RTCMenu()
+{
+  m_Title = g_psRTC;
+}
+prog_char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
+void RTCMenu::Init()
+{
+  m_CurIdx = 0;
+  g_OBD.LcdPrint_P(0,g_psSetDateTime);
+  g_OBD.LcdPrint(1,g_YesNoMenuItems[0]);
+}
+
+void RTCMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
+}
+Menu *RTCMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  delay(500);
+  if (m_CurIdx == 0) {
+    return &g_RTCMenuMonth;
+  } else {
+    return &g_SetupMenu; 
+  }
+}
+RTCMenuMonth::RTCMenuMonth()
+{
+  //m_Title = g_psRTC;
+}
+void RTCMenuMonth::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psRTC_Month);
+  g_CurrTime = g_RTC.now();
+  g_month = g_CurrTime.month();
+  g_day = g_CurrTime.day();
+  g_year = g_CurrTime.year() - 2000;
+  g_hour = g_CurrTime.hour();
+  g_min = g_CurrTime.minute();
+  m_CurIdx = g_month;
+
+  sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void RTCMenuMonth::Next()
+{
+  if (++m_CurIdx >= 13) {
+    m_CurIdx = 1;
+  }
+  g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_month) {
+    sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
+  } else {
+    sprintf(g_sTmp,g_DateTimeStr,m_CurIdx, g_day, g_year, g_hour, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *RTCMenuMonth::Select()
+{
+  g_month = m_CurIdx;
+  sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_RTCMenuDay;
+}
+RTCMenuDay::RTCMenuDay()
+{
+  m_Title = g_psRTC;
+}
+void RTCMenuDay::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psRTC_Day);
+  m_CurIdx = g_day;
+  sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void RTCMenuDay::Next()
+{
+  if (++m_CurIdx >= 32) {
+    m_CurIdx = 1;
+  }
+  g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_day) {
+    sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
+  } else {
+    sprintf(g_sTmp,g_DateTimeStr,g_month, m_CurIdx, g_year, g_hour, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *RTCMenuDay::Select()
+{
+  g_day = m_CurIdx;
+  //g_OBD.LcdPrint(0,1,"+");
+  sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_RTCMenuYear;
+}
+RTCMenuYear::RTCMenuYear()
+{
+  //m_Title = g_psRTC;
+}
+void RTCMenuYear::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psRTC_Year);
+  m_CurIdx = g_year;
+  if (m_CurIdx < 12 || m_CurIdx > 20){
+    m_CurIdx = 12;
+    g_year = 12;
+  }
+  sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void RTCMenuYear::Next()
+{
+  if (++m_CurIdx >= 21) {
+    m_CurIdx = 12;
+  }
+  //g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_year) {
+    sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
+  } else {
+    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, m_CurIdx, g_hour, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *RTCMenuYear::Select()
+{
+  g_year = m_CurIdx;
+  sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_RTCMenuHour;
+}
+RTCMenuHour::RTCMenuHour()
+{
+  //m_Title = g_psRTC;
+}
+void RTCMenuHour::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psRTC_Hour);
+  m_CurIdx = g_hour;
+  sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void RTCMenuHour::Next()
+{
+  if (++m_CurIdx >= 24) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_hour) {
+    sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
+  } else {
+    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, g_year, m_CurIdx, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *RTCMenuHour::Select()
+{
+  g_hour = m_CurIdx;
+  sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_RTCMenuMinute;
+}
+RTCMenuMinute::RTCMenuMinute()
+{
+  //m_Title = g_psRTC;
+}
+void RTCMenuMinute::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psRTC_Minute);
+  m_CurIdx = g_min;
+  sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void RTCMenuMinute::Next()
+{
+  if (++m_CurIdx >= 60) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_hour) {
+    sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
+  } else {
+    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, g_year, g_hour, m_CurIdx);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *RTCMenuMinute::Select()
+{
+  g_min = m_CurIdx;
+  sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+  g_RTC.adjust(DateTime(g_year, g_month, g_day, g_hour, g_min, 0));
+  delay(500);
+  return &g_SetupMenu;
+}
+char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
+char *g_sPHHMMfmt = "+%02d:%02d";
+char *g_sHHPMMfmt = "%02d:+%02d";
+DelayMenu::DelayMenu()
+{
+  m_Title = g_psDelayTimer;
+}
+void DelayMenu::Init()
+{
+  m_CurIdx = 0;
+  //g_OBD.LcdMsg("Delay Timer",g_DelayMenuItems[0]);
+  g_OBD.LcdPrint_P(0,g_psDelayTimer);
+  g_OBD.LcdPrint(1,g_DelayMenuItems[0]);
+}
+void DelayMenu::Next()
+{
+  if (++m_CurIdx >= 3) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdPrint(0,1,g_DelayMenuItems[m_CurIdx]);
+}
+Menu *DelayMenu::Select()
+{
+  //g_OBD.LcdPrint(0,1,"+");
+  //g_OBD.LcdPrint(g_DelayMenuItems[m_CurIdx]);
+  delay(500);
+  if (m_CurIdx == 0) {
+    return &g_DelayMenuEnableDisable;
+  } else if (m_CurIdx == 1) {
+    return &g_DelayMenuStartHour;
+  } else {
+    return &g_DelayMenuStopHour;
+  }
+}
+DelayMenuEnableDisable::DelayMenuEnableDisable()
+{
+  m_Title = g_psDelayTimer;
+}
+void DelayMenuEnableDisable::Init()
+{
+  m_CurIdx = !g_DelayTimer.IsTimerEnabled();
+  g_OBD.LcdPrint_P(0,g_psDelayTimer);
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+void DelayMenuEnableDisable::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  if (m_CurIdx == !g_DelayTimer.IsTimerEnabled()){
+    g_OBD.LcdPrint(0,1,"+");
+    g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  } else {
+    g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
+  }
+}
+Menu *DelayMenuEnableDisable::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  delay(500);
+  if (m_CurIdx == 0) {
+    g_DelayTimer.Enable();
+  } else {
+    g_DelayTimer.Disable();
+  }
+  return &g_SetupMenu;
+}
+DelayMenuStartHour::DelayMenuStartHour()
+{
+  //m_Title = g_psDelayTimerStartHour;
+}
+void DelayMenuStartHour::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psDelayTimerStartHour);
+  g_hour = g_DelayTimer.GetStartTimerHour();
+  g_min = g_DelayTimer.GetStartTimerMin();
+  m_CurIdx = g_hour;
+  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void DelayMenuStartHour::Next()
+{
+  if (++m_CurIdx >= 24) {
+    m_CurIdx = 0;
+  }
+  //g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_hour) {
+    sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  } else {
+    sprintf(g_sTmp,g_sHHMMfmt, m_CurIdx, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *DelayMenuStartHour::Select()
+{
+  g_hour = m_CurIdx;
+  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_DelayMenuStartMin;
+}
+DelayMenuStopHour::DelayMenuStopHour()
+{
+  //m_Title = g_psDelayTimerStopHour;
+}
+void DelayMenuStopHour::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psDelayTimerStopHour);
+  g_hour = g_DelayTimer.GetStopTimerHour();
+  g_min = g_DelayTimer.GetStopTimerMin();
+  m_CurIdx = g_hour;
+  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void DelayMenuStopHour::Next()
+{
+  if (++m_CurIdx >= 24) {
+    m_CurIdx = 0;
+  }
+  //g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_hour) {
+    sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  } else {
+    sprintf(g_sTmp,g_sHHMMfmt, m_CurIdx, g_min);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *DelayMenuStopHour::Select()
+{
+  g_hour = m_CurIdx;
+  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
+  g_OBD.LcdPrint(1,g_sTmp);
+  delay(500);
+  return &g_DelayMenuStopMin;
+}
+DelayMenuStartMin::DelayMenuStartMin()
+{
+  //m_Title = g_psDelayTimerStartMin;
+}
+void DelayMenuStartMin::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psDelayTimerStartMin);
+  m_CurIdx = g_min;
+  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void DelayMenuStartMin::Next()
+{
+  if (++m_CurIdx >= 60) {
+    m_CurIdx = 0;
+  }
+  //g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_min) {
+    sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  } else {
+    sprintf(g_sTmp,g_sHHMMfmt, g_hour, m_CurIdx);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *DelayMenuStartMin::Select()
+{
+  g_min = m_CurIdx;
+  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+  g_DelayTimer.SetStartTimer(g_hour, g_min);
+  delay(500);
+  return &g_SetupMenu;
+}
+DelayMenuStopMin::DelayMenuStopMin()
+{
+  //m_Title = g_psDelayTimerStopMin;
+}
+void DelayMenuStopMin::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psDelayTimerStopMin);
+  m_CurIdx = g_min;
+  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void DelayMenuStopMin::Next()
+{
+  if (++m_CurIdx >= 60) {
+    m_CurIdx = 0;
+  }
+  //g_OBD.LcdClearLine(1);
+  if (m_CurIdx == g_min) {
+    sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  } else {
+    sprintf(g_sTmp,g_sHHMMfmt, g_hour, m_CurIdx);
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+Menu *DelayMenuStopMin::Select()
+{
+  g_min = m_CurIdx;
+  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+  g_DelayTimer.SetStopTimer(g_hour, g_min);  // Set Timers
+  delay(500);
+  return &g_SetupMenu;
+}
+#endif //#ifdef DELAYTIMER
+#ifdef AUTOSTART_MENU
+// Menus for Auto Start feature - GoldServe
+AutoStartMenu::AutoStartMenu()
+{
+  m_Title = g_psAutoStart;
+}
+void AutoStartMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,g_psAutoStart);
+  m_CurIdx = !g_EvseController.AutoStartEnabled();
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+void AutoStartMenu::Next()
+{
+  
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.AutoStartEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  
+}
+Menu *AutoStartMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
+  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  delay(500);
+  return &g_SetupMenu;
+}
+#endif //#ifdef AUTOSTART_MENU
 
 // wdt_init turns off the watchdog timer after we use it
 // to reboot
@@ -2310,7 +3372,15 @@ void BtnHandler::ChkBtn()
 	}
       }
       else {
+#if defined(DELAYTIMER)
+        if (g_DelayTimer.IsTimerEnabled()){
+          g_DelayTimer.CheckNow();
+        } else {
+          g_EvseController.Enable();
+        }
+#else  
 	g_EvseController.Enable();
+#endif        
       }
     }
     else {
@@ -2329,9 +3399,143 @@ void BtnHandler::ChkBtn()
 }
 #endif // BTN_MENU
 
+// Start Delay Timer Functions - GoldServe
+#ifdef DELAYTIMER
+void DelayTimer::Init(){
+  //Read EEPROM settings
+  uint8_t rflgs = EEPROM.read(EOFS_TIMER_FLAGS);
+  if (rflgs == 0xff) { // uninitialized EEPROM
+    m_DelayTimerEnabled = 0x00;
+    EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  }
+  else {
+    m_DelayTimerEnabled = rflgs;
+  }
+  uint8_t rtmp = EEPROM.read(EOFS_TIMER_START_HOUR);
+  if (rtmp == 0xff) { // uninitialized EEPROM
+    m_StartTimerHour = DEFAULT_START_HOUR;
+    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
+  }
+  else {
+    m_StartTimerHour = rtmp;
+  }
+  rtmp = EEPROM.read(EOFS_TIMER_START_MIN);
+  if (rtmp == 0xff) { // uninitialized EEPROM
+    m_StartTimerMin = DEFAULT_START_MIN;
+    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+  }
+  else {
+    m_StartTimerMin = rtmp;
+  }
+  rtmp = EEPROM.read(EOFS_TIMER_STOP_HOUR);
+  if (rtmp == 0xff) { // uninitialized EEPROM
+    m_StopTimerHour = DEFAULT_STOP_HOUR;
+    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+  }
+  else {
+    m_StopTimerHour = rtmp;
+  }
+  rtmp = EEPROM.read(EOFS_TIMER_STOP_MIN);
+  if (rtmp == 0xff) { // uninitialized EEPROM
+    m_StopTimerMin = DEFAULT_STOP_MIN;
+    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+  }
+  else {
+    m_StopTimerMin = rtmp;
+  }
+  
+  FlexiTimer2::set(60000, DelayTimerInterrupt); // Set 1 minute interrupt for Delay Timer handling
+  FlexiTimer2::start(); // Start interrupt
+};
+void DelayTimer::CheckTime(){
+  if (m_CheckNow == 1){
+    g_CurrTime = g_RTC.now();
+    m_CurrHour = g_CurrTime.hour();
+    m_CurrMin = g_CurrTime.minute();
+    
+    if (IsTimerEnabled() && IsTimerValid()){
+      uint16_t m_StartTimerSeconds = m_StartTimerHour * 360 + m_StartTimerMin * 6;
+      uint16_t m_StopTimerSeconds = m_StopTimerHour * 360 + m_StopTimerMin * 6;
+      uint16_t m_CurrTimeSeconds = m_CurrHour * 360 + m_CurrMin * 6;
+      
+      //Serial.println(m_StartTimerSeconds);
+      //Serial.println(m_StopTimerSeconds);
+      //Serial.println(m_CurrTimeSeconds);
+      
+      if (m_StopTimerSeconds < m_StartTimerSeconds) {
+      //End time is for next day 
+        if ( ( (m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds >= m_StopTimerSeconds) ) || ( (m_CurrTimeSeconds <= m_StartTimerSeconds) && (m_CurrTimeSeconds <= m_StopTimerSeconds) ) ){
+           // Within time interval
+#ifdef BTN_MENU
+          if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
+#else
+          if (g_EvseController.GetState() == EVSE_STATE_DISABLED){
+#endif //#ifdef BTN_MENU
+  	    g_EvseController.Enable();
+          }           
+        } else {
+          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
+            // Not in time interval
+            g_EvseController.Disable();         
+          }
+        }
+      } else {
+        if ((m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds < m_StopTimerSeconds)) {
+          // Within time interval
+#ifdef BTN_MENU
+          if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
+#else
+          if (g_EvseController.GetState() == EVSE_STATE_DISABLED){
+#endif //#ifdef BTN_MENU
+  	    g_EvseController.Enable();
+          }          
+        } else {
+          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
+            // Not in time interval
+            g_EvseController.Disable();          
+          }
+        }
+      }
+    }
+    m_CheckNow = 0;
+  }
+};
+void DelayTimer::Enable(){;
+  m_DelayTimerEnabled = 0x01;
+  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  g_EvseController.EnableAutoStart(0);
+  SaveSettings();
+}
+void DelayTimer::Disable(){
+  m_DelayTimerEnabled = 0x00;
+  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  g_EvseController.EnableAutoStart(1);
+  SaveSettings();
+};
+void DelayTimer::PrintTimerIcon(){
+  //g_OBD.LcdClear();
+  //g_OBD.LcdSetCursor(0,0);
+  if (IsTimerEnabled() && IsTimerValid()){
+#ifdef BTN_MENU
+    g_OBD.LcdWrite(0x0);
+#endif //#ifdef BTN_MENU
+  }
+};
+void DelayTimerInterrupt(){
+  g_DelayTimer.CheckNow();
+};
+// End Delay Timer Functions - GoldServe
+#endif //#ifdef DELAYTIMER
 
 void EvseReset()
 {
+#ifdef DELAYTIMER
+  // Initialize Delay Timer - GoldServe
+  Wire.begin();
+  g_RTC.begin();
+  g_DelayTimer.Init();
+#endif //#ifdef DELAYTIMER
+
   g_OBD.Init();
 
   g_EvseController.Init();
@@ -2402,7 +3606,10 @@ void loop()
   }
   */
 #endif // BTN_MENU
-
+  // Delay Timer Handler - GoldServe
+#ifdef DELAYTIMER
+  g_DelayTimer.CheckTime();
+#endif //#ifdef DELAYTIMER
 
 }
 

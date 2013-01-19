@@ -1,7 +1,15 @@
+Development Version - TESTING ONLY
+
+
 Firmware for Open EVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 See http://code.google.com/p/open-evse/ for project details.
 
 Compilation help: http://code.google.com/p/open-evse/wiki/LoadingFirmware
+
+Required libraries
+https://github.com/lincomatic/LiquidTWI2
+https://github.com/adafruit/RTClib
+https://github.com/wimleers/flexitimer2
 
 ------------
 
