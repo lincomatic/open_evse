@@ -3,7 +3,7 @@
  * Open EVSE Firmware
  *
  * Copyright (c) 2011-2013 Sam C. Lin <lincomatic@gmail.com>
- * Copyright (c) 2011-2012 Chris Howell <chris1howell@msn.com>
+ * Copyright (c) 2011-2013 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * Maintainers: SCL/CH
 
@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "2.0.B1";
+prog_char VERSTR[] PROGMEM = "2.0.B2";
 
 //-- begin features
 
@@ -135,6 +135,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B1";
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
+#define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger pin
 #define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digial 10 because initWave() assumes it
 #define GREEN_LED_PIN 13 // Digital pin
@@ -882,9 +883,9 @@ prog_char g_psAutoDetect[] PROGMEM = "Auto Detect";
 prog_char g_psLevel1[] PROGMEM = "Svc Level: L1";
 prog_char g_psLevel2[] PROGMEM = "Svc Level: L2";
 //prog_char g_psStuckRelay[] PROGMEM = "--Stuck Relay--";
-//prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
+prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
 //prog_char g_psTestPassed[] PROGMEM = "Test Passed";
-//prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
+prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
 #endif // ADVPWR
 prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
@@ -1737,6 +1738,7 @@ J1772EVSEController::J1772EVSEController()
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
   digitalWrite(CHARGING_PIN,HIGH); 
+  digitalWrite(CHARGING_PIN2,HIGH); 
   m_bVFlags |= ECVF_CHARGING_ON;
   
   m_ChargeStartTime = now();
@@ -1746,6 +1748,7 @@ void J1772EVSEController::chargingOn()
 void J1772EVSEController::chargingOff()
 { // turn off charging current
   digitalWrite(CHARGING_PIN,LOW); 
+  digitalWrite(CHARGING_PIN2,LOW); 
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
   m_ChargeOffTime = now();
@@ -1922,21 +1925,6 @@ uint8_t J1772EVSEController::doPost()
   
 #endif //Adafruit RGB LCD 
 
-  //  PS1state = digitalRead(ACLINE1_PIN); //STUCK RELAY test read AC voltage with Relay Open 
-  //  PS2state = digitalRead(ACLINE2_PIN); //STUCK RELAY test read AC voltage with Relay Open
-
-//  if ((PS1state == LOW) || (PS2state == LOW)) {   // If AC voltage is present (LOW) than the relay is stuck
-//    m_Pilot.SetState(PILOT_STATE_N12);
-// #ifdef LCD16X2 //Adafruit RGB LCD
-//    g_OBD.LcdSetBacklightColor(RED);
-//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-// #endif  //Adafruit RGB LCD
-//  } 
-//  else {
-// #ifdef LCD16X2 //Adafruit RGB LCD
-//    g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestPassed);
-//    delay(1000);
-// #endif //Adafruit RGB LCD
   
   if (AutoSvcLevelEnabled()) {
     int reading = analogRead(VOLT_PIN); //read pilot
@@ -1947,18 +1935,8 @@ uint8_t J1772EVSEController::doPost()
       PS1state = digitalRead(ACLINE1_PIN);
       PS2state = digitalRead(ACLINE2_PIN);
       digitalWrite(CHARGING_PIN, LOW);
-//      if ((PS1state == HIGH) && (PS2state == HIGH)) {     
-	// m_EvseState = EVSE_STATE_NO_GROUND;
-//  #ifdef LCD16X2 //Adafruit RGB LCD
-//	g_OBD.LcdSetBacklightColor(RED); 
-//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-//  #endif  //Adafruit RGB LCD
-//      } 
-//      else {
-//   #ifdef LCD16X2 //Adafruit RGB LCD
-//	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestPassed);
-//	delay(1000);
-//   #endif  //Adafruit RGB LCD
+      delay(500); //allow relay to fully open before running other tests
+
 
 	if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -1967,18 +1945,98 @@ uint8_t J1772EVSEController::doPost()
 #endif //Adafruit RGB LCD
 
 	  svclvl = 2; // L2
+	}
+
+
+        if ((PS1state == LOW) && (PS2state == HIGH)) {  //L2   
+           
+       digitalWrite(CHARGING_PIN2, HIGH); 
+           delay(500);
+           PS2state = digitalRead(ACLINE2_PIN);
+           digitalWrite(CHARGING_PIN2, LOW);
+        
+          if(PS2state == LOW) {
+#ifdef LCD16X2 //Adafruit RGB LCD
+	  g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+	  delay(500);
+#endif //Adafruit RGB LCD
+
+	  svclvl = 2; // L2
+          }
+          if(PS2state == HIGH) {
+#ifdef LCD16X2 //Adafruit RGB LCD
+	 g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+	 delay(500);
+#endif //Adafruit RGB LCD
+	  svclvl = 1; // L1
+          }
+        }        
+          
+          
+ if ((PS1state == HIGH) && (PS2state == LOW)) {  //L2   
+       digitalWrite(CHARGING_PIN2, HIGH); 
+           delay(500);
+           PS1state = digitalRead(ACLINE1_PIN);
+           digitalWrite(CHARGING_PIN2, LOW);
+        
+          if(PS1state == LOW) {
+#ifdef LCD16X2 //Adafruit RGB LCD
+	  g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+	  delay(500);
+#endif //Adafruit RGB LCD
+
+	  svclvl = 2; // L2
+          }
+          if(PS1state == HIGH) {
+#ifdef LCD16X2 //Adafruit RGB LCD
+	 g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+	 delay(500);
+#endif //Adafruit RGB LCD
+	  svclvl = 1; // L1
+          }
+ }  
+       if ((PS1state == HIGH) && (PS2state == HIGH)) { 
+         digitalWrite(CHARGING_PIN2, HIGH); 
+           delay(500);
+           PS1state = digitalRead(ACLINE1_PIN);
+           PS2state = digitalRead(ACLINE2_PIN);
+           digitalWrite(CHARGING_PIN2, LOW);
+	if ((PS1state == LOW) && (PS2state == LOW)) {  //L2   
+#ifdef LCD16X2 //Adafruit RGB LCD
+	  g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+	  delay(500);
+#endif //Adafruit RGB LCD
+
+	  svclvl = 2; // L2
 	}  
-	else { // L1
+          if ((PS1state == HIGH) && (PS2state == LOW)) {
 #ifdef LCD16X2 //Adafruit RGB LCD
 	 g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	 delay(500);
 #endif //Adafruit RGB LCD
 	  svclvl = 1; // L1
 	}
+          if ((PS1state == LOW) && (PS2state == HIGH)) {
+#ifdef LCD16X2 //Adafruit RGB LCD
+	   g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+	   delay(500);
+#endif //Adafruit RGB LCD
+	    svclvl = 1; // L1
+          }
+          if ((PS1state == HIGH) && (PS2state == HIGH)) { //BAD GROUND Relay 1 reading HIGH, HIGH, relay 2 reading 2 HIGH, HIGH
+           m_EvseState = EVSE_STATE_NO_GROUND;
+#ifdef LCD16X2 //Adafruit RGB LCD
+	g_OBD.LcdSetBacklightColor(RED); 
+	g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
+#endif  //Adafruit RGB LCD
+          svclvl = 0; // 
+          }
+           
+
+      }  
       }  
   }
 //    } 
-//  }
   
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
 
@@ -1992,6 +2050,7 @@ uint8_t J1772EVSEController::doPost()
 void J1772EVSEController::Init()
 {
   pinMode(CHARGING_PIN,OUTPUT);
+  pinMode(CHARGING_PIN2,OUTPUT);
 
 #ifdef ADVPWR
   pinMode(ACLINE1_PIN, INPUT);
