@@ -107,7 +107,7 @@ prog_char VERSTR[] PROGMEM = "1.0.9";
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger pin
-#define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digial 10 because SetPWM() assumes it
+#define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digital 10 because SetPWM() assumes it
 #define GREEN_LED_PIN 13 // Digital pin
 
 #define SERIAL_BAUD 38400
