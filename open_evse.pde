@@ -137,7 +137,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B2";
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger pin
-#define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digial 10 because initWave() assumes it
+#define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digital 10 because SetPWM() assumes it
 #define GREEN_LED_PIN 13 // Digital pin
 
 #define SERIAL_BAUD 38400
@@ -1646,7 +1646,7 @@ void J1772Pilot::SetState(PILOT_STATE state)
 
 // set EVSE current capacity in Amperes
 // duty cycle 
-// outputting a 1KHz square wave to digital pin 11 via Timer 1
+// outputting a 1KHz square wave to digital pin 10 via Timer 1
 //
 int J1772Pilot::SetPWM(int amps)
 {
