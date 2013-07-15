@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "2.0.B2";
+prog_char VERSTR[] PROGMEM = "2.0.B3";
 
 //-- begin features
 
@@ -1430,9 +1430,8 @@ void OnboardDisplay::Update()
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
       // Display Timer and Stop Icon - GoldServe
-      //sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      g_OBD.LcdClear();
-      g_OBD.LcdSetCursor(0,0);
+      LcdClear();
+      LcdSetCursor(0,0);
 #ifdef DELAYTIMER
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
@@ -1447,15 +1446,14 @@ void OnboardDisplay::Update()
       SetRedLed(HIGH);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
-      g_OBD.LcdClear();
-      g_OBD.LcdSetCursor(0,0);
+      LcdClear();
+      LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
 #ifdef DELAYTIMER
-      //sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
-      g_OBD.LcdPrint_P(g_psReady);
-      g_OBD.LcdPrint(10,0,g_sTmp);
+      LcdPrint_P(g_psReady);
+      LcdPrint(10,0,g_sTmp);
       LcdPrint_P(1,g_psEvConnected);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is off
@@ -1465,15 +1463,14 @@ void OnboardDisplay::Update()
       SetRedLed(LOW);
       #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(TEAL);
-      g_OBD.LcdClear();
-      g_OBD.LcdSetCursor(0,0);
+      LcdClear();
+      LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
 #ifdef DELAYTIMER
-      //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
-      g_OBD.LcdPrint_P(g_psCharging);
-      g_OBD.LcdPrint(10,0,g_sTmp);
+      LcdPrint_P(g_psCharging);
+      LcdPrint(10,0,g_sTmp);
       #endif //Adafruit RGB LCD
       // n.b. blue LED is on
       break;
@@ -1530,9 +1527,9 @@ void OnboardDisplay::Update()
       //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       //g_DelayTimer.PrintTimerIcon();
       LcdSetBacklightColor(WHITE);
-      g_OBD.LcdClear();
-      g_OBD.LcdPrint_P(g_psStopped);
-      g_OBD.LcdPrint(10,0,g_sTmp);
+      LcdClear();
+      LcdPrint_P(g_psStopped);
+      LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
       break;
     default:
@@ -1564,21 +1561,27 @@ void OnboardDisplay::Update()
 #else
   else if (curstate == EVSE_STATE_DISABLED) {
 #endif //#ifdef BTN_MENU
-    g_OBD.LcdPrint_P(0,g_psStopped);
+    LcdSetCursor(0,0);
+    g_DelayTimer.PrintTimerIcon();
+    LcdPrint("Stopped");
     g_CurrTime = g_RTC.now();
-    sprintf(g_sTmp,"%02d:%02d \0\1",g_CurrTime.hour(),g_CurrTime.minute());
+//    sprintf(g_sTmp,"%02d:%02d \0\1",g_CurrTime.hour(),g_CurrTime.minute());
+    sprintf(g_sTmp,"%02d:%02d:%02d",g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
     LcdPrint(0,1,g_sTmp);
     if (g_DelayTimer.IsTimerEnabled()){
-      g_OBD.LcdSetCursor(9,0);
-      g_OBD.LcdWrite(0x2);
-      g_OBD.LcdWrite(0x0);
+      LcdSetCursor(9,0);
+      LcdWrite(0x2);
+      LcdWrite(0x0);
       sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
       LcdPrint(11,0,g_sTmp);
-      g_OBD.LcdSetCursor(9,1);
-      g_OBD.LcdWrite(0x1);
-      g_OBD.LcdWrite(0x0);
+      LcdSetCursor(9,1);
+      LcdWrite(0x1);
+      LcdWrite(0x0);
       sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
       LcdPrint(11,1,g_sTmp);
+      } else {
+        sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+        LcdPrint(10,0,g_sTmp);
     }
   }
 #endif
