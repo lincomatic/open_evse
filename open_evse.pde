@@ -115,6 +115,8 @@ prog_char VERSTR[] PROGMEM = "2.0.B3";
 
 //-- begin configuration
 
+#define LCD_MAX_CHARS_PER_LINE 16
+
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
 #define DEFAULT_SERVICE_LEVEL 1 // 1=L1, 2=L2
 
@@ -250,7 +252,7 @@ class OnboardDisplay
 #if defined(RGBLCD) || defined(I2CLCD)
 LiquidTWI2 m_Lcd;
 #endif
-  char *m_strBuf;
+  char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
 
 
 public:
@@ -1313,7 +1315,6 @@ OnboardDisplay::OnboardDisplay()
   : m_Lcd(LCD_I2C_ADDR,1)
 #endif
 {
-  m_strBuf = g_sTmp;
 } 
 
 
