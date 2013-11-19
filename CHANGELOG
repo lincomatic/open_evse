@@ -1,4 +1,7 @@
 Change Log
+v2.0.B8 20131118
+- merge v2.0.B7 from open_evse google group + some minor tweaks
+	
 v2.0.B3 20130714
 - fix LCD display error
 - merged changes from Scott Rubin
