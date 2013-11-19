@@ -81,7 +81,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B8";
 // How to use 1-button menu
 // Long press activates menu
 // When within menus, short press cycles menu items, long press selects and exits current submenu
-#define BTN_MENU
+//#define BTN_MENU
 
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // also allows menus to be manipulated even when in State B/C
@@ -160,7 +160,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B8";
 #define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digital 10 because SetPWM() assumes it
 #define GREEN_LED_PIN 13 // Digital pin
 
-#define SERIAL_BAUD 38400
+#define SERIAL_BAUD 115200
 
 // EEPROM offsets for settings
 #define EOFS_CURRENT_CAPACITY_L1 0 // 1 byte
