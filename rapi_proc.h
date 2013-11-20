@@ -22,24 +22,36 @@
  * Boston, MA 02111-1307, USA.
 
 
- RAPI protocol
+ **** RAPI protocol ****
+
 Fx - function
 Sx - set parameter
 Gx - get parameter
 
 command format
-$cc pp pp ...*ck\n
+$cc pp pp ...*ck\r
 
 cc = 2-letter command
 pp = parameters
-ck = 2-hex-digit checksum - sum of all characters before '*'
+ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
+
+response format
+OK [optional parameters]\r - success
+
+NK [optiona parameters]\r - failure
+
+asynchronous messages
+ST state\r - EVSE state transition - sent whenever EVSE state changes
+ state: EVSE_STATE_xxx
+
+commands
 
 FS - start charging
-$FS*BD
+ $FS*BD
 FP - pause charging
-$FP*BA
+ $FP*BA
 FR - reset EVSE
-$FR*BC
+ $FR*BC
 
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
@@ -58,26 +70,17 @@ SV 0|1 - disable/enable vent required
  $SV 0*1D
 
 GC - get current capacity range in amps
-$GC*AE
-response: OK minamps maxamps
+ response: OK minamps maxamps
+ $GC*AE
 GE - get EEPROM settings
-$GE*B0
-response: OK amps flags
+ response: OK amps flags
+ $GE*B0
 GS - get state
-$GS*BE
-response: OK state elapsed
-state:
-#define EVSE_STATE_UNKNOWN 0x00
-#define EVSE_STATE_A       0x01 // vehicle state A 12V - not connected
-#define EVSE_STATE_B       0x02 // vehicle state B 9V - connected, ready
-#define EVSE_STATE_C       0x03 // vehicle state C 6V - charging
-#define EVSE_STATE_D       0x04 // vehicle state D 3V - vent required
-#define EVSE_STATE_DIODE_CHK_FAILED 0x05 // diode check failed
-#define EVSE_STATE_GFCI_FAULT 0x06       // GFCI fault
-#define EVSE_STATE_NO_GROUND 0x07 //bad ground
-#define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
-#define EVSE_STATE_DISABLED 0xff // disabled
-elapsed: elapsed charge time in seconds (valid only when in state C)
+ response: OK state elapsed
+ state: EVSE_STATE_xxx
+ elapsed: elapsed charge time in seconds (valid only when in state C)
+ $GS*BE
+
  *
  */
 

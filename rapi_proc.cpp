@@ -43,6 +43,13 @@ int EvseRapiProcessor::doCmd()
 {
   int rc = 1;
 
+  // chk for state transition and send async notification
+  if (g_EvseController.StateTransition()) {
+    extern char g_sTmp[64];
+    sprintf(g_sTmp,"ST %d%c",g_EvseController.GetState(),ESRAPI_EOC);
+    write(g_sTmp);
+  }
+
   int bcnt = available();
   if (bcnt) {
     for (int i=0;i < bcnt;i++) {
