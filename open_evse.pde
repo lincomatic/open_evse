@@ -406,7 +406,7 @@ void CLI::getInput()
       else if (strcmp_P(m_CLIinstr, PSTR("set")) == 0) { // string compare
         println_P(PSTR("Set Commands - Usage: set amp"));
         printlnn();
-        println_P(PSTR("amp  - Set EVSE Current Capacity")); // print to the terminal
+        println_P(PSTR("amp  - set current capacity"));
 	println_P(PSTR("vntreq on/off - enable/disable vent required state"));
         println_P(PSTR("diochk on/off - enable/disable diode check"));
 

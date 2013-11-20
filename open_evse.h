@@ -2,21 +2,6 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2013 Sam C. Lin <lincomatic@gmail.com>
- * Copyright (c) 2011-2013 Chris Howell <chris1howell@msn.com>
- * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
- * Maintainers: SCL/CH
-
-  Revised  Ver	By		Reason
-  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
-  6/25/13  20b4	Scott Rubin	fixed LCD display bugs, CLI fixes, when RTC disabled
-  6/30/13  20b5	Scott Rubin	added LcdDetected() function, prevents hang if LCD not installed
-  7/06/13  20b5	Scott Rubin	rewrote power detection in POST function for 1 or 2 relays
-  7/11/13  20b5	Scott Rubin	skips POST if EV is connected, won't charge if open ground or stuck relay
-  8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
-  8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
-  9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
-  
  * This file is part of Open EVSE.
 
  * Open EVSE is free software; you can redistribute it and/or modify
@@ -55,7 +40,7 @@
 //-- begin features
 
 // serial remote api
-//#define RAPI
+#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 

@@ -1,3 +1,27 @@
+// -*- C++ -*-
+/*
+ * Open EVSE Firmware
+ *
+ * Copyright (c) 2013 Sam C. Lin <lincomatic@gmail.com>
+ *
+ * This file is part of Open EVSE.
+
+ * Open EVSE is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+
+ * Open EVSE is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with Open EVSE; see the file COPYING.  If not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
 #else
@@ -10,7 +34,7 @@ extern J1772EVSEController g_EvseController;
 
 EvseRapiProcessor::EvseRapiProcessor()
 {
-  bufCnt = 0;
+  reset();
 }
 
 //extern HardwareSerial Serial;
@@ -22,6 +46,9 @@ int EvseRapiProcessor::doCmd()
   if (bcnt) {
     for (int i=0;i < bcnt;i++) {
       char c = read();
+      //      char s[20];
+      //      sprintf(s,"%02x",c);
+      //      write(s);
       if (c == '$') {
 	buffer[0] = '$';
 	bufCnt = 1;
@@ -32,6 +59,10 @@ int EvseRapiProcessor::doCmd()
 	    buffer[bufCnt++] = 0;
 	    if (!tokenize()) {
 	      rc = processCmd();
+	    }
+	    else {
+	      reset();
+	      response(0);
 	    }
 	  }
 	  else {
@@ -123,6 +154,7 @@ int EvseRapiProcessor::processCmd()
     case 'R': // reset EVSE
       extern void WatchDogReset();
       WatchDogReset();
+      rc = 0;
       break;
     case 'S': // start charging
       g_EvseController.Enable();
@@ -190,12 +222,25 @@ int EvseRapiProcessor::processCmd()
 
   case 'G': // get parameter
     switch(*s) {
+    case 'C': // get current capacity range
+      sprintf(buffer,"%d %d",MIN_CURRENT_CAPACITY,(g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
     case 'E': // get settings
       u1 = g_EvseController.GetCurrentCapacity();
       u2 = g_EvseController.GetFlags();
       sprintf(buffer,"%d %02x",u1,u2);
-      bufCnt = 1;
+      bufCnt = 1; // flag response text output
+      rc = 0;
       break;
+    case 'S': // get state
+      sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+    default:
+      ; //do nothing
     }
 
   default:
@@ -211,12 +256,12 @@ int EvseRapiProcessor::processCmd()
 
 void EvseRapiProcessor::response(uint8 ok)
 {
-  write(ok ? "OK" : "NK");
+  write(ok ? "OK " : "NK ");
 
   if (bufCnt) {
     write(buffer);
   }
-  write("\n");
+  write(ESRAPI_EOC);
 }
 
 
