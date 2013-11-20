@@ -34,6 +34,7 @@ extern J1772EVSEController g_EvseController;
 
 EvseRapiProcessor::EvseRapiProcessor()
 {
+  echo = 0;
   reset();
 }
 
@@ -46,9 +47,8 @@ int EvseRapiProcessor::doCmd()
   if (bcnt) {
     for (int i=0;i < bcnt;i++) {
       char c = read();
-      //      char s[20];
-      //      sprintf(s,"%02x",c);
-      //      write(s);
+      if (echo) write(c);
+
       if (c == '$') {
 	buffer[0] = '$';
 	bufCnt = 1;
@@ -170,6 +170,26 @@ int EvseRapiProcessor::processCmd()
 	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]));
       }
       break;
+    case 'D': // diode check
+      if (tokenCnt == 2) {
+	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
+	rc = 0;
+      }
+      break;
+    case 'E': // echo
+      if (tokenCnt == 2) {
+	echo = ((*tokens[1] == '0') ? 0 : 1);
+	rc = 0;
+      }
+      break;
+#ifdef ADVPWR
+    case 'G': // ground check
+      if (tokenCnt == 2) {
+	g_EvseController.EnableGndChk(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
+      }
+      break;
+#endif // ADVPWR
     case 'L': // service level
       if (tokenCnt == 2) {
 	switch(*tokens[1]) {
@@ -192,25 +212,11 @@ int EvseRapiProcessor::processCmd()
 	}
       }
       break;
-    case 'D': // diode check
-      if (tokenCnt == 2) {
-	g_EvseController.EnableDiodeCheck(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-    case 'E': // save settings to EEPROM
+    case 'S': // save settings to EEPROM
       extern void SaveSettings();
       SaveSettings();
       rc = 0;
       break;
-#ifdef ADVPWR
-    case 'G': // ground check
-      if (tokenCnt == 2) {
-	g_EvseController.EnableGndChk(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#endif // ADVPWR
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);

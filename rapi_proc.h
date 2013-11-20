@@ -41,19 +41,21 @@ $FP*BA
 FR - reset EVSE
 $FR*BC
 
-$SC amps - set current capacity
-SL 1|2|A  - set service level L1/L2/Auto
-$SL 1*14
-$SL 2*15
-$SL A*24
-$SD 0|1 - disable/enable diode check
-$SD 0*0B
+SC amps - set current capacity
+SD 0|1 - disable/enable diode check
+ $SD 0*0B
+SE 0|1 - disable/enable command echo
+ $SE*BC
 SG 0|1 - disable/enable ground check
-$SG 0*0E
+ $SG 0*0E
+SL 1|2|A  - set service level L1/L2/Auto
+ $SL 1*14
+ $SL 2*15
+ $SL A*24
+SS - save current settings to EEPROM
+ $SS*CA
 SV 0|1 - disable/enable vent required
-$SV 0*1D
-SE - save current settings to EEPROM
-$SE*BC
+ $SV 0*1D
 
 GC - get current capacity range in amps
 $GC*AE
@@ -95,6 +97,7 @@ class EvseRapiProcessor {
   int8 bufCnt; // # valid bytes in buffer
   char *tokens[ESRAPI_MAX_ARGS];
   int8 tokenCnt;
+  char echo;
 
   int available() { return Serial.available(); }
   int read() { return Serial.read(); }
