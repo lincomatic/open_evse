@@ -1011,14 +1011,14 @@ void CLI::getInput()
         info();
         
         println_P(PSTR("Settings"));
-	print_P(PSTR("Service level: "));
+	print_P(PSTR("Service level: L"));
 	Serial.println((int)g_EvseController.GetCurSvcLevel()); 
         print_P(PSTR("Current capacity (Amps): "));
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
         print_P(PSTR("Min Current Capacity: "));
         Serial.println(MIN_CURRENT_CAPACITY);
         print_P(PSTR("Max Current Capacity: "));
-        Serial.println(MAX_CURRENT_CAPACITY_L2);
+	Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
 	print_P(PSTR("Vent Required: "));
 	println_P(g_EvseController.VentReqEnabled() ? g_psEnabled : g_psDisabled);
          print_P(PSTR("Diode Check: "));
