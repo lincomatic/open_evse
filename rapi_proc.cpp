@@ -31,6 +31,7 @@
 
 #ifdef RAPI
 extern J1772EVSEController g_EvseController;
+extern OnboardDisplay g_OBD;
 
 EvseRapiProcessor::EvseRapiProcessor()
 {
@@ -91,7 +92,7 @@ uint8 EvseRapiProcessor::htou(const char *s)
 {
   uint8 u = 0;
   for (int i=0;i < 2;i++) {
-	if (i == 1) u <<= 4;
+    if (i == 1) u <<= 4;
     char c = s[i];
     if ((c >= '0') && (c <= '9')) {
       u += c - '0';
@@ -108,6 +109,7 @@ uint8 EvseRapiProcessor::dtou(const char *s)
 {
   uint8 u = 0;
   for (int i=0;i < 2;i++) {
+    if (!s[i]) break;
     u *= i*10;
     u += s[i] - '0';
   }
@@ -154,6 +156,22 @@ int EvseRapiProcessor::processCmd()
   switch(*(s++)) { 
   case 'F': // function
     switch(*s) {
+    case 'B': // LCD backlight
+      g_OBD.LcdSetBacklightColor(dtou(tokens[1]));
+      rc = 0;
+      break;
+    case 'D': // display
+      {
+	uint8 x = dtou(tokens[1]);
+	uint8 y = dtou(tokens[2]);
+	// now restore the spaces that were replaced w/ nulls by tokenizing
+	for (int i=4;i < tokenCnt;i++) {
+	  *(tokens[i]-1) = ' ';
+	}
+	g_OBD.LcdPrint(x,y,tokens[3]);
+      }
+      rc = 0;
+      break;
     case 'P': // pause charging
       g_EvseController.Disable();
       rc = 0;

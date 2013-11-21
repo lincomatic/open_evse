@@ -46,6 +46,19 @@ ST state\r - EVSE state transition - sent whenever EVSE state changes
 
 commands
 
+FB color - set LCD backlight color
+colors:
+ OFF 0
+ RED 1
+ YELLOW 3
+ GREEN 2
+ TEAL 6
+ BLUE 4
+ VIOLET 5
+ WHITE 7 
+$FB 7*03 - set backlight to white
+
+FD x y text - display text on lcd display
 FS - start charging
  $FS*BD
 FP - pause charging
@@ -57,7 +70,7 @@ SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
 SE 0|1 - disable/enable command echo
- $SE*BC
+ $SE 1*0D
 SG 0|1 - disable/enable ground check
  $SG 0*0E
 SL 1|2|A  - set service level L1/L2/Auto
@@ -92,7 +105,7 @@ typedef unsigned short uint16;
 typedef char int8;
 typedef unsigned char uint8;
 
-#define ESRAPI_BUFLEN 40
+#define ESRAPI_BUFLEN 30
 #define ESRAPI_EOC 0xd // CR
 #define ESRAPI_MAX_ARGS 10
 class EvseRapiProcessor {
