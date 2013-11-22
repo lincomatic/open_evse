@@ -46,6 +46,7 @@
 #include "open_evse.h"
 
 prog_char VERSTR[] PROGMEM = "2.0.B8";
+void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #ifdef LCD16X2
 char *g_BlankLine = "                ";

@@ -93,6 +93,9 @@ GS - get state
  state: EVSE_STATE_xxx
  elapsed: elapsed charge time in seconds (valid only when in state C)
  $GS*BE
+GV - get version
+ response: OK firmware_version protocol_version
+ $GV*C1
 
  *
  */
@@ -106,7 +109,8 @@ typedef char int8;
 typedef unsigned char uint8;
 
 #define ESRAPI_BUFLEN 30
-#define ESRAPI_EOC 0xd // CR
+#define ESRAPI_SOC '$' // start of command
+#define ESRAPI_EOC 0xd // CR end of command
 #define ESRAPI_MAX_ARGS 10
 class EvseRapiProcessor {
   char buffer[ESRAPI_BUFLEN]; // input buffer

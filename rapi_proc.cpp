@@ -33,6 +33,8 @@
 extern J1772EVSEController g_EvseController;
 extern OnboardDisplay g_OBD;
 
+prog_char RAPI_VER[] PROGMEM = "1.0";
+
 EvseRapiProcessor::EvseRapiProcessor()
 {
   echo = 0;
@@ -57,11 +59,11 @@ int EvseRapiProcessor::doCmd()
       char c = read();
       if (echo) write(c);
 
-      if (c == '$') {
-	buffer[0] = '$';
+      if (c == ESRAPI_SOC) {
+	buffer[0] = ESRAPI_SOC;
 	bufCnt = 1;
       }
-      else if (buffer[0] == '$') {
+      else if (buffer[0] == ESRAPI_SOC) {
 	if (bufCnt < ESRAPI_BUFLEN) {
 	  if (c == ESRAPI_EOC) {
 	    buffer[bufCnt++] = 0;
@@ -123,7 +125,7 @@ int EvseRapiProcessor::tokenize()
   tokens[0] = &buffer[1];
   char *s = &buffer[2];
   tokenCnt = 1;
-  uint8 chkSum = '$' + buffer[1];
+  uint8 chkSum = ESRAPI_SOC + buffer[1];
   uint8 ichkSum = 0;
   while (*s) {
     if (*s == ' ') {
@@ -270,6 +272,14 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+    case 'V': // get version
+      extern void GetVerStr(char *buf);
+      GetVerStr(buffer);
+      strcat(buffer," ");
+      strcat_P(buffer,RAPI_VER);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
     default:
       ; //do nothing
     }
@@ -287,6 +297,7 @@ int EvseRapiProcessor::processCmd()
 
 void EvseRapiProcessor::response(uint8 ok)
 {
+  write(ESRAPI_SOC);
   write(ok ? "OK " : "NK ");
 
   if (bufCnt) {
