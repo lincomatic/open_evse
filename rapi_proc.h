@@ -139,6 +139,7 @@ class EvseRapiProcessor {
 public:
   EvseRapiProcessor();
   int doCmd();
+  void sendEvseState();
   
   /*
   void Init();
@@ -157,5 +158,7 @@ public:
   uint8_t getInt();
   */
 };
+
+extern EvseRapiProcessor g_ERP;
 
 #endif // RAPI

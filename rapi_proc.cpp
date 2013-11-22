@@ -48,9 +48,7 @@ int EvseRapiProcessor::doCmd()
 
   // chk for state transition and send async notification
   if (g_EvseController.StateTransition()) {
-    extern char g_sTmp[64];
-    sprintf(g_sTmp,"ST %d%c",g_EvseController.GetState(),ESRAPI_EOC);
-    write(g_sTmp);
+    sendEvseState();
   }
 
   int bcnt = available();
@@ -87,6 +85,13 @@ int EvseRapiProcessor::doCmd()
   }
 
   return rc;
+}
+
+void EvseRapiProcessor::sendEvseState()
+{
+  extern char g_sTmp[64];
+  sprintf(g_sTmp,"%cSS %d%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  write(g_sTmp);
 }
 
 // convert 2-digit hex string to uint8

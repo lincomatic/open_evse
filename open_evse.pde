@@ -1198,6 +1198,9 @@ void J1772EVSEController::Disable()
   chargingOff();
   m_Pilot.SetState(PILOT_STATE_N12);
   g_OBD.Update();
+  if (StateTransition()) {
+    g_ERP.sendEvseState();
+  }
   // cancel state transition so g_OBD doesn't keep updating
   m_PrevEvseState = EVSE_STATE_DISABLED;
 }
@@ -2936,7 +2939,6 @@ void loop()
 #endif // SERIALCLI
 
 #ifdef RAPI
-  extern EvseRapiProcessor g_ERP;
   g_ERP.doCmd();
 #endif
 
