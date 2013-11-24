@@ -129,8 +129,6 @@ class EvseRapiProcessor {
     bufCnt = 0;
   }
 
-  uint8 htou(const char *s);
-  uint8 dtou(const char *s);
   int tokenize();
   int processCmd();
 

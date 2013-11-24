@@ -35,6 +35,35 @@ extern OnboardDisplay g_OBD;
 
 prog_char RAPI_VER[] PROGMEM = "1.0";
 
+
+// convert 2-digit hex string to uint8
+uint8 htou(const char *s)
+{
+  uint8 u = 0;
+  for (int i=0;i < 2;i++) {
+    if (i == 1) u <<= 4;
+    char c = s[i];
+    if ((c >= '0') && (c <= '9')) {
+      u += c - '0';
+    }
+    else if ((c >= 'A') && (c <= 'F')) {
+      u += c - 'A' + 10;
+    }
+  }
+  return u;
+}
+
+// convert decimal string to uint8
+uint8 dtou(const char *s)
+{
+  uint8 u = 0;
+  while (*s) {
+    u *= 10;
+    u += *(s++) - '0';
+  }
+  return u;
+}
+
 EvseRapiProcessor::EvseRapiProcessor()
 {
   echo = 0;
@@ -93,37 +122,6 @@ void EvseRapiProcessor::sendEvseState()
   sprintf(g_sTmp,"%cSS %d%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
   write(g_sTmp);
 }
-
-// convert 2-digit hex string to uint8
-uint8 EvseRapiProcessor::htou(const char *s)
-{
-  uint8 u = 0;
-  for (int i=0;i < 2;i++) {
-    if (i == 1) u <<= 4;
-    char c = s[i];
-    if ((c >= '0') && (c <= '9')) {
-      u += c - '0';
-    }
-    else if ((c >= 'A') && (c <= 'F')) {
-      u += c - 'A' + 10;
-    }
-  }
-  return u;
-}
-
-// convert decimal string to uint8
-uint8 EvseRapiProcessor::dtou(const char *s)
-{
-  uint8 u = 0;
-  for (int i=0;i < 2;i++) {
-    if (!s[i]) break;
-    u *= i*10;
-    u += s[i] - '0';
-  }
-  return u;
-}
-
-
 
 int EvseRapiProcessor::tokenize()
 {

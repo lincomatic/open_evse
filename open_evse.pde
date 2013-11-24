@@ -45,7 +45,7 @@
 #include <LiquidTWI2.h>
 #include "open_evse.h"
 
-prog_char VERSTR[] PROGMEM = "2.0.B8";
+prog_char VERSTR[] PROGMEM = "2.1.A0";
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #ifdef LCD16X2
@@ -1198,9 +1198,11 @@ void J1772EVSEController::Disable()
   chargingOff();
   m_Pilot.SetState(PILOT_STATE_N12);
   g_OBD.Update();
+#ifdef RAPI
   if (StateTransition()) {
     g_ERP.sendEvseState();
   }
+#endif // RAPI
   // cancel state transition so g_OBD doesn't keep updating
   m_PrevEvseState = EVSE_STATE_DISABLED;
 }
