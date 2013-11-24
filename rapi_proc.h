@@ -56,15 +56,17 @@ colors:
  BLUE 4
  VIOLET 5
  WHITE 7 
-$FB 7*03 - set backlight to white
 
-FD x y text - display text on lcd display
-FS - start charging
- $FS*BD
-FP - pause charging
- $FP*BA
+ $FB 7*03 - set backlight to white
+FD - disable EVSE
+ $FD*AE
+FE - enable EVSE
+ $FE*AF
+FP x y text - print text on lcd display
 FR - reset EVSE
  $FR*BC
+FS - sleep EVSE
+ $FS*BD
 
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check

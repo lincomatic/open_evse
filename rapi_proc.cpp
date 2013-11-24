@@ -165,7 +165,15 @@ int EvseRapiProcessor::processCmd()
       g_OBD.LcdSetBacklightColor(dtou(tokens[1]));
       rc = 0;
       break;
-    case 'D': // display
+    case 'D': // disable EVSE
+      g_EvseController.Disable();
+      rc = 0;
+      break;
+    case 'E': // enable EVSE
+      g_EvseController.Enable();
+      rc = 0;
+      break;
+    case 'P': // print to LCD
       {
 	uint8 x = dtou(tokens[1]);
 	uint8 y = dtou(tokens[2]);
@@ -177,19 +185,17 @@ int EvseRapiProcessor::processCmd()
       }
       rc = 0;
       break;
-    case 'P': // pause charging
-      g_EvseController.Disable();
-      rc = 0;
-      break;
     case 'R': // reset EVSE
       extern void WatchDogReset();
       WatchDogReset();
       rc = 0;
       break;
-    case 'S': // start charging
-      g_EvseController.Enable();
+    case 'S': // sleep
+      g_EvseController.Sleep();
       rc = 0;
       break;
+    default:
+      ; // do nothing
     }
     break;
 

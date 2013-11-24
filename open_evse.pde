@@ -906,6 +906,7 @@ void OnboardDisplay::Update()
       LcdPrint_P(g_psStopped);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
+      break;
     case EVSE_STATE_SLEEPING:
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
@@ -1205,33 +1206,42 @@ void J1772EVSEController::Enable()
 
 void J1772EVSEController::Disable()
 {
-  m_EvseState = EVSE_STATE_DISABLED;
-  chargingOff();
-  m_Pilot.SetState(PILOT_STATE_N12);
-  g_OBD.Update();
+  if (m_EvseState != EVSE_STATE_DISABLED) { 
+    m_Pilot.SetState(PILOT_STATE_N12);
+    m_EvseState = EVSE_STATE_DISABLED;
+    // panic stop so we won't wait for EV to open its contacts first
+    chargingOff();
+    g_OBD.Update();
 #ifdef RAPI
-  if (StateTransition()) {
-    g_ERP.sendEvseState();
-  }
+    if (StateTransition()) {
+      g_ERP.sendEvseState();
+    }
 #endif // RAPI
-  // cancel state transition so g_OBD doesn't keep updating
-  m_PrevEvseState = EVSE_STATE_DISABLED;
+    // cancel state transition so g_OBD doesn't keep updating
+    m_PrevEvseState = EVSE_STATE_DISABLED;
+  }
 }
 
 
 void J1772EVSEController::Sleep()
 {
-  m_EvseState = EVSE_STATE_SLEEPING;
-  chargingOff();
-  m_Pilot.SetState(PILOT_STATE_N12);
-  g_OBD.Update();
+  if (m_EvseState != EVSE_STATE_SLEEPING) {
+    m_Pilot.SetState(PILOT_STATE_N12);
+    m_EvseState = EVSE_STATE_SLEEPING;
+    g_OBD.Update();
 #ifdef RAPI
-  if (StateTransition()) {
-    g_ERP.sendEvseState();
-  }
+    if (StateTransition()) {
+      g_ERP.sendEvseState();
+    }
 #endif // RAPI
-  // cancel state transition so g_OBD doesn't keep updating
-  m_PrevEvseState = EVSE_STATE_SLEEPING;
+    // cancel state transition so g_OBD doesn't keep updating
+    m_PrevEvseState = EVSE_STATE_SLEEPING;
+    // try to prevent arcing of our relay by waiting for EV to open its contacts first
+    // use the charge start time variable temporarily to count down
+    // when to open the contacts in Update()
+    // car has 5 sec to open contacts after we go to State F
+    m_ChargeOffTimeMS = millis() + 5500;
+  }
 }
 
 void J1772EVSEController::LoadThresholds()
@@ -1468,6 +1478,12 @@ void J1772EVSEController::Update()
     // then doEnableEvse will always have packetBuf[2] == 0
     // so we can't re-enable the EVSE
     delay(5);
+    return;
+  }
+  else if (m_EvseState == EVSE_STATE_SLEEPING) {
+    if (chargingIsOn() && (millis() >= m_ChargeOffTimeMS)) {
+      chargingOff();
+    }
     return;
   }
 
