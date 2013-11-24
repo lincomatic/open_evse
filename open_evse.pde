@@ -229,6 +229,7 @@ prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 prog_char g_psNoGround[] PROGMEM = "NO GROUND";
 prog_char g_psEStuckRelay[] PROGMEM = "STUCK RELAY";
 prog_char g_psStopped[] PROGMEM = "Stopped";
+prog_char g_psSleeping[] PROGMEM = "Sleeping";
 prog_char g_psEvConnected[] PROGMEM = "EV Connected";
 prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
 #endif // LCD16X2
@@ -899,10 +900,20 @@ void OnboardDisplay::Update()
       // Display Timer and Stop Icon - GoldServe
       //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
       //g_DelayTimer.PrintTimerIcon();
-      LcdSetBacklightColor(WHITE);
+      LcdSetBacklightColor(VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
       LcdPrint_P(g_psStopped);
+      LcdPrint(10,0,g_sTmp);
+#endif // LCD16X2
+    case EVSE_STATE_SLEEPING:
+      SetGreenLed(HIGH);
+      SetRedLed(HIGH);
+#ifdef LCD16X2
+      LcdSetBacklightColor(WHITE);
+      LcdClear();
+      LcdSetCursor(0,0);
+      LcdPrint_P(g_psSleeping);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
       break;
@@ -1205,6 +1216,22 @@ void J1772EVSEController::Disable()
 #endif // RAPI
   // cancel state transition so g_OBD doesn't keep updating
   m_PrevEvseState = EVSE_STATE_DISABLED;
+}
+
+
+void J1772EVSEController::Sleep()
+{
+  m_EvseState = EVSE_STATE_SLEEPING;
+  chargingOff();
+  m_Pilot.SetState(PILOT_STATE_N12);
+  g_OBD.Update();
+#ifdef RAPI
+  if (StateTransition()) {
+    g_ERP.sendEvseState();
+  }
+#endif // RAPI
+  // cancel state transition so g_OBD doesn't keep updating
+  m_PrevEvseState = EVSE_STATE_SLEEPING;
 }
 
 void J1772EVSEController::LoadThresholds()
@@ -2706,7 +2733,8 @@ void BtnHandler::ChkBtn()
     }
     else {
 #ifdef BTN_ENABLE_TOGGLE
-      if (g_EvseController.GetState() == EVSE_STATE_DISABLED) {
+      if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
+	  (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
 	g_EvseController.Enable();
       }
       else {

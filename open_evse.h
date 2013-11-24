@@ -368,6 +368,7 @@ public:
 #define EVSE_STATE_GFCI_FAULT 0x06       // GFCI fault
 #define EVSE_STATE_NO_GROUND 0x07 //bad ground
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
+#define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
 
 typedef struct threshdata {
@@ -464,6 +465,9 @@ public:
   void Update(); // read sensors
   void Enable();
   void Disable();
+#ifdef RAPI
+  void Sleep(); // waiting for timer to fire
+#endif // RAPI
   void LoadThresholds();
 
   uint8_t GetFlags() { return m_bFlags; }
