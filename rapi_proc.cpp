@@ -201,6 +201,13 @@ int EvseRapiProcessor::processCmd()
 
   case 'S': // set parameter
     switch(*s) {
+    case '0': // set LCD type
+      if (tokenCnt == 2) {
+#ifdef RGBLCD
+	rc = g_EvseController.SetBacklightType(dtou(tokens[1]));
+#endif // RGBLCD
+      }
+      break;
     case 'C': // current capacity
       if (tokenCnt == 2) {
 	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]));

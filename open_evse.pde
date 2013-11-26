@@ -260,7 +260,9 @@ void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
   EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  uint16_t flags = g_EvseController.GetFlags();
+  EEPROM.write(EOFS_FLAGS,flags >> 8);
+  EEPROM.write(EOFS_FLAGS+1,flags & 0x00ff);
 }
 
 #ifdef SERIALCLI
@@ -663,27 +665,8 @@ OnboardDisplay::OnboardDisplay()
 #if defined(I2CLCD) || defined(RGBLCD)
   : m_Lcd(LCD_I2C_ADDR,1)
 #endif
-
-// for WhiteLCD - all colors defined as white
-#ifdef WHITELCD
-#undef RED
-#define RED 0x7
-#undef YELLOW
-#define YELLOW 0x7
-#undef GREEN
-#define GREEN 0x7
-#undef BLUE
-#define BLUE 0x7
-#undef TEAL
-#define TEAL 0x7
-#undef VIOLET
-#define VIOLET 0x7
-#undef WHITE
-#define WHITE 0x7 
-#endif // WHITELCD
-
 {
-} 
+}
 
 
 #ifdef DELAYTIMER
@@ -694,6 +677,8 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+  m_bFlags = 0;
+
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
 
@@ -702,6 +687,7 @@ void OnboardDisplay::Init()
   
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
+  LcdSetBacklightColor(WHITE);
 
 #ifdef DELAYTIMER
   memcpy_P(g_sTmp,CustomChar_0,8);
@@ -1124,20 +1110,20 @@ inline void J1772EVSEController::SetGfiTripped()
 void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_DIODE_CHK_DISABLED;
+    m_wFlags &= ~ECF_DIODE_CHK_DISABLED;
   }
   else {
-    m_bFlags |= ECF_DIODE_CHK_DISABLED;
+    m_wFlags |= ECF_DIODE_CHK_DISABLED;
   }
 }
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_VENT_REQ_DISABLED;
+    m_wFlags &= ~ECF_VENT_REQ_DISABLED;
   }
   else {
-    m_bFlags |= ECF_VENT_REQ_DISABLED;
+    m_wFlags |= ECF_VENT_REQ_DISABLED;
   }
 }
 
@@ -1145,30 +1131,30 @@ void J1772EVSEController::EnableVentReq(uint8_t tf)
 void J1772EVSEController::EnableGndChk(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_GND_CHK_DISABLED;
+    m_wFlags &= ~ECF_GND_CHK_DISABLED;
   }
   else {
-    m_bFlags |= ECF_GND_CHK_DISABLED;
+    m_wFlags |= ECF_GND_CHK_DISABLED;
   }
 }
 
 void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_STUCK_RELAY_CHK_DISABLED;
+    m_wFlags &= ~ECF_STUCK_RELAY_CHK_DISABLED;
   }
   else {
-    m_bFlags |= ECF_STUCK_RELAY_CHK_DISABLED;
+    m_wFlags |= ECF_STUCK_RELAY_CHK_DISABLED;
   }
 }
 
 void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_AUTO_SVC_LEVEL_DISABLED;
+    m_wFlags &= ~ECF_AUTO_SVC_LEVEL_DISABLED;
   }
   else {
-    m_bFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
+    m_wFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
   }
 }
 
@@ -1180,23 +1166,31 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 void J1772EVSEController::EnableAutoStart(uint8_t tf)
 {
   if (tf) {
-    m_bFlags &= ~ECF_AUTO_START_DISABLED;
+    m_wFlags &= ~ECF_AUTO_START_DISABLED;
   }
   else {
-    m_bFlags |= ECF_AUTO_START_DISABLED;
+    m_wFlags |= ECF_AUTO_START_DISABLED;
   }
 }
 #endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
 {
   if (tf) {
-    m_bFlags |= ECF_SERIAL_DBG;
+    m_wFlags |= ECF_SERIAL_DBG;
   }
   else {
-    m_bFlags &= ~ECF_SERIAL_DBG;
+    m_wFlags &= ~ECF_SERIAL_DBG;
   }
 }
 
+#ifdef RGBLCD
+int J1772EVSEController::SetBacklightType(uint8_t t)
+{
+  g_OBD.LcdSetBacklightType((t == 0) ? 1 : 0);
+  if (t == 0)  m_wFlags |= ECF_MONO_LCD;
+  else  m_wFlags &= ~ECF_MONO_LCD;
+}
+#endif // RGBLCD
 void J1772EVSEController::Enable()
 {
   m_PrevEvseState = EVSE_STATE_DISABLED;
@@ -1258,11 +1252,11 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
   }
 #endif //#ifdef SERIALCLI
   if (svclvl == 2) {
-    m_bFlags |= ECF_L2; // set to Level 2
+    m_wFlags |= ECF_L2; // set to Level 2
   }
   else {
     svclvl = 1;
-    m_bFlags &= ~ECF_L2; // set to Level 1
+    m_wFlags &= ~ECF_L2; // set to Level 1
   }
 
   uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
@@ -1390,6 +1384,18 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+  // read settings from EEPROM
+  uint16_t rflgs = EEPROM.read(EOFS_FLAGS);
+  rflgs <<= 8;
+  rflgs |= EEPROM.read(EOFS_FLAGS+1);
+
+#ifdef RGBLCD
+    if (rflgs & ECF_MONO_LCD) {
+      g_OBD.LcdSetBacklightType(1);
+    }
+#endif // RGBLCD
+
+
   pinMode(CHARGING_PIN,OUTPUT);
   pinMode(CHARGING_PIN2,OUTPUT);
 
@@ -1406,12 +1412,11 @@ void J1772EVSEController::Init()
 
   uint8_t svclvl = (uint8_t)DEFAULT_SERVICE_LEVEL;
 
-  uint8_t rflgs = EEPROM.read(EOFS_FLAGS);
-  if (rflgs == 0xff) { // uninitialized EEPROM
-    m_bFlags = ECF_DEFAULT;
+  if (rflgs == 0xffff) { // uninitialized EEPROM
+    m_wFlags = ECF_DEFAULT;
   }
   else {
-    m_bFlags = rflgs;
+    m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
   }
 

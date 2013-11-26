@@ -60,9 +60,6 @@
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
 
-// White LCD - define all colors as white
-//#define WHITELCD
-
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
@@ -156,14 +153,14 @@
 // EEPROM offsets for settings
 #define EOFS_CURRENT_CAPACITY_L1 0 // 1 byte
 #define EOFS_CURRENT_CAPACITY_L2 1 // 1 byte
-#define EOFS_FLAGS               2 // 1 byte
+#define EOFS_FLAGS               2 // 2 bytes
 
 // EEPROM offsets for Delay Timer function - GoldServe
-#define EOFS_TIMER_FLAGS         3 // 1 byte
-#define EOFS_TIMER_START_HOUR    4 // 1 byte
-#define EOFS_TIMER_START_MIN     5 // 1 byte
-#define EOFS_TIMER_STOP_HOUR     6 // 1 byte
-#define EOFS_TIMER_STOP_MIN      7 // 1 byte
+#define EOFS_TIMER_FLAGS         4 // 1 byte
+#define EOFS_TIMER_START_HOUR    5 // 1 byte
+#define EOFS_TIMER_START_MIN     6 // 1 byte
+#define EOFS_TIMER_STOP_HOUR     7 // 1 byte
+#define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -258,18 +255,22 @@ public:
 extern char *g_BlankLine;
 #endif // LCD16X2
 
+// OnboardDisplay.m_bFlags
+#define OBDF_MONO_BACKLIGHT 0x01
 class OnboardDisplay 
 
 {
 #if defined(RGBLCD) || defined(I2CLCD)
 LiquidTWI2 m_Lcd;
 #endif
+  uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
 
 
 public:
   OnboardDisplay();
   void Init();
+
   void SetGreenLed(uint8_t state);
   void SetRedLed(uint8_t state);
 #ifdef LCD16X2
@@ -313,8 +314,16 @@ public:
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
+  void LcdSetBacklightType(uint8_t mono) {
+    if (mono) m_bFlags |= OBDF_MONO_BACKLIGHT;
+    else m_bFlags &= ~OBDF_MONO_BACKLIGHT;
+  }
+  uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
   void LcdSetBacklightColor(uint8_t c) {
 #ifdef RGBLCD
+    if (IsLcdBacklightMono()) {
+      if (c) c = WHITE;
+    }
     m_Lcd.setBacklight(c);
 #endif // RGBLCD
   }
@@ -390,17 +399,18 @@ typedef struct calibdata {
 
 
 
-// J1772EVSEController m_bFlags bits - saved to EEPROM
-#define ECF_L2                 0x01 // service level 2
-#define ECF_DIODE_CHK_DISABLED 0x02 // no diode check
-#define ECF_VENT_REQ_DISABLED  0x04 // no vent required state
-#define ECF_GND_CHK_DISABLED   0x08 // no chk for ground fault
-#define ECF_STUCK_RELAY_CHK_DISABLED 0x10 // no chk for stuck relay
-#define ECF_AUTO_SVC_LEVEL_DISABLED  0x20 // auto detect svc level - requires ADVPWR
+// J1772EVSEController m_wFlags bits - saved to EEPROM
+#define ECF_L2                 0x0001 // service level 2
+#define ECF_DIODE_CHK_DISABLED 0x0002 // no diode check
+#define ECF_VENT_REQ_DISABLED  0x0004 // no vent required state
+#define ECF_GND_CHK_DISABLED   0x0008 // no chk for ground fault
+#define ECF_STUCK_RELAY_CHK_DISABLED 0x0010 // no chk for stuck relay
+#define ECF_AUTO_SVC_LEVEL_DISABLED  0x0020 // auto detect svc level - requires ADVPWR
 // Ability set the EVSE for manual button press to start charging - GoldServe
-#define ECF_AUTO_START_DISABLED 0x40  // no auto start charging
-#define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
-#define ECF_DEFAULT            0x00
+#define ECF_AUTO_START_DISABLED 0x0040  // no auto start charging
+#define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
+#define ECF_MONO_LCD           000100 // monochrome LCD backlight
+#define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
@@ -423,7 +433,7 @@ class J1772EVSEController {
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t StuckRelayTripCnt;
 #endif // ADVPWR
-  uint8_t m_bFlags; // ECF_xxx
+  uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
   THRESH_DATA m_ThreshData;
   uint8_t m_EvseState;
@@ -452,11 +462,11 @@ class J1772EVSEController {
   void chargingOn();
   void chargingOff();
   uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
-  void setFlags(uint8_t flags) { 
-    m_bFlags |= flags; 
+  void setFlags(uint16_t flags) { 
+    m_wFlags |= flags; 
   }
-  void clrFlags(uint8_t flags) { 
-    m_bFlags &= ~flags; 
+  void clrFlags(uint16_t flags) { 
+    m_wFlags &= ~flags; 
   }
 
 public:
@@ -470,7 +480,7 @@ public:
 #endif // RAPI
   void LoadThresholds();
 
-  uint8_t GetFlags() { return m_bFlags; }
+  uint16_t GetFlags() { return m_wFlags; }
   uint8_t GetState() { 
     return m_EvseState; 
   }
@@ -497,30 +507,30 @@ public:
   }
   void Calibrate(PCALIB_DATA pcd);
   uint8_t GetCurSvcLevel() { 
-    return (m_bFlags & ECF_L2) ? 2 : 1; 
+    return (m_wFlags & ECF_L2) ? 2 : 1; 
   }
   void SetSvcLevel(uint8_t svclvl);
   PTHRESH_DATA GetThreshData() { 
     return &m_ThreshData; 
   }
   uint8_t DiodeCheckEnabled() { 
-    return (m_bFlags & ECF_DIODE_CHK_DISABLED) ? 0 : 1;
+    return (m_wFlags & ECF_DIODE_CHK_DISABLED) ? 0 : 1;
   }
   void EnableDiodeCheck(uint8_t tf);
   uint8_t VentReqEnabled() { 
-    return (m_bFlags & ECF_VENT_REQ_DISABLED) ? 0 : 1;
+    return (m_wFlags & ECF_VENT_REQ_DISABLED) ? 0 : 1;
   }
   void EnableVentReq(uint8_t tf);
 #ifdef ADVPWR
   uint8_t GndChkEnabled() { 
-    return (m_bFlags & ECF_GND_CHK_DISABLED) ? 0 : 1;
+    return (m_wFlags & ECF_GND_CHK_DISABLED) ? 0 : 1;
   }
   void EnableGndChk(uint8_t tf);
   void EnableStuckRelayChk(uint8_t tf);
   uint8_t StuckRelayChkEnabled() { 
-    return (m_bFlags & ECF_STUCK_RELAY_CHK_DISABLED) ? 0 : 1;
+    return (m_wFlags & ECF_STUCK_RELAY_CHK_DISABLED) ? 0 : 1;
   }
-  uint8_t AutoSvcLevelEnabled() { return (m_bFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
+  uint8_t AutoSvcLevelEnabled() { return (m_wFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
   void EnableAutoSvcLevel(uint8_t tf);
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
@@ -530,16 +540,19 @@ public:
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
 #endif // GFI
   uint8_t SerDbgEnabled() { 
-    return (m_bFlags & ECF_SERIAL_DBG) ? 1 : 0;
+    return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
   // Function to suppport Auto Start feature - GoldServe
 #ifdef MANUALSTART
   void EnableAutoStart(uint8_t tf);
   uint8_t AutoStartEnabled() { 
-    return (m_bFlags & ECF_AUTO_START_DISABLED) ? 0 : 1;
+    return (m_wFlags & ECF_AUTO_START_DISABLED) ? 0 : 1;
   }
 #endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
+#ifdef RGBLCD
+  int SetBacklightType(uint8_t t);
+#endif // RGBLCD
 };
 
 #ifdef BTN_MENU
