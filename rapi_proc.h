@@ -68,6 +68,10 @@ FR - reset EVSE
 FS - sleep EVSE
  $FS*BD
 
+S0 0|1 - set LCD type
+ $S0 0*F7 = monochrome backlight
+ $S0 1*F8 = RGB backlight
+
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
