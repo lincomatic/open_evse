@@ -1220,7 +1220,7 @@ void J1772EVSEController::Disable()
 void J1772EVSEController::Sleep()
 {
   if (m_EvseState != EVSE_STATE_SLEEPING) {
-    m_Pilot.SetState(PILOT_STATE_N12);
+    m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
     g_OBD.Update();
 #ifdef RAPI
@@ -1233,8 +1233,8 @@ void J1772EVSEController::Sleep()
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge start time variable temporarily to count down
     // when to open the contacts in Update()
-    // car has 5 sec to open contacts after we go to State F
-    m_ChargeOffTimeMS = millis() + 5500;
+    // car has 3 sec to open contacts after we go to State F
+    m_ChargeOffTimeMS = millis() + 3000;
   }
 }
 
@@ -1461,13 +1461,35 @@ void J1772EVSEController::Init()
   if (AutoStartEnabled()){
     Enable();
   } else {
-    Disable();
+    Sleep();
   }
 #endif //#ifdef MANUALSTART
   // End Manual Start Feature - GoldServe
 
   g_OBD.SetGreenLed(LOW);
 }
+
+void J1772EvseController::ReadPilot(int *plow,int *phigh,int loopcnt)
+{
+  int pl = 1023;
+  int ph = 0;
+
+  // 1x = 114us 20x = 2.3ms 100x = 11.3ms
+  for (int i=0;i < 100;i++) {
+    int reading = analogRead(VOLT_PIN);  // measures pilot voltage
+    
+    if (reading > ph) {
+      ph = reading;
+    }
+    else if (reading < pl) {
+      pl = reading;
+    }
+  }
+
+  *plow = pl;
+  *phigh = ph;
+}
+
 
 //TABLE A1 - PILOT LINE VOLTAGE RANGES (recommended.. adjust as necessary
 //                           Minimum Nominal Maximum 
@@ -1478,6 +1500,11 @@ void J1772EVSEController::Init()
 //Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60 
 void J1772EVSEController::Update()
 {
+  int plow;
+  int phigh;
+
+  long curms = millis();
+
   if (m_EvseState == EVSE_STATE_DISABLED) {
     // n.b. don't know why, but if we don't have the delay below
     // then doEnableEvse will always have packetBuf[2] == 0
@@ -1486,8 +1513,15 @@ void J1772EVSEController::Update()
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
-    if (chargingIsOn() && (millis() >= m_ChargeOffTimeMS)) {
-      chargingOff();
+    
+    if (chargingIsOn() && (curms >= m_ChargeOffTimeMS)) {
+      ReadPilot(&plow,&phigh);
+      // wait for car to bring pilot voltage back to state B level or higher
+      // (as an indicator that it opened its relay)
+      // if it doesn't do it within 3 sec, we'll just open our relay anyway
+      if ((phigh >= m_ThreshData.m_ThreshBC) || (curms-m_ChargeOffTimeMS >= 3000)) {
+	chargingOff();
+      }
     }
     return;
   }
@@ -1495,9 +1529,6 @@ void J1772EVSEController::Update()
   uint8_t prevevsestate = m_EvseState;
   uint8_t tmpevsestate = EVSE_STATE_UNKNOWN;
   uint8_t nofault = 1;
-
-  int plow;
-  int phigh;
 
 #ifdef ADVPWR
   int PS1state = digitalRead(ACLINE1_PIN);
@@ -1589,22 +1620,10 @@ void J1772EVSEController::Update()
       prevevsestate = EVSE_STATE_UNKNOWN;
       m_EvseState = EVSE_STATE_UNKNOWN;
     }
-    // Begin Sensor readings
-    int reading;
-    plow = 1023;
-    phigh = 0;
-    //  digitalWrite(3,HIGH);
-    // 1x = 114us 20x = 2.3ms 100x = 11.3ms
-    for (int i=0;i < 100;i++) {
-      reading = analogRead(VOLT_PIN);  // measures pilot voltage
 
-      if (reading > phigh) {
-        phigh = reading;
-      }
-      else if (reading < plow) {
-        plow = reading;
-      }
-    }
+    
+    ReadPilot(&plow,&phigh);
+
     if (DiodeCheckEnabled() && (m_Pilot.GetState() == PILOT_STATE_PWM) && (plow >= m_ThreshData.m_ThreshDS)) {
       // diode check failed
       tmpevsestate = EVSE_STATE_DIODE_CHK_FAILED;
@@ -1710,6 +1729,7 @@ void J1772EVSEController::Update()
   }
 }
 
+#ifdef CALIBRATE
 // read ADC values and get min/max/avg for pilot steady high/low states
 void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
 {
@@ -1760,7 +1780,7 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
   pcd->m_nAvg = navg;
   pcd->m_nMin = nmin;
 }
-
+#endif // CALIBRATE
 
 int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
 {

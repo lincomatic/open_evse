@@ -217,6 +217,10 @@
 #define DEFAULT_STOP_MIN      0x37
 #endif // RTC
 
+// for J1772.ReadPilot()
+// 1x = 114us 20x = 2.3ms 100x = 11.3ms
+#define PILOT_LOOP_CNT 100
+
 //-- end configuration
 
 //-- begin class definitions
@@ -553,6 +557,8 @@ public:
 #ifdef RGBLCD
   int SetBacklightType(uint8_t t);
 #endif // RGBLCD
+
+  void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
 };
 
 #ifdef BTN_MENU
