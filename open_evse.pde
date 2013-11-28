@@ -1469,7 +1469,7 @@ void J1772EVSEController::Init()
   g_OBD.SetGreenLed(LOW);
 }
 
-void J1772EvseController::ReadPilot(int *plow,int *phigh,int loopcnt)
+void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
 {
   int pl = 1023;
   int ph = 0;
