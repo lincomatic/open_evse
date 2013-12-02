@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-
+#define VERSION "2.1.A0"
 
 //-- begin features
 
@@ -762,7 +762,7 @@ class BtnHandler {
 public:
   BtnHandler();
   void init() { m_Btn.init(); }
-  void ChkBtn();
+  void ChkBtn(int8_t notoggle=0);
   uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
 };
 

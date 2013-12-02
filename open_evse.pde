@@ -45,7 +45,7 @@
 #include <LiquidTWI2.h>
 #include "open_evse.h"
 
-prog_char VERSTR[] PROGMEM = "2.1.A0";
+prog_char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #ifdef LCD16X2
@@ -1365,14 +1365,14 @@ uint8_t J1772EVSEController::doPost()
           #endif //#ifdef SERIALCLI
 
 // update LCD
-#ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2
 	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
 	  if ((svcState == OG) || (svcState == SR))  g_OBD.LcdSetBacklightColor(RED); 
 	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
 	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
 	   delay(500);
-#endif //Adafruit RGB LCD
+#endif
 	} // endif test, no EV is plugged in
   } // endif AutoSvcLevelEnabled
   
@@ -1446,7 +1446,17 @@ void J1772EVSEController::Init()
     if ((AutoSvcLevelEnabled()) && ((psvclvl == L1) || (psvclvl == L2)))  svclvl = psvclvl; //set service level
     if ((GndChkEnabled()) && (psvclvl == OG))  m_EvseState = EVSE_STATE_NO_GROUND, fault = 1; // set No Ground error
     if ((StuckRelayChkEnabled()) && (psvclvl == SR)) m_EvseState = EVSE_STATE_STUCK_RELAY, fault = 1; // set Stuck Relay error
-    if  ( fault ) delay(GFI_TIMEOUT); // if fault wait GFI_TIMEOUT till next check
+    if (fault) {
+      long faultms = millis();
+      while ((millis()-faultms) < GFI_TIMEOUT) {
+#ifdef SERIALCLI
+	g_CLI.getInput();
+#endif // SERIALCLI
+#ifdef BTN_MENU
+	g_BtnHandler.ChkBtn(1);
+#endif
+      }
+    }
   } while ( fault && ( m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
 
@@ -2765,7 +2775,7 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
-void BtnHandler::ChkBtn()
+void BtnHandler::ChkBtn(int8_t notoggle)
 {
   m_Btn.read();
   if (m_Btn.shortPress()) {
@@ -2774,12 +2784,14 @@ void BtnHandler::ChkBtn()
     }
     else {
 #ifdef BTN_ENABLE_TOGGLE
-      if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
-	  (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
-	g_EvseController.Enable();
-      }
-      else {
-	g_EvseController.Disable();
+      if (!notoggle) {
+	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
+	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
+	  g_EvseController.Enable();
+	}
+	else {
+	  g_EvseController.Sleep();
+	}
       }
 #endif // BTN_ENABLE_TOGGLE
     }
@@ -2980,16 +2992,16 @@ void setup()
   
   Serial.begin(SERIAL_BAUD);
 
+#ifdef BTN_MENU
+  g_BtnHandler.init();
+#endif // BTN_MENU
+
 #ifdef GFI
   // GFI triggers on rising edge
   attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
 #endif // GFI
 
   EvseReset();
-
-#ifdef BTN_MENU
-  g_BtnHandler.init();
-#endif // BTN_MENU
 
 #ifdef WATCHDOG
   // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
