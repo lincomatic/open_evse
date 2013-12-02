@@ -1449,6 +1449,9 @@ void J1772EVSEController::Init()
     if (fault) {
       long faultms = millis();
       while ((millis()-faultms) < GFI_TIMEOUT) {
+#ifdef RAPI
+	g_ERP.doCmd();
+#endif
 #ifdef SERIALCLI
 	g_CLI.getInput();
 #endif // SERIALCLI
@@ -2828,7 +2831,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
       uint8_t curstate = g_EvseController.GetState();
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
-	g_EvseController.Disable();
+	g_EvseController.Sleep();
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
 #ifndef BTN_ENABLE_TOGGLE
@@ -2916,7 +2919,7 @@ void DelayTimer::CheckTime(){
         } else {
           if (m_CurrTimeSeconds == m_StopTimerSeconds) {
             // Not in time interval
-            g_EvseController.Disable();         
+            g_EvseController.Sleep();         
           }
         }
       } else {
@@ -2932,7 +2935,7 @@ void DelayTimer::CheckTime(){
         } else {
           if (m_CurrTimeSeconds == m_StopTimerSeconds) {
             // Not in time interval
-            g_EvseController.Disable();          
+            g_EvseController.Sleep();          
           }
         }
       }

@@ -38,7 +38,7 @@ ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
 response format
 OK [optional parameters]\r - success
 
-NK [optiona parameters]\r - failure
+NK [optional parameters]\r - failure
 
 asynchronous messages
 ST state\r - EVSE state transition - sent whenever EVSE state changes
