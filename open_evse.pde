@@ -1186,9 +1186,10 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
 #ifdef RGBLCD
 int J1772EVSEController::SetBacklightType(uint8_t t)
 {
-  g_OBD.LcdSetBacklightType((t == 0) ? 1 : 0);
+  g_OBD.LcdSetBacklightType(t);
   if (t == 0)  m_wFlags |= ECF_MONO_LCD;
-  else  m_wFlags &= ~ECF_MONO_LCD;
+  else m_wFlags &= ~ECF_MONO_LCD;
+  return 0;
 }
 #endif // RGBLCD
 void J1772EVSEController::Enable()
@@ -1390,8 +1391,8 @@ void J1772EVSEController::Init()
   rflgs |= EEPROM.read(EOFS_FLAGS+1);
 
 #ifdef RGBLCD
-    if (rflgs & ECF_MONO_LCD) {
-      g_OBD.LcdSetBacklightType(1);
+    if ((rflgs != 0xffff) && (rflgs & ECF_MONO_LCD)) {
+      g_OBD.LcdSetBacklightType(0);
     }
 #endif // RGBLCD
 

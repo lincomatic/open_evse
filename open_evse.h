@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "2.1.A0"
+#define VERSION "2.1.A1"
 
 //-- begin features
 
@@ -318,9 +318,9 @@ public:
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
-  void LcdSetBacklightType(uint8_t mono) {
-    if (mono) m_bFlags |= OBDF_MONO_BACKLIGHT;
-    else m_bFlags &= ~OBDF_MONO_BACKLIGHT;
+  void LcdSetBacklightType(uint8_t rgb) { // 1=rgb,0=mono
+    if (rgb) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
+    else m_bFlags |= OBDF_MONO_BACKLIGHT;
   }
   uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
   void LcdSetBacklightColor(uint8_t c) {
@@ -555,7 +555,7 @@ public:
 #endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
 #ifdef RGBLCD
-  int SetBacklightType(uint8_t t);
+  int SetBacklightType(uint8_t t); // 0=mono,1=RGB
 #endif // RGBLCD
 
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
