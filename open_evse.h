@@ -116,7 +116,13 @@
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(RTC) && defined(LCD16X2)
-#undef SERIALCLI
+#if defined(RAPI)||defined(SERIALCLI)
+INVALID CONFIG - CANNOT enable RAPI or SERIALCLI with RTC together - too much RAM USE
+#endif
+#endif
+
+#if defined(RAPI) && defined(SERIALCLI)
+INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
 #endif
 
 //-- begin configuration
@@ -478,10 +484,8 @@ public:
   void Init();
   void Update(); // read sensors
   void Enable();
-  void Disable();
-#ifdef RAPI
-  void Sleep(); // waiting for timer to fire
-#endif // RAPI
+  void Disable(); // panic stop - open relays abruptly
+  void Sleep(); // graceful stop - e.g. waiting for timer to fire- give the EV time to stop charging first
   void LoadThresholds();
 
   uint16_t GetFlags() { return m_wFlags; }
