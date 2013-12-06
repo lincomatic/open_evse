@@ -883,9 +883,6 @@ void OnboardDisplay::Update()
       SetGreenLed(LOW);
       SetRedLed(HIGH);
 #ifdef LCD16X2
-      // Display Timer and Stop Icon - GoldServe
-      //sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      //g_DelayTimer.PrintTimerIcon();
       LcdSetBacklightColor(VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
@@ -894,6 +891,9 @@ void OnboardDisplay::Update()
 #endif // LCD16X2
       break;
     case EVSE_STATE_SLEEPING:
+      // Display Timer and Stop Icon - GoldServe
+      //      sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+      //      g_DelayTimer.PrintTimerIcon();
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2
