@@ -228,7 +228,8 @@ prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 prog_char g_psNoGround[] PROGMEM = "NO GROUND";
 prog_char g_psEStuckRelay[] PROGMEM = "STUCK RELAY";
-prog_char g_psStopped[] PROGMEM = "Stopped";
+prog_char g_psStopped[] PROGMEM =  "Stopped";
+prog_char g_psWaiting[] PROGMEM =  "Waiting";
 prog_char g_psSleeping[] PROGMEM = "Sleeping";
 prog_char g_psEvConnected[] PROGMEM = "EV Connected";
 prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
@@ -415,7 +416,7 @@ void CLI::getInput()
       else if (strcmp_P(m_CLIinstr, PSTR("set")) == 0) { // string compare
         println_P(PSTR("Set Commands - Usage: set amp"));
         printlnn();
-        println_P(PSTR("amp  - set current capacity"));
+        println_P(PSTR("amp - set current capacity"));
 	println_P(PSTR("vntreq on/off - enable/disable vent required state"));
         println_P(PSTR("diochk on/off - enable/disable diode check"));
 
@@ -774,17 +775,17 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 char g_sRdyLAstr[] = "L%d:%dA";
 prog_char g_psReady[] PROGMEM = "Ready";
 prog_char g_psCharging[] PROGMEM = "Charging";
-void OnboardDisplay::Update()
+void OnboardDisplay::Update(int8_t force)
 {
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int i;
 
 #if defined(DELAYTIMER) && defined(LCD16X2)
-  g_CurrTime = g_RTC.now();
+  DateTime curtime = g_RTC.now();
 #endif //#ifdef DELAYTIMER
 
-  if (g_EvseController.StateTransition()) {
+  if (g_EvseController.StateTransition() || force) {
     // Optimize function call - GoldServe
     sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
     
@@ -792,7 +793,7 @@ void OnboardDisplay::Update()
     case EVSE_STATE_A: // not connected
       SetGreenLed(HIGH);
       SetRedLed(LOW);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
       // Display Timer and Stop Icon - GoldServe
       LcdClear();
@@ -803,13 +804,13 @@ void OnboardDisplay::Update()
       LcdPrint_P(g_psReady);
       LcdPrint(10,0,g_sTmp);  
       LcdPrint_P(1,g_psEvNotConnected);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_B: // connected/not charging
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
       LcdClear();
       LcdSetCursor(0,0);
@@ -820,13 +821,13 @@ void OnboardDisplay::Update()
       LcdPrint_P(g_psReady);
       LcdPrint(10,0,g_sTmp);
       LcdPrint_P(1,g_psEvConnected);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_C: // charging
       SetGreenLed(LOW);
       SetRedLed(LOW);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(TEAL);
       LcdClear();
       LcdSetCursor(0,0);
@@ -836,52 +837,52 @@ void OnboardDisplay::Update()
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psCharging);
       LcdPrint(10,0,g_sTmp);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is on
       break;
     case EVSE_STATE_D: // vent required
       SetGreenLed(LOW);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psEvseError,g_psVentReq);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_DIODE_CHK_FAILED:
       SetGreenLed(LOW);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psEvseError,g_psDiodeChkFailed);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_GFCI_FAULT:
       SetGreenLed(LOW);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psEvseError,g_psGfciFault);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
      case EVSE_STATE_NO_GROUND:
       SetGreenLed(LOW);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psEvseError,g_psNoGround);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
      case EVSE_STATE_STUCK_RELAY:
       SetGreenLed(LOW);
       SetRedLed(HIGH);
-      #ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psEvseError,g_psEStuckRelay);
-      #endif //Adafruit RGB LCD
+#endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_DISABLED:
@@ -902,7 +903,7 @@ void OnboardDisplay::Update()
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2
-      LcdSetBacklightColor(WHITE);
+      LcdSetBacklightColor(VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
       LcdPrint_P(g_psSleeping);
@@ -915,6 +916,7 @@ void OnboardDisplay::Update()
       // n.b. blue LED is off
     }
   }
+
 #ifdef LCD16X2
   if (curstate == EVSE_STATE_C) {
     time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
@@ -923,8 +925,7 @@ void OnboardDisplay::Update()
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
 #ifdef DELAYTIMER
-      g_CurrTime = g_RTC.now();
-      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,g_CurrTime.hour(),g_CurrTime.minute());
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,curtime.hour(),curtime.minute());
 #else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #endif //#ifdef DELAYTIMER
@@ -933,36 +934,41 @@ void OnboardDisplay::Update()
   }
   // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
 #ifdef DELAYTIMER
+  else if (curstate == EVSE_STATE_SLEEPING
 #ifdef BTN_MENU
-  else if (curstate == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()) {
-#else
-  else if (curstate == EVSE_STATE_DISABLED) {
+	   && !g_BtnHandler.InMenu()
 #endif //#ifdef BTN_MENU
-    LcdSetCursor(0,0);
-    g_DelayTimer.PrintTimerIcon();
-    LcdPrint_P(g_psStopped);
-    g_CurrTime = g_RTC.now();
-//    sprintf(g_sTmp,"%02d:%02d \0\1",g_CurrTime.hour(),g_CurrTime.minute());
-    sprintf(g_sTmp,"%02d:%02d:%02d",g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
-    LcdPrint(0,1,g_sTmp);
-    if (g_DelayTimer.IsTimerEnabled()){
-      LcdSetCursor(9,0);
-      LcdWrite(0x2);
-      LcdWrite(0x0);
-      sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
-      LcdPrint(11,0,g_sTmp);
-      LcdSetCursor(9,1);
-      LcdWrite(0x1);
-      LcdWrite(0x0);
-      sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
-      LcdPrint(11,1,g_sTmp);
+	   ) {
+    if (memcmp(&curtime,&g_CurrTime,sizeof(curtime))) {
+      g_DelayTimer.PrintTimerIcon();
+      LcdPrint_P(g_DelayTimer.IsTimerEnabled() ? g_psWaiting : g_psSleeping);
+      //    sprintf(g_sTmp,"%02d:%02d \0\1",curtime.hour(),curtime.minute());
+      sprintf(g_sTmp,"%02d:%02d:%02d",curtime.hour(),curtime.minute(),curtime.second());
+      LcdPrint(0,1,g_sTmp);
+      if (g_DelayTimer.IsTimerEnabled()){
+	LcdSetCursor(9,0);
+	LcdWrite(0x2);
+	LcdWrite(0x0);
+	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
+	LcdPrint(11,0,g_sTmp);
+	LcdSetCursor(9,1);
+	LcdWrite(0x1);
+	LcdWrite(0x0);
+	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
+	LcdPrint(11,1,g_sTmp);
       } else {
-        sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+        sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
         LcdPrint(10,0,g_sTmp);
+      }
     }
   }
-#endif
-#endif
+#endif // DELAYTIMER
+#endif // LCD16X2
+
+#if defined(DELAYTIMER) && defined(LCD16X2)
+  g_CurrTime = curtime;
+#endif //#ifdef DELAYTIMER
+
 }
 
 
@@ -1815,6 +1821,8 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
   if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
     m_Pilot.SetPWM(m_CurrentCapacity);
   }
+
+  g_OBD.Update(1);
   return rc;
 }
 
@@ -2838,6 +2846,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Sleep();
+	g_OBD.LcdSetBacklightColor(WHITE);
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
 #ifndef BTN_ENABLE_TOGGLE

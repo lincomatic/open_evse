@@ -40,7 +40,7 @@
 //-- begin features
 
 // serial remote api
-#define RAPI
+//#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -83,7 +83,7 @@
 #endif // BTN_MENU
 
 // Option for RTC and DelayTime
-//#define RTC // enable RTC & timer functions
+#define RTC // enable RTC & timer functions
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
@@ -342,7 +342,7 @@ public:
 #endif // RGBLCD
 #endif // LCD16X2
 
-  void Update();
+  void Update(int8_t force=0);
 };
 
 #ifdef GFI
