@@ -1808,12 +1808,18 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
 int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
 {
   int rc = 0;
-  if ((amps >= MIN_CURRENT_CAPACITY) && (amps <= ((GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2))) {
+  uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
+
+  if ((amps >= MIN_CURRENT_CAPACITY) && (amps <= maxcurrentcap)) {
     m_CurrentCapacity = amps;
   }
-  else {
+  else if (amps < MIN_CURRENT_CAPACITY) {
     m_CurrentCapacity = MIN_CURRENT_CAPACITY;
     rc = 1;
+  }
+  else {
+    m_CurrentCapacity = maxcurrentcap;
+    rc = 2;
   }
 
   if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
