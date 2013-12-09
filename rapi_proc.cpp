@@ -33,7 +33,7 @@
 extern J1772EVSEController g_EvseController;
 extern OnboardDisplay g_OBD;
 
-prog_char RAPI_VER[] PROGMEM = "1.0";
+prog_char RAPI_VER[] PROGMEM = RAPIVER;
 
 
 // convert 2-digit hex string to uint8
@@ -255,6 +255,12 @@ int EvseRapiProcessor::processCmd()
 	}
       }
       break;
+    case 'R': // stuck relay check
+      if (tokenCnt == 2) {
+	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
+      }
+      break;
     case 'S': // save settings to EEPROM
       extern void SaveSettings();
       SaveSettings();
@@ -279,7 +285,7 @@ int EvseRapiProcessor::processCmd()
     case 'E': // get settings
       u1 = g_EvseController.GetCurrentCapacity();
       u2 = g_EvseController.GetFlags();
-      sprintf(buffer,"%d %02x",u1,u2);
+      sprintf(buffer,"%d %04x",u1,u2);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

@@ -83,6 +83,9 @@ SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
  $SL A*24
+SR 0|1 - disable/enable stuck relay check
+ $SR 0*19
+ $SR 1*1A
 SS - save current settings to EEPROM
  $SS*CA
 SV 0|1 - disable/enable vent required
@@ -91,7 +94,7 @@ SV 0|1 - disable/enable vent required
 GC - get current capacity range in amps
  response: OK minamps maxamps
  $GC*AE
-GE - get EEPROM settings
+GE - get current settings
  response: OK amps flags
  $GE*B0
 GS - get state
@@ -113,6 +116,8 @@ typedef short int16;
 typedef unsigned short uint16;
 typedef char int8;
 typedef unsigned char uint8;
+
+#define RAPIVER "1.0.0"
 
 #define ESRAPI_BUFLEN 30
 #define ESRAPI_SOC '$' // start of command

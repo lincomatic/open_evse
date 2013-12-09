@@ -61,7 +61,7 @@ prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
-prog_char g_psReset[] PROGMEM = "Reset";
+prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
 #ifdef AUTOSTART_MENU
@@ -251,18 +251,23 @@ void wdt_init(void)
 
 void WatchDogReset()
 {
-  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
+  g_OBD.LcdPrint_P(1,PSTR("Restarting..."));
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
+}
+
+void SaveFlags()
+{
+  uint16_t flags = g_EvseController.GetFlags();
+  EEPROM.write(EOFS_FLAGS,flags >> 8);
+  EEPROM.write(EOFS_FLAGS+1,flags & 0x00ff);
 }
 
 void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
   EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
-  uint16_t flags = g_EvseController.GetFlags();
-  EEPROM.write(EOFS_FLAGS,flags >> 8);
-  EEPROM.write(EOFS_FLAGS+1,flags & 0x00ff);
+  SaveFlags();
 }
 
 #ifdef SERIALCLI
@@ -1187,7 +1192,7 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
 int J1772EVSEController::SetBacklightType(uint8_t t)
 {
   g_OBD.LcdSetBacklightType(t);
-  if (t == 0)  m_wFlags |= ECF_MONO_LCD;
+  if (t == 0) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
   return 0;
 }
@@ -2089,7 +2094,7 @@ Menu *SvcLevelMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  SaveFlags();
 
   delay(500);
 
@@ -2188,7 +2193,7 @@ Menu *DiodeChkMenu::Select()
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
 
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  SaveFlags();
 
   delay(500);
 
@@ -2229,7 +2234,7 @@ Menu *VentReqMenu::Select()
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
 
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  SaveFlags();
 
   delay(500);
 
@@ -2271,7 +2276,7 @@ Menu *GndChkMenu::Select()
 
   g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
 
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  SaveFlags();
 
   delay(500);
 
@@ -2284,7 +2289,7 @@ ResetMenu::ResetMenu()
   m_Title = g_psReset;
 }
 
-prog_char g_psResetNow[] PROGMEM = "Reset Now?";
+prog_char g_psResetNow[] PROGMEM = "Restart Now?";
 void ResetMenu::Init()
 {
   m_CurIdx = 0;
@@ -2756,7 +2761,7 @@ Menu *AutoStartMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+  SaveFlags();
   delay(500);
   return &g_SetupMenu;
 }
