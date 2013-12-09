@@ -1810,7 +1810,7 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
 }
 #endif // CALIBRATE
 
-int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
+int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 {
   int rc = 0;
   uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
@@ -1829,11 +1829,14 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
 
   EEPROM.write((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)m_CurrentCapacity);
 
-  if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
+  if (m_Pilot.GetState() == PILOT_STATE_PWM) {
     m_Pilot.SetPWM(m_CurrentCapacity);
   }
 
-  g_OBD.Update(1);
+  if (updatelcd) {
+    g_OBD.Update(1);
+  }
+
   return rc;
 }
 
@@ -2931,9 +2934,9 @@ void DelayTimer::CheckTime(){
         if ( ( (m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds >= m_StopTimerSeconds) ) || ( (m_CurrTimeSeconds <= m_StartTimerSeconds) && (m_CurrTimeSeconds <= m_StopTimerSeconds) ) ){
            // Within time interval
 #ifdef BTN_MENU
-          if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING && !g_BtnHandler.InMenu()){
 #else
-          if (g_EvseController.GetState() == EVSE_STATE_DISABLED){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING){
 #endif //#ifdef BTN_MENU
   	    g_EvseController.Enable();
           }           
@@ -2947,9 +2950,9 @@ void DelayTimer::CheckTime(){
         if ((m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds < m_StopTimerSeconds)) {
           // Within time interval
 #ifdef BTN_MENU
-          if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING && !g_BtnHandler.InMenu()){
 #else
-          if (g_EvseController.GetState() == EVSE_STATE_DISABLED){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING){
 #endif //#ifdef BTN_MENU
   	    g_EvseController.Enable();
           }          

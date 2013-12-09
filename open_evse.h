@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "2.1.A4"
+#define VERSION "2.1.A5"
 
 //-- begin features
 
@@ -502,7 +502,7 @@ public:
   uint8_t GetCurrentCapacity() { 
     return m_CurrentCapacity; 
   }
-  int SetCurrentCapacity(uint8_t amps,uint8_t updatepwm=0);
+  int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0);
   //int GetCurrentReading() { return m_CurrentReading; }
   //float GetCurrentAmps();
   time_t GetElapsedChargeTime() { 

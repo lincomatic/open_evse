@@ -210,7 +210,7 @@ int EvseRapiProcessor::processCmd()
       break;
     case 'C': // current capacity
       if (tokenCnt == 2) {
-	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]));
+	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]),1);
       }
       break;
     case 'D': // diode check
