@@ -405,7 +405,6 @@ void CLI::getInput()
         println_P(PSTR("help - Display commands")); // print to the terminal
         println_P(PSTR("set  - Change settings"));
         println_P(PSTR("show - Display settings/values"));
-        println_P(PSTR("save - Write to EEPROM"));
         // Start Delay Timer feature - GoldServe
 #ifdef DELAYTIMER
         println_P(PSTR("dt - Date/Time commands"));
@@ -533,10 +532,6 @@ void CLI::getInput()
 	  goto unknown;
 	}
       }
-      else if (strcmp_P(m_CLIinstr, PSTR("save")) == 0){ // string compare
-        println_P(PSTR("Saving to EEPROM")); // print to the terminal
-        SaveSettings();
-      } 
       // Start Delay Timer feature - GoldServe
 #ifdef DELAYTIMER
       else if (strncmp_P(m_CLIinstr, PSTR("dt"), 2) == 0){ // string compare
@@ -1124,6 +1119,7 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
   else {
     m_wFlags |= ECF_DIODE_CHK_DISABLED;
   }
+  SaveFlags();
 }
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
@@ -1134,6 +1130,7 @@ void J1772EVSEController::EnableVentReq(uint8_t tf)
   else {
     m_wFlags |= ECF_VENT_REQ_DISABLED;
   }
+  SaveFlags();
 }
 
 #ifdef ADVPWR
@@ -1145,6 +1142,7 @@ void J1772EVSEController::EnableGndChk(uint8_t tf)
   else {
     m_wFlags |= ECF_GND_CHK_DISABLED;
   }
+  SaveFlags();
 }
 
 void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
@@ -1155,6 +1153,7 @@ void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
   else {
     m_wFlags |= ECF_STUCK_RELAY_CHK_DISABLED;
   }
+  SaveFlags();
 }
 
 void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
@@ -1165,6 +1164,7 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
   else {
     m_wFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
   }
+  SaveFlags();
 }
 
 
@@ -1180,6 +1180,7 @@ void J1772EVSEController::EnableAutoStart(uint8_t tf)
   else {
     m_wFlags |= ECF_AUTO_START_DISABLED;
   }
+  SaveFlags();
 }
 #endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
@@ -1190,6 +1191,7 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
   else {
     m_wFlags &= ~ECF_SERIAL_DBG;
   }
+  SaveFlags();
 }
 
 #ifdef RGBLCD
@@ -1198,6 +1200,7 @@ int J1772EVSEController::SetBacklightType(uint8_t t)
   g_OBD.LcdSetBacklightType(t);
   if (t == 0) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
+  SaveFlags();
   return 0;
 }
 #endif // RGBLCD
@@ -1268,6 +1271,8 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
     svclvl = 1;
     m_wFlags &= ~ECF_L2; // set to Level 1
   }
+
+  SaveFlags();
 
   uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
 
@@ -1822,6 +1827,8 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatepwm)
     rc = 2;
   }
 
+  EEPROM.write((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)m_CurrentCapacity);
+
   if (updatepwm && (m_Pilot.GetState() == PILOT_STATE_PWM)) {
     m_Pilot.SetPWM(m_CurrentCapacity);
   }
@@ -2205,8 +2212,6 @@ Menu *DiodeChkMenu::Select()
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
 
-  SaveFlags();
-
   delay(500);
 
   return &g_SetupMenu;
@@ -2245,8 +2250,6 @@ Menu *VentReqMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
-
-  SaveFlags();
 
   delay(500);
 
@@ -2287,8 +2290,6 @@ Menu *GndChkMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
-
-  SaveFlags();
 
   delay(500);
 

@@ -261,11 +261,6 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-    case 'S': // save settings to EEPROM
-      extern void SaveSettings();
-      SaveSettings();
-      rc = 0;
-      break;
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);

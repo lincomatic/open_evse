@@ -86,8 +86,6 @@ SL 1|2|A  - set service level L1/L2/Auto
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
-SS - save current settings to EEPROM
- $SS*CA
 SV 0|1 - disable/enable vent required
  $SV 0*1D
 
