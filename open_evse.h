@@ -35,12 +35,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "2.1.A2"
+#define VERSION "2.1.A3"
 
 //-- begin features
 
 // serial remote api
-//#define RAPI
+#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -116,8 +116,8 @@
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(RTC) && defined(LCD16X2)
-#if defined(RAPI)||defined(SERIALCLI)
-INVALID CONFIG - CANNOT enable RAPI or SERIALCLI with RTC together - too much RAM USE
+#if defined(SERIALCLI)
+INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
 #endif
 #endif
 
@@ -327,6 +327,7 @@ public:
   void LcdSetBacklightType(uint8_t rgb) { // 1=rgb,0=mono
     if (rgb) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
     else m_bFlags |= OBDF_MONO_BACKLIGHT;
+    Update(1);
   }
   uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
   void LcdSetBacklightColor(uint8_t c) {

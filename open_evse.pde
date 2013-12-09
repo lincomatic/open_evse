@@ -897,9 +897,6 @@ void OnboardDisplay::Update(int8_t force)
 #endif // LCD16X2
       break;
     case EVSE_STATE_SLEEPING:
-      // Display Timer and Stop Icon - GoldServe
-      //      sprintf(g_sTmp,"L%d:%dA",(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
-      //      g_DelayTimer.PrintTimerIcon();
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2
@@ -940,6 +937,7 @@ void OnboardDisplay::Update(int8_t force)
 #endif //#ifdef BTN_MENU
 	   ) {
     if (memcmp(&curtime,&g_CurrTime,sizeof(curtime))) {
+      LcdSetCursor(0,0);
       g_DelayTimer.PrintTimerIcon();
       LcdPrint_P(g_DelayTimer.IsTimerEnabled() ? g_psWaiting : g_psSleeping);
       //    sprintf(g_sTmp,"%02d:%02d \0\1",curtime.hour(),curtime.minute());
@@ -2828,7 +2826,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 	  g_SetupMenu.Next();
 	}
       }
-      else {
+      else { // exit
 #if defined(DELAYTIMER)
         if (g_DelayTimer.IsTimerEnabled()){
           g_DelayTimer.CheckNow();
@@ -2838,6 +2836,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #else  
 	g_EvseController.Enable();
 #endif        
+	g_OBD.Update(1);
       }
     }
     else {
