@@ -71,7 +71,7 @@ FS - sleep EVSE
 S0 0|1 - set LCD type
  $S0 0*F7 = monochrome backlight
  $S0 1*F8 = RGB backlight
-S1 yy mm dd hh mm ss - set clock
+S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
@@ -102,6 +102,9 @@ GS - get state
  state: EVSE_STATE_xxx
  elapsed: elapsed charge time in seconds (valid only when in state C)
  $GS*BE
+GT - get time (RTC)
+ response OK yr mo day hr min sec       yr=2-digit year
+ $GT*BF
 GV - get version
  response: OK firmware_version protocol_version
  $GV*C1

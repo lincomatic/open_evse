@@ -317,6 +317,14 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+#ifdef RTC
+    case 'T': // get time
+      extern void GetRTC(char *buf);
+      GetRTC(buffer);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // RTC
     case 'V': // get version
       extern void GetVerStr(char *buf);
       GetVerStr(buffer);

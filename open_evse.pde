@@ -67,7 +67,7 @@ prog_char g_psExit[] PROGMEM = "Exit";
 #ifdef AUTOSTART_MENU
 prog_char g_psAutoStart[] PROGMEM = "Auto Start";
 #endif //#ifdef AUTOSTART_MENU
-#if DELAYTIMER_MENU
+#ifdef DELAYTIMER_MENU
 prog_char g_psRTC[] PROGMEM = "Date/Time";
 prog_char g_psRTC_Month[] PROGMEM = "Set Month";
 prog_char g_psRTC_Day[] PROGMEM = "Set Day";
@@ -127,9 +127,14 @@ OnboardDisplay g_OBD;
 // Instantiate RTC and Delay Timer - GoldServe
 #ifdef RTC
 RTC_DS1307 g_RTC;
+DateTime g_CurrTime;
 #if defined(RAPI)
 void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s) {
   g_RTC.adjust(DateTime(y,m,d,h,mn,s));
+}
+void GetRTC(char *buf) {
+  g_CurrTime = g_RTC.now();
+  sprintf(buf,"%d %d %d %d %d %d",g_CurrTime.year()-2000,g_CurrTime.month(),g_CurrTime.day(),g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
 }
 #endif // RAPI
 #endif // RTC
@@ -144,7 +149,6 @@ uint8_t g_hour;
 uint8_t g_min;
 uint8_t sec = 0;
 #endif // DELAYTIMER_MENU
-DateTime g_CurrTime;
 #endif // DELAYTIMER
 
 #ifdef SERIALCLI
