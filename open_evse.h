@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "2.1.A5"
+#define VERSION "2.1.A6"
 
 //-- begin features
 
@@ -56,6 +56,10 @@
 
 //Adafruit RGBLCD
 #define RGBLCD
+
+//select default LCD backlight mode. can be overridden w/CLI/RAPI
+#define DEFAULT_LCD_MODE 1 // RGB
+#define DEFAULT_LCD_MODE 0 // monochrome backlight
 
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
@@ -92,6 +96,10 @@
 #define MANUALSTART
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
 //#define AUTOSTART_MENU
+
+#if defined(DELAYTIMER) && defined(BTN_MENU) && !defined(RAPI)
+#define DELAYTIMER_MENU
+#endif
 
 // AutoStart feature must be defined if Delay Timers are used - GoldServe
 #if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
@@ -518,7 +526,7 @@ public:
   uint8_t GetCurSvcLevel() { 
     return (m_wFlags & ECF_L2) ? 2 : 1; 
   }
-  void SetSvcLevel(uint8_t svclvl);
+  void SetSvcLevel(uint8_t svclvl,uint8_t updatelcd=0);
   PTHRESH_DATA GetThreshData() { 
     return &m_ThreshData; 
   }
@@ -673,7 +681,7 @@ public:
 };
 #endif //#ifdef AUTOSTART_MENU
 
-#ifdef DELAYTIMER
+#if defined(DELAYTIMER)
 class RTCMenu : public Menu {
 public:
   RTCMenu();
@@ -760,10 +768,12 @@ public:
   void Next();
   Menu *Select();
 };
-#endif //ifdef DELAYTIMER
+#endif // DELAYTIMER
+
 class BtnHandler {
   Btn m_Btn;
   Menu *m_CurMenu;
+  uint8_t m_CurLcdMode;
 public:
   BtnHandler();
   void init() { m_Btn.init(); }
@@ -772,5 +782,76 @@ public:
 };
 
 #endif // BTN_MENU
+
+#ifdef DELAYTIMER
+// Start Delay Timer class definition - GoldServe
+void SaveSettings();
+class DelayTimer {
+  uint8_t m_DelayTimerEnabled;
+  uint8_t m_StartTimerHour;
+  uint8_t m_StartTimerMin;
+  uint8_t m_StopTimerHour;
+  uint8_t m_StopTimerMin;
+  uint8_t m_CurrHour;
+  uint8_t m_CurrMin;
+  uint8_t m_CheckNow;
+public:
+  DelayTimer(){
+    m_CheckNow = 1; //Check as soon as the EVSE initializes
+  };
+  void Init();
+  void CheckTime();
+  void CheckNow(){
+    m_CheckNow = 1;
+  };
+  void Enable();
+  void Disable();
+  uint8_t IsTimerEnabled(){
+    return m_DelayTimerEnabled; 
+  };
+  uint8_t GetStartTimerHour(){
+    return m_StartTimerHour; 
+  };
+  uint8_t GetStartTimerMin(){
+    return m_StartTimerMin; 
+  };
+  uint8_t GetStopTimerHour(){
+    return m_StopTimerHour; 
+  };
+  uint8_t GetStopTimerMin(){
+    return m_StopTimerMin; 
+  };
+  void SetStartTimer(uint8_t hour, uint8_t min){
+    m_StartTimerHour = hour;
+    m_StartTimerMin = min;
+    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    SaveSettings();
+  };
+  void SetStopTimer(uint8_t hour, uint8_t min){
+    m_StopTimerHour = hour;
+    m_StopTimerMin = min;
+    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    SaveSettings();
+  };
+  uint8_t IsTimerValid(){
+     if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
+       if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
+         return 0;
+       } else {
+         return 1;
+       }
+     } else {
+       return 0; 
+     }
+  };
+  void PrintTimerIcon();
+};
+
+#endif //ifdef DELAYTIMER
+
+
+// -- end class definitions
 
 #include "rapi_proc.h"

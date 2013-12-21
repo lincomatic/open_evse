@@ -67,7 +67,7 @@ prog_char g_psExit[] PROGMEM = "Exit";
 #ifdef AUTOSTART_MENU
 prog_char g_psAutoStart[] PROGMEM = "Auto Start";
 #endif //#ifdef AUTOSTART_MENU
-#ifdef DELAYTIMER
+#if DELAYTIMER_MENU
 prog_char g_psRTC[] PROGMEM = "Date/Time";
 prog_char g_psRTC_Month[] PROGMEM = "Set Month";
 prog_char g_psRTC_Day[] PROGMEM = "Set Day";
@@ -80,8 +80,7 @@ prog_char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
 prog_char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
 prog_char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
 prog_char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
-char *g_sHHMMfmt = "%02d:%02d";
-#endif
+#endif // DELAYTIMER_MENU
 
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
@@ -96,7 +95,7 @@ ResetMenu g_ResetMenu;
 #ifdef AUTOSTART_MENU
 AutoStartMenu g_AutoStartMenu;
 #endif //#ifdef AUTOSTART_MENU
-#ifdef DELAYTIMER
+#if defined(DELAYTIMER_MENU)
 RTCMenu g_RTCMenu;
 RTCMenuMonth g_RTCMenuMonth;
 RTCMenuDay g_RTCMenuDay;
@@ -109,77 +108,13 @@ DelayMenuStartHour g_DelayMenuStartHour;
 DelayMenuStopHour g_DelayMenuStopHour;
 DelayMenuStartMin g_DelayMenuStartMin;
 DelayMenuStopMin g_DelayMenuStopMin;
-#endif
+#endif // DELAYTIMER_MENU
 
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
-
-// Start Delay Timer class definition - GoldServe
 #ifdef DELAYTIMER
-class DelayTimer {
-  uint8_t m_DelayTimerEnabled;
-  uint8_t m_StartTimerHour;
-  uint8_t m_StartTimerMin;
-  uint8_t m_StopTimerHour;
-  uint8_t m_StopTimerMin;
-  uint8_t m_CurrHour;
-  uint8_t m_CurrMin;
-  uint8_t m_CheckNow;
-public:
-  DelayTimer(){
-    m_CheckNow = 1; //Check as soon as the EVSE initializes
-  };
-  void Init();
-  void CheckTime();
-  void CheckNow(){
-    m_CheckNow = 1;
-  };
-  void Enable();
-  void Disable();
-  uint8_t IsTimerEnabled(){
-    return m_DelayTimerEnabled; 
-  };
-  uint8_t GetStartTimerHour(){
-    return m_StartTimerHour; 
-  };
-  uint8_t GetStartTimerMin(){
-    return m_StartTimerMin; 
-  };
-  uint8_t GetStopTimerHour(){
-    return m_StopTimerHour; 
-  };
-  uint8_t GetStopTimerMin(){
-    return m_StopTimerMin; 
-  };
-  void SetStartTimer(uint8_t hour, uint8_t min){
-    m_StartTimerHour = hour;
-    m_StartTimerMin = min;
-    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
-    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
-    SaveSettings();
-  };
-  void SetStopTimer(uint8_t hour, uint8_t min){
-    m_StopTimerHour = hour;
-    m_StopTimerMin = min;
-    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
-    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
-    SaveSettings();
-  };
-  uint8_t IsTimerValid(){
-     if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
-       if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
-         return 0;
-       } else {
-         return 1;
-       }
-     } else {
-       return 0; 
-     }
-  };
-  void PrintTimerIcon();
-};
-#endif
-// -- end class definitions
+char *g_sHHMMfmt = "%02d:%02d";
+#endif// DELAYTIMER
 
 //-- begin global variables
 
@@ -190,9 +125,17 @@ J1772EVSEController g_EvseController;
 OnboardDisplay g_OBD;
 
 // Instantiate RTC and Delay Timer - GoldServe
-#ifdef DELAYTIMER
+#ifdef RTC
 RTC_DS1307 g_RTC;
+#if defined(RAPI)
+void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s) {
+  g_RTC.adjust(DateTime(y,m,d,h,mn,s));
+}
+#endif // RAPI
+#endif // RTC
+#ifdef DELAYTIMER
 DelayTimer g_DelayTimer;
+#ifdef DELAYTIMER_MENU
 // Start variables to support RTC and Delay Timer - GoldServe
 uint16_t g_year;
 uint8_t g_month;
@@ -200,8 +143,9 @@ uint8_t g_day;
 uint8_t g_hour;
 uint8_t g_min;
 uint8_t sec = 0;
+#endif // DELAYTIMER_MENU
 DateTime g_CurrTime;
-#endif
+#endif // DELAYTIMER
 
 #ifdef SERIALCLI
 CLI g_CLI;
@@ -1140,6 +1084,8 @@ void J1772EVSEController::EnableGndChk(uint8_t tf)
     m_wFlags &= ~ECF_GND_CHK_DISABLED;
   }
   else {
+    m_NoGndRetryCnt = 0;
+    m_NoGndTimeout = 0;
     m_wFlags |= ECF_GND_CHK_DISABLED;
   }
   SaveFlags();
@@ -1256,7 +1202,7 @@ void J1772EVSEController::LoadThresholds()
     memcpy(&m_ThreshData,&g_DefaultThreshData,sizeof(m_ThreshData));
 }
 
-void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
+void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 {
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
@@ -1300,6 +1246,10 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl)
   LoadThresholds();
 
   SetCurrentCapacity(ampacity);
+
+  if (updatelcd) {
+    g_OBD.Update(1);
+  }
 }
 
 #ifdef ADVPWR
@@ -1352,16 +1302,22 @@ uint8_t J1772EVSEController::doPost()
 	switch ( Relay1 ) {
 		case ( both ): //
 			if ( Relay2 == none ) svcState = L2;
-			if ( Relay2 != none ) svcState = SR;
+			if (StuckRelayChkEnabled()) {
+			  if ( Relay2 != none ) svcState = SR;
+			}
 			break;
 		case ( none ): //
+		  if (GndChkEnabled()) {
 			if ( Relay2 == none ) svcState = OG;
+		  }
 			if ( Relay2 == both ) svcState = L2;
 			if ( Relay2 == L1 || Relay2 == L2 ) svcState = L1;
 			break;
 		case ( L1on ): // L1 or L2
 		case ( L2on ):
-			if ( Relay2 != none ) svcState = SR;
+			if (StuckRelayChkEnabled()) {
+			  if ( Relay2 != none ) svcState = SR;
+			}
 			if ( Relay2 == none ) svcState = L1;
 			if ( (Relay1 == L1on) && (Relay2 == L2on)) svcState = L2;
 			if ( (Relay1 == L2on) && (Relay2 == L1on)) svcState = L2;
@@ -1369,7 +1325,10 @@ uint8_t J1772EVSEController::doPost()
 			} // end switch
           }
 		else { // Relay stuck on
-		svcState = SR; }
+		  if (StuckRelayChkEnabled()) {
+		    svcState = SR;
+		  }
+		}
           #ifdef SERIALCLI
             if (SerDbgEnabled()) {
               g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
@@ -1465,7 +1424,7 @@ void J1772EVSEController::Init()
       long faultms = millis();
       while ((millis()-faultms) < GFI_TIMEOUT) {
 #ifdef RAPI
-	g_ERP.doCmd();
+	g_ERP.doCmd(0);
 #endif
 #ifdef SERIALCLI
 	g_CLI.getInput();
@@ -1983,7 +1942,7 @@ void SetupMenu::Next()
   case 8:
     title = g_ResetMenu.m_Title;
     break;
-#ifdef DELAYTIMER
+#ifdef DELAYTIMER_MENU
 // Add menu items to control Delay Timers - GoldServe
   case 5:
     title = g_RTCMenu.m_Title;
@@ -1991,7 +1950,7 @@ void SetupMenu::Next()
   case 6:
     title = g_DelayMenu.m_Title;
     break;
-#endif //#ifdef DELAYTIMER
+#endif //#ifdef DELAYTIMER_MENU
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
   case 7:
@@ -2027,7 +1986,7 @@ Menu *SetupMenu::Select()
   else if (m_CurIdx == 8) {
     return &g_ResetMenu;
   }
-#ifdef DELAYTIMER
+#ifdef DELAYTIMER_MENU
 // Add menu items to control Delay Timers - GoldServe
   else if (m_CurIdx == 5) {
     return &g_RTCMenu;
@@ -2035,7 +1994,7 @@ Menu *SetupMenu::Select()
   else if (m_CurIdx == 6) {
     return &g_DelayMenu;
   }
-#endif //#ifdef DELAYTIMER
+#endif //#ifdef DELAYTIMER_MENU
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
   else if (m_CurIdx == 7) {
@@ -2322,7 +2281,7 @@ void ResetMenu::Next()
   g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
 }
 
-#ifdef DELAYTIMER
+#ifdef DELAYTIMER_MENU
 // Start Menu Definition for Date/Time, Delay, and AutoStart Menus
 char g_DateTimeStr[] = "%02d/%02d/%02d %02d:%02d";
 char g_DateTimeStr_Month[] = "+%02d/%02d/%02d %02d:%02d";
@@ -2743,7 +2702,7 @@ Menu *DelayMenuStopMin::Select()
   delay(500);
   return &g_SetupMenu;
 }
-#endif //#ifdef DELAYTIMER
+#endif // DELAYTIMER_MENU
 #ifdef AUTOSTART_MENU
 // Menus for Auto Start feature - GoldServe
 AutoStartMenu::AutoStartMenu()
@@ -2846,6 +2805,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #else  
 	g_EvseController.Enable();
 #endif        
+	g_OBD.LcdSetBacklightType(m_CurLcdMode); // restore LCD mode
 	g_OBD.Update(1);
       }
     }
@@ -2855,7 +2815,8 @@ void BtnHandler::ChkBtn(int8_t notoggle)
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Sleep();
-	g_OBD.LcdSetBacklightColor(WHITE);
+	m_CurLcdMode = g_OBD.IsLcdBacklightMono() ? 0 : 1;
+	g_OBD.LcdSetBacklightType(0); // set to mono
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
 #ifndef BTN_ENABLE_TOGGLE
@@ -2972,12 +2933,16 @@ void DelayTimer::Enable(){;
   EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(0);
   SaveSettings();
+  CheckNow();
+  CheckTime();
+  g_OBD.Update(1);
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(1);
   SaveSettings();
+  g_OBD.Update(1);
 };
 void DelayTimer::PrintTimerIcon(){
   //g_OBD.LcdClear();

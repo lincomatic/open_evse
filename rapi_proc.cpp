@@ -71,12 +71,12 @@ EvseRapiProcessor::EvseRapiProcessor()
 }
 
 //extern HardwareSerial Serial;
-int EvseRapiProcessor::doCmd()
+int EvseRapiProcessor::doCmd(int8 sendstatetrans)
 {
   int rc = 1;
 
   // chk for state transition and send async notification
-  if (g_EvseController.StateTransition()) {
+  if (sendstatetrans && g_EvseController.StateTransition()) {
     sendEvseState();
   }
 
@@ -119,7 +119,7 @@ int EvseRapiProcessor::doCmd()
 void EvseRapiProcessor::sendEvseState()
 {
   extern char g_sTmp[64];
-  sprintf(g_sTmp,"%cSS %d%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  sprintf(g_sTmp,"%cST %d%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
   write(g_sTmp);
 }
 
@@ -208,6 +208,16 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
+#ifdef RTC      
+    case '1': // set RTC
+      if (tokenCnt == 7) {
+	extern void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s);
+	SetRTC(dtou(tokens[1]),dtou(tokens[2]),dtou(tokens[3]),
+	       dtou(tokens[4]),dtou(tokens[5]),dtou(tokens[6]));
+	rc = 0;
+      }
+      break;
+#endif // RTC      
     case 'C': // current capacity
       if (tokenCnt == 2) {
 	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]),1);
@@ -238,7 +248,7 @@ int EvseRapiProcessor::processCmd()
 	switch(*tokens[1]) {
 	case '1':
 	case '2':
-	  g_EvseController.SetSvcLevel(*tokens[1] - '0');
+	  g_EvseController.SetSvcLevel(*tokens[1] - '0',1);
 #ifdef ADVPWR
 	  g_EvseController.EnableAutoSvcLevel(0);
 #endif
@@ -255,12 +265,30 @@ int EvseRapiProcessor::processCmd()
 	}
       }
       break;
+#ifdef ADVPWR      
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
 	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
+#endif // ADVPWR      
+#ifdef DELAYTIMER     
+    case 'T': // timer
+      if (tokenCnt == 5) {
+	extern DelayTimer g_DelayTimer;
+	if ((*tokens[1] == '0') && (*tokens[2] == '0') && (*tokens[3] == '0') && (*tokens[4] == '0')) {
+	  g_DelayTimer.Disable();
+	}
+	else {
+	  g_DelayTimer.SetStartTimer(dtou(tokens[1]),dtou(tokens[2]));
+	  g_DelayTimer.SetStopTimer(dtou(tokens[3]),dtou(tokens[4]));
+	  g_DelayTimer.Enable();
+	}
+	rc = 0;
+      }
+      break;
+#endif // DELAYTIMER      
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);

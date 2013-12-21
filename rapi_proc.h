@@ -36,12 +36,12 @@ pp = parameters
 ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
 
 response format
-OK [optional parameters]\r - success
+$OK [optional parameters]\r - success
 
-NK [optional parameters]\r - failure
+$NK [optional parameters]\r - failure
 
 asynchronous messages
-ST state\r - EVSE state transition - sent whenever EVSE state changes
+$ST state\r - EVSE state transition - sent whenever EVSE state changes
  state: EVSE_STATE_xxx
 
 commands
@@ -71,7 +71,7 @@ FS - sleep EVSE
 S0 0|1 - set LCD type
  $S0 0*F7 = monochrome backlight
  $S0 1*F8 = RGB backlight
-
+S1 yy mm dd hh mm ss - set clock
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
@@ -86,6 +86,8 @@ SL 1|2|A  - set service level L1/L2/Auto
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
+ST starthr startmin endhr endmin - set timer
+ $ST 0 0 0 0*0B - cancel timer
 SV 0|1 - disable/enable vent required
  $SV 0*1D
 
@@ -107,13 +109,14 @@ GV - get version
  *
  */
 
-#ifdef RAPI
 typedef int int32;
 typedef unsigned int uint32;
 typedef short int16;
 typedef unsigned short uint16;
 typedef char int8;
 typedef unsigned char uint8;
+
+#ifdef RAPI
 
 #define RAPIVER "1.0.0"
 
@@ -145,7 +148,7 @@ class EvseRapiProcessor {
   
 public:
   EvseRapiProcessor();
-  int doCmd();
+  int doCmd(int8 sendstatetrans=1);
   void sendEvseState();
   
   /*
