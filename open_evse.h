@@ -111,6 +111,10 @@
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
 
+// phase and frequency correct PWM 1/8000 resolution
+// when not defined, use fast PWM -> 1/250 resolution
+#define PAFC_PWM
+
 //-- end features
 
 
@@ -159,7 +163,12 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger pin
-#define PILOT_PIN 10 // n.b. PILOT_PIN *MUST* be digital 10 because SetPWM() assumes it
+
+// N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
+// (i.e PORTB pins 1 & 2)
+// if using fast PWM (PAFC_PWM disabled) PILOT_PIN *MUST* be digital 10
+#define PILOT_PIN 10
+
 #define GREEN_LED_PIN 13 // Digital pin
 
 #define SERIAL_BAUD 115200
@@ -372,8 +381,10 @@ typedef enum {
   PILOT_STATE_P12,PILOT_STATE_PWM,PILOT_STATE_N12} 
 PILOT_STATE;
 class J1772Pilot {
+#ifndef PAFC_PWM
   uint8_t m_bit;
   uint8_t m_port;
+#endif // PAFC_PWM
   PILOT_STATE m_State;
 public:
   J1772Pilot() {

@@ -200,7 +200,9 @@ void wdt_init(void)
 
 void WatchDogReset()
 {
+#ifdef LCD16X2
   g_OBD.LcdPrint_P(1,PSTR("Restarting..."));
+#endif
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
 }
@@ -940,11 +942,28 @@ void Gfi::Reset()
 #endif // GFI
 //-- begin J1772Pilot
 
+#define TOP ((F_CPU / 2000000) * 1000) // for 1KHz (=1000us period)
 void J1772Pilot::Init()
 {
+#ifdef PAFC_PWM
+  // set up Timer for phase & frequency correct PWM
+  TCCR1A = 0;  // set up Control Register A
+  ICR1 = TOP;
+  // WGM13 -> select P&F mode CS10 -> prescaler = 1
+  TCCR1B = _BV(WGM13) | _BV(CS10);
+ 
+ #if (PILOT_PIN == 9)
+  DDRB |= _BV(PORTB1);
+  TCCR1A |= _BV(COM1A1);
+ #else // PILOT_PIN == 10
+  DDRB |= _BV(PORTB2);
+  TCCR1A |= _BV(COM1B1);
+ #endif // PILOT_PIN
+#else // fast PWM
   pinMode(PILOT_PIN,OUTPUT);
   m_bit = digitalPinToBitMask(PILOT_PIN);
   m_port = digitalPinToPort(PILOT_PIN);
+#endif
 
   SetState(PILOT_STATE_P12); // turns the pilot on 12V steady state
 }
@@ -955,6 +974,22 @@ void J1772Pilot::Init()
 // PILOT_STATE_N12 = steady -12V (EVSE_STATE_F - FAULT) 
 void J1772Pilot::SetState(PILOT_STATE state)
 {
+#ifdef PAFC_PWM
+  if (state == PILOT_STATE_P12) {
+#if (PILOT_PIN == 9)
+    OCR1A = TOP;
+#else
+    OCR1B = TOP;
+#endif
+  }
+  else {
+#if (PILOT_PIN == 9)
+    OCR1A = 0;
+#else
+    OCR1B = 0;
+#endif
+  }
+#else // fast PWM
   volatile uint8_t *out = portOutputRegister(m_port);
 
   uint8_t oldSREG = SREG;
@@ -967,6 +1002,7 @@ void J1772Pilot::SetState(PILOT_STATE state)
     *out &= ~m_bit;  // set pin low
   }
   SREG = oldSREG;
+#endif // PAFC_PWM
 
   m_State = state;
 }
@@ -978,6 +1014,33 @@ void J1772Pilot::SetState(PILOT_STATE state)
 //
 int J1772Pilot::SetPWM(int amps)
 {
+
+#ifdef PAFC_PWM
+  // duty cycle = OCR1A(B) / ICR1 * 100 %
+
+  unsigned cnt;
+  if ((amps >= 6) && (amps <= 51)) {
+  // amps = (duty cycle %) X 0.6
+    cnt = amps * (TOP/60);
+  } else if ((amps > 51) && (amps <= 80)) {
+    // amps = (duty cycle % - 64) X 2.5
+    cnt = (amps * (TOP/250)) + (64*(TOP/100));
+  }
+  else {
+    return 1;
+  }
+
+
+#if (PILOT_PIN == 9)
+  OCR1A = cnt;
+#else // PILOT_PIN == 10
+  OCR1B = cnt;
+#endif
+  
+  m_State = PILOT_STATE_PWM;
+
+  return 0;
+#else // fast PWM
   uint8_t ocr1b = 0;
   if ((amps >= 6) && (amps <= 51)) {
     ocr1b = 25 * amps / 6 - 1;  // J1772 states "Available current = (duty cycle %) X 0.6"
@@ -1013,6 +1076,7 @@ int J1772Pilot::SetPWM(int amps)
     // invalid amps
     return 1;
   }
+#endif // PAFC_PWM
 }
 
 //-- end J1772Pilot
@@ -3008,7 +3072,7 @@ void setup()
 
 
 void loop()
-{ 
+{
 #ifdef WATCHDOG
   wdt_reset(); // pat the dog
 #endif // WATCHDOG
