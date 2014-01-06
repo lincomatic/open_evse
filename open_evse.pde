@@ -1744,6 +1744,8 @@ void J1772EVSEController::Update()
     else if (m_EvseState == EVSE_STATE_DIODE_CHK_FAILED) {
       chargingOff(); // turn off charging current
       // must leave pilot on so we can keep checking
+      // N.B. J1772 specifies to go to State F (-12V) but we can't do that
+      // and keep checking
       m_Pilot.SetPWM(m_CurrentCapacity);
     }
     else if (m_EvseState == EVSE_STATE_NO_GROUND) {
