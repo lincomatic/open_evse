@@ -48,7 +48,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-prog_char VERSTR[] PROGMEM = "2.0.B9";
+prog_char VERSTR[] PROGMEM = "2.0.0";
 
 //-- begin features
 
@@ -117,7 +117,7 @@ prog_char VERSTR[] PROGMEM = "2.0.B9";
 
 // phase and frequency correct PWM 1/8000 resolution
 // when not defined, use fast PWM -> 1/250 resolution
-//#define PAFC_PWM
+#define PAFC_PWM
 
 //-- end features
 
