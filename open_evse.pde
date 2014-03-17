@@ -3573,17 +3573,20 @@ void DelayTimer::CheckTime(){
     m_CurrMin = g_CurrTime.minute();
     
     if (IsTimerEnabled() && IsTimerValid()){
-      uint16_t m_StartTimerSeconds = m_StartTimerHour * 360 + m_StartTimerMin * 6;
-      uint16_t m_StopTimerSeconds = m_StopTimerHour * 360 + m_StopTimerMin * 6;
-      uint16_t m_CurrTimeSeconds = m_CurrHour * 360 + m_CurrMin * 6;
+      // S.Low 3/12/14 Changed to minutes since original code considers minutes only anyway
+      uint16_t m_StartTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
+      uint16_t m_StopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
+      uint16_t m_CurrTimeMinutes = m_CurrHour * 60 + m_CurrMin;
       
       //Serial.println(m_StartTimerSeconds);
       //Serial.println(m_StopTimerSeconds);
       //Serial.println(m_CurrTimeSeconds);
       
-      if (m_StopTimerSeconds < m_StartTimerSeconds) {
+      if (m_StopTimerMinutes < m_StartTimerMinutes) {
       //End time is for next day 
-        if ( ( (m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds >= m_StopTimerSeconds) ) || ( (m_CurrTimeSeconds <= m_StartTimerSeconds) && (m_CurrTimeSeconds <= m_StopTimerSeconds) ) ){
+      // S.Low 3/12/14 The condition for the following was changed to fix "failure to stop charging"
+        if ( ( (m_CurrTimeMinutes >= m_StartTimerMinutes) && (m_CurrTimeMinutes > m_StopTimerMinutes) ) || 
+             ( (m_CurrTimeMinutes <= m_StartTimerMinutes) && (m_CurrTimeMinutes < m_StopTimerMinutes) ) ){
            // Within time interval
 #ifdef BTN_MENU
           if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
@@ -3593,13 +3596,15 @@ void DelayTimer::CheckTime(){
   	    g_EvseController.Enable();
           }           
         } else {
-          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
+          // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
+          if ((m_CurrTimeMinutes >= m_StopTimerMinutes)&&(m_CurrTimeMinutes <= m_StopTimerMinutes+1)) { 
             // Not in time interval
-            g_EvseController.Disable();         
+            if (g_EvseController.GetState() != EVSE_STATE_DISABLED)
+              g_EvseController.Disable();         
           }
         }
       } else {
-        if ((m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds < m_StopTimerSeconds)) {
+        if ((m_CurrTimeMinutes >= m_StartTimerMinutes) && (m_CurrTimeMinutes < m_StopTimerMinutes)) { 
           // Within time interval
 #ifdef BTN_MENU
           if (g_EvseController.GetState() == EVSE_STATE_DISABLED && !g_BtnHandler.InMenu()){
@@ -3609,9 +3614,11 @@ void DelayTimer::CheckTime(){
   	    g_EvseController.Enable();
           }          
         } else {
-          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
+          // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
+          if ((m_CurrTimeMinutes >= m_StopTimerMinutes)&&(m_CurrTimeMinutes <= m_StopTimerMinutes+1)) { 
             // Not in time interval
-            g_EvseController.Disable();          
+            if (g_EvseController.GetState() != EVSE_STATE_DISABLED)
+              g_EvseController.Disable();         
           }
         }
       }
