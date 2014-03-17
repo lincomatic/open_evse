@@ -1,4 +1,7 @@
 Change Log
+v2.0.1 SL 20140316
+- fix DelayTimer's failure to stop charging if start and end times straddle across midnight.
+ 
 v2.0.0 20140105
 - enable PAFC_PWM by default
 - take out of development branch out of beta an promote to v2.0.0 as new master branch
