@@ -57,6 +57,9 @@ prog_char VERSTR[] PROGMEM = "2.0.0";
 
 // GFI support
 #define GFI
+// If you loop a wire from the third GFI pin through the CT a few times and then to ground,
+// enable this
+#define GFI_SELFTEST
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -183,6 +186,7 @@ prog_char VERSTR[] PROGMEM = "2.0.0";
 #define EOFS_TIMER_START_MIN     5 // 1 byte
 #define EOFS_TIMER_STOP_HOUR     6 // 1 byte
 #define EOFS_TIMER_STOP_MIN      7 // 1 byte
+#define EOFS_FLAGS2              8 // 1 byte
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -198,6 +202,12 @@ prog_char VERSTR[] PROGMEM = "2.0.0";
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
 #define GFI_PIN 2  // interrupt number 0 = D2, 1 = D3
+#ifdef GFI_SELFTEST
+#define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
+#define GFI_TEST_CYCLES 50 // 50 cycles
+#define GFI_PULSE_DURATION_MS 8000 // of roughly 60 Hz. - 8 ms as a half-cycle
+#define GFI_TEST_CLEAR_TIME 250 // Takes the GFCI this long to clear
+#endif
 
 #ifdef GFI_TESTING
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
@@ -347,12 +357,20 @@ public:
 #ifdef GFI
 class Gfi {
  uint8_t m_GfiFault;
+ uint8_t testSuccess;
+ uint8_t testInProgress;
 public:
   Gfi() {}
   void Init();
   void Reset();
   void SetFault() { m_GfiFault = 1; }
   uint8_t Fault() { return m_GfiFault; }
+#ifdef GFI_SELFTEST
+  void SelfTest();
+  void SetTestSuccess() { testSuccess = true; }
+  boolean SelfTestSuccess() { return testSuccess; }
+  boolean SelfTestInProgress() { return testInProgress; }
+#endif
   
 };
 #endif // GFI
@@ -388,6 +406,7 @@ public:
 #define EVSE_STATE_GFCI_FAULT 0x06       // GFCI fault
 #define EVSE_STATE_NO_GROUND 0x07 //bad ground
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
+#define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
 #define EVSE_STATE_DISABLED 0xff // disabled
 
 typedef struct threshdata {
@@ -420,6 +439,9 @@ typedef struct calibdata {
 #define ECF_AUTO_START_DISABLED 0x40  // no auto start charging
 #define ECF_SERIAL_DBG         0x80 // enable debugging messages via serial
 #define ECF_DEFAULT            0x00
+// J1772EVSEController m_bFlags2 bits - saved to EEPROM
+#define ECF2_GFI_TEST_DISABLED  0x01 // no GFI self test
+#define ECF2_DEFAULT            0x00
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
@@ -442,7 +464,7 @@ class J1772EVSEController {
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t StuckRelayTripCnt;
 #endif // ADVPWR
-  uint8_t m_bFlags; // ECF_xxx
+  uint8_t m_bFlags, m_bFlags2; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
   THRESH_DATA m_ThreshData;
   uint8_t m_EvseState;
@@ -462,8 +484,8 @@ class J1772EVSEController {
 // 00 = both, 01 = L1on, 10 = L2on, 11 = none ( active low )
   enum {both, L1on, L2on, none}
   PowerSTATE;
-// Define Service States UD = undefined state, L1 = level 1, L2 = level 2, OG = open ground, SR = stuck Relay
-  enum { UD, L1, L2, OG, SR} 
+// Define Service States UD = undefined state, L1 = level 1, L2 = level 2, OG = open ground, SR = stuck Relay, FG = Failed GFI
+  enum { UD, L1, L2, OG, SR, FG} 
   SVCSTATE;
 
   uint8_t doPost();
@@ -477,6 +499,12 @@ class J1772EVSEController {
   void clrFlags(uint8_t flags) { 
     m_bFlags &= ~flags; 
   }
+  void setFlags2(uint8_t flags) { 
+    m_bFlags2 |= flags; 
+  }
+  void clrFlags2(uint8_t flags) { 
+    m_bFlags2 &= ~flags; 
+  }
 
 public:
   J1772EVSEController();
@@ -487,6 +515,7 @@ public:
   void LoadThresholds();
 
   uint8_t GetFlags() { return m_bFlags; }
+  uint8_t GetFlags2() { return m_bFlags2; }
   uint8_t GetState() { 
     return m_EvseState; 
   }
@@ -544,6 +573,12 @@ public:
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
+#ifdef GFI_SELFTEST
+  uint8_t GfiSelfTestEnabled() {
+    return (m_bFlags2 & ECF2_GFI_TEST_DISABLED) ? 0 : 1;
+  }
+  void EnableGfiTest(uint8_t tf);
+#endif
 #endif // GFI
   uint8_t SerDbgEnabled() { 
     return (m_bFlags & ECF_SERIAL_DBG) ? 1 : 0;
@@ -625,6 +660,15 @@ public:
   Menu *Select();
 };
 
+#ifdef GFI_SELFTEST
+class GfiTestMenu : public Menu {
+public:
+  GfiTestMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif
 
 class VentReqMenu : public Menu {
 public:
@@ -771,6 +815,9 @@ prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
+#ifdef GFI_SELFTEST
+prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
+#endif
 prog_char g_psReset[] PROGMEM = "Reset";
 prog_char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
@@ -797,6 +844,9 @@ SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
+#ifdef GFI_SELFTEST
+GfiTestMenu g_GfiTestMenu;
+#endif
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
@@ -1674,9 +1724,30 @@ void Gfi::Reset()
   wdt_reset(); // pat the dog
 #endif // WATCHDOG
 
+  testInProgress = false;
+  testSuccess = false;
   if (digitalRead(GFI_PIN) ) m_GfiFault = 1; // if interrupt pin is high, set fault
   else m_GfiFault = 0;
 }
+
+#ifdef GFI_SELFTEST
+
+void Gfi::SelfTest()
+{
+  testInProgress = true;
+  testSuccess = false;
+  pinMode(GFI_TEST_PIN, OUTPUT);
+  for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+    digitalWrite(GFI_TEST_PIN, HIGH);
+    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    digitalWrite(GFI_TEST_PIN, LOW);
+    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    if (testSuccess) break; // no need to keep trying.
+  }
+  delay(GFI_TEST_CLEAR_TIME);
+  testInProgress = false;
+}
+#endif GFI_SELFTEST
 
 #endif // GFI
 //-- begin J1772Pilot
@@ -1848,6 +1919,12 @@ void J1772EVSEController::chargingOff()
 #ifdef GFI
 inline void J1772EVSEController::SetGfiTripped()
 {
+#ifdef GFI_SELFTEST
+  if (m_Gfi.SelfTestInProgress()) {
+    m_Gfi.SetTestSuccess();
+    return;
+  }
+#endif
   m_bVFlags |= ECVF_GFI_TRIPPED;
 
   // this is repeated Update(), but we want to keep latency as low as possible
@@ -1870,6 +1947,18 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
     m_bFlags |= ECF_DIODE_CHK_DISABLED;
   }
 }
+
+#ifdef GFI_SELFTEST
+void J1772EVSEController::EnableGfiTest(uint8_t tf)
+{
+  if (tf) {
+    m_bFlags2 &= ~ECF2_GFI_TEST_DISABLED;
+  }
+  else {
+    m_bFlags2 |= ECF2_GFI_TEST_DISABLED;
+  }
+}
+#endif
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
@@ -2084,14 +2173,26 @@ uint8_t J1772EVSEController::doPost()
 #ifdef LCD16X2 //Adafruit RGB LCD
 	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
-	  if ((svcState == OG) || (svcState == SR))  g_OBD.LcdSetBacklightColor(RED); 
+	  if ((svcState == OG) || (svcState == SR))  g_OBD.LcdSetBacklightColor(RED);
 	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
 	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-	   delay(500);
+	  delay(500);
 #endif //Adafruit RGB LCD
 	} // endif test, no EV is plugged in
   } // endif AutoSvcLevelEnabled
   
+#ifdef GFI_SELFTEST
+  if (GfiSelfTestEnabled()) {
+    m_Gfi.SelfTest();
+    if (!m_Gfi.SelfTestSuccess()) {
+      g_OBD.LcdSetBacklightColor(RED);
+      g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
+      delay(500);
+      svcState = FG;
+    }
+  }
+#endif
+
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
   m_Pilot.SetState(PILOT_STATE_P12);
   return int(svcState);
@@ -2124,6 +2225,14 @@ void J1772EVSEController::Init()
     m_bFlags = rflgs;
     svclvl = GetCurSvcLevel();
   }
+  
+  uint8_t rflgs2 = EEPROM.read(EOFS_FLAGS2);
+  if (rflgs2 == 0xff) { // uninitialized EEPROM
+    m_bFlags2 = ECF2_DEFAULT;
+  }
+  else {
+    m_bFlags2 = rflgs2;
+  }
 
   m_bVFlags = ECVF_DEFAULT;
 
@@ -2151,8 +2260,11 @@ void J1772EVSEController::Init()
     if ((AutoSvcLevelEnabled()) && ((psvclvl == L1) || (psvclvl == L2)))  svclvl = psvclvl; //set service level
     if ((GndChkEnabled()) && (psvclvl == OG))  m_EvseState = EVSE_STATE_NO_GROUND, fault = 1; // set No Ground error
     if ((StuckRelayChkEnabled()) && (psvclvl == SR)) m_EvseState = EVSE_STATE_STUCK_RELAY, fault = 1; // set Stuck Relay error
+#ifdef GFI_SELFTEST
+    if ((GfiSelfTestEnabled()) && (psvclvl == FG)) m_EvseState = EVSE_STATE_GFI_TEST_FAILED, fault = 1; // set GFI test fail error
+#endif
     if  ( fault ) delay(GFI_TIMEOUT); // if fault wait GFI_TIMEOUT till next check
-  } while ( fault && ( m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
+  } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
@@ -2578,26 +2690,9 @@ void SetupMenu::Init()
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx >= 10) {
+  if (++m_CurIdx > 10) {
     m_CurIdx = 0;
   }
-#ifndef ADVPWR
-  if (m_CurIdx == 4) {
-    m_CurIdx++;
-  }
-#endif // !ADVPWR
-
-#ifndef DELAYTIMER
-  if (m_CurIdx == 5) {
-    m_CurIdx += 2;
-  }
-#endif //#ifndef DELAYTIMER
-
-#ifndef AUTOSTART_MENU
-  if (m_CurIdx == 7) {
-    m_CurIdx++;
-  }
-#endif //#ifndef AUTOSTART_MENU
 
   const prog_char *title;
   switch(m_CurIdx) {
@@ -2613,29 +2708,46 @@ void SetupMenu::Next()
   case 3:
     title = g_VentReqMenu.m_Title;
     break;
-#ifdef ADVPWR
   case 4:
+#ifdef ADVPWR
     title = g_GndChkMenu.m_Title;
     break;
+#else
+    m_CurIdx++;
+    // fall through
 #endif // ADVPWR
-  case 8:
-    title = g_ResetMenu.m_Title;
-    break;
-#ifdef DELAYTIMER
-// Add menu items to control Delay Timers - GoldServe
   case 5:
+#ifdef GFI_SELFTEST
+    title = g_GfiTestMenu.m_Title;
+    break;
+#else
+    m_CurIdx++;
+    // fall through
+#endif
+// Add menu items to control Delay Timers - GoldServe
+  case 6:
+#ifdef DELAYTIMER
     title = g_RTCMenu.m_Title;
     break;
-  case 6:
+  case 7:
     title = g_DelayMenu.m_Title;
     break;
+#else
+    m_CurIdx += 2;
+    // fall through
 #endif //#ifdef DELAYTIMER
+  case 8:
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
-  case 7:
     title = g_AutoStartMenu.m_Title;
     break;
+#else
+    m_CurIdx++;
+    // fall through
 #endif //#ifdef AUTOSTART_MENU
+  case 9:
+    title = g_ResetMenu.m_Title;
+    break;
   default:
     title = g_psExit;
     break;
@@ -2662,21 +2774,26 @@ Menu *SetupMenu::Select()
     return &g_GndChkMenu;
   }
 #endif // ADVPWR
-  else if (m_CurIdx == 8) {
+#ifdef GFI_SELFTEST
+  else if (m_CurIdx == 5) {
+    return &g_GfiTestMenu;
+  }
+#endif
+  else if (m_CurIdx == 9) {
     return &g_ResetMenu;
   }
 #ifdef DELAYTIMER
 // Add menu items to control Delay Timers - GoldServe
-  else if (m_CurIdx == 5) {
+  else if (m_CurIdx == 6) {
     return &g_RTCMenu;
   }
-  else if (m_CurIdx == 6) {
+  else if (m_CurIdx == 7) {
     return &g_DelayMenu;
   }
 #endif //#ifdef DELAYTIMER
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
-  else if (m_CurIdx == 7) {
+  else if (m_CurIdx == 8) {
     return &g_AutoStartMenu;
   }
 #endif //#ifdef AUTOSTART_MENU
@@ -2859,6 +2976,49 @@ Menu *DiodeChkMenu::Select()
 
   return &g_SetupMenu;
 }
+
+#ifdef GFI_SELFTEST
+GfiTestMenu::GfiTestMenu()
+{
+  m_Title = g_psGfiTest;
+}
+
+void GfiTestMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.GfiSelfTestEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void GfiTestMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.GfiSelfTestEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *GfiTestMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableGfiTest((m_CurIdx == 0) ? 1 : 0);
+
+  EEPROM.write(EOFS_FLAGS2,g_EvseController.GetFlags2());
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+#endif
 
 VentReqMenu::VentReqMenu()
 {
@@ -3731,4 +3891,3 @@ void loop()
 #endif //#ifdef DELAYTIMER
 
 }
-
