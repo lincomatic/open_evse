@@ -35,12 +35,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "2.1.A6"
+#define VERSION "2.1.A7"
 
 //-- begin features
 
 // serial remote api
-#define RAPI
+//#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -52,6 +52,9 @@
 
 // GFI support
 #define GFI
+// If you loop a wire from the third GFI pin through the CT a few times and then to ground,
+// enable this. ADVPWR must also be defined.
+#define GFI_SELFTEST
 
 
 //Adafruit RGBLCD
@@ -199,6 +202,14 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
 #define GFI_PIN 2  // interrupt number 0 = D2, 1 = D3
+
+#ifdef GFI_SELFTEST
+#define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
+#define GFI_TEST_CYCLES 50 // 50 cycles
+#define GFI_PULSE_DURATION_MS 8000 // of roughly 60 Hz. - 8 ms as a half-cycle
+#define GFI_TEST_CLEAR_TIME 250 // Takes the GFCI this long to clear
+#endif
+
 
 #ifdef GFI_TESTING
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
@@ -366,13 +377,20 @@ public:
 #ifdef GFI
 class Gfi {
  uint8_t m_GfiFault;
+ uint8_t testSuccess;
+ uint8_t testInProgress;
 public:
   Gfi() {}
   void Init();
   void Reset();
   void SetFault() { m_GfiFault = 1; }
   uint8_t Fault() { return m_GfiFault; }
-  
+#ifdef GFI_SELFTEST
+  void SelfTest();
+  void SetTestSuccess() { testSuccess = true; }
+  boolean SelfTestSuccess() { return testSuccess; }
+  boolean SelfTestInProgress() { return testInProgress; }
+#endif
 };
 #endif // GFI
 
@@ -407,6 +425,7 @@ public:
 #define EVSE_STATE_GFCI_FAULT 0x06       // GFCI fault
 #define EVSE_STATE_NO_GROUND 0x07 //bad ground
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
+#define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
 
@@ -439,7 +458,8 @@ typedef struct calibdata {
 // Ability set the EVSE for manual button press to start charging - GoldServe
 #define ECF_AUTO_START_DISABLED 0x0040  // no auto start charging
 #define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
-#define ECF_MONO_LCD           000100 // monochrome LCD backlight
+#define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
+#define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
@@ -484,7 +504,7 @@ class J1772EVSEController {
   enum {both, L1on, L2on, none}
   PowerSTATE;
 // Define Service States UD = undefined state, L1 = level 1, L2 = level 2, OG = open ground, SR = stuck Relay
-  enum { UD, L1, L2, OG, SR} 
+  enum { UD, L1, L2, OG, SR, FG} 
   SVCSTATE;
 
   uint8_t doPost();
@@ -566,6 +586,12 @@ public:
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
+#ifdef GFI_SELFTEST
+  uint8_t GfiSelfTestEnabled() {
+    return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
+  }
+  void EnableGfiTest(uint8_t tf);
+#endif
 #endif // GFI
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
@@ -652,6 +678,15 @@ public:
   Menu *Select();
 };
 
+#ifdef GFI_SELFTEST
+class GfiTestMenu : public Menu {
+public:
+  GfiTestMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif
 
 class VentReqMenu : public Menu {
 public:

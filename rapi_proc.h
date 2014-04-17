@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2014 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -75,10 +75,13 @@ S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
+ $SD 1*0C
 SE 0|1 - disable/enable command echo
+ $SE 0*0C
  $SE 1*0D
 SG 0|1 - disable/enable ground check
  $SG 0*0E
+ $SG 1*0F
 SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
@@ -86,10 +89,14 @@ SL 1|2|A  - set service level L1/L2/Auto
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
+SS 0|1 - disable/enable GFI self-test
+ $SS 0*1A
+ $SS 1*1B
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0*0B - cancel timer
 SV 0|1 - disable/enable vent required
  $SV 0*1D
+ $SV 1*1E
 
 GC - get current capacity range in amps
  response: OK minamps maxamps

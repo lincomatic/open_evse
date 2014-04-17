@@ -2,10 +2,10 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2013 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2014 Sam C. Lin <lincomatic@gmail.com>
  * Copyright (c) 2011-2013 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
- * Maintainers: SCL/CH
+ * portions Copyright (c) 2014 Nick Sayer <nsayer@kfu.com>
 
   Revised  Ver	By		Reason
   6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -61,6 +61,9 @@ prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
+#ifdef GFI_SELFTEST
+prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
+#endif
 prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
@@ -86,6 +89,9 @@ SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
+#ifdef GFI_SELFTEST
+GfiTestMenu g_GfiTestMenu;
+#endif
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
@@ -935,10 +941,33 @@ void Gfi::Reset()
   wdt_reset(); // pat the dog
 #endif // WATCHDOG
 
+#ifdef GFI_SELFTEST
+  testInProgress = false;
+  testSuccess = false;
+#endif // GFI_SELFTEST
+
   if (digitalRead(GFI_PIN) ) m_GfiFault = 1; // if interrupt pin is high, set fault
   else m_GfiFault = 0;
 }
 
+#ifdef GFI_SELFTEST
+
+void Gfi::SelfTest()
+{
+  testInProgress = true;
+  testSuccess = false;
+  pinMode(GFI_TEST_PIN, OUTPUT);
+  for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+    digitalWrite(GFI_TEST_PIN, HIGH);
+    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    digitalWrite(GFI_TEST_PIN, LOW);
+    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    if (testSuccess) break; // no need to keep trying.
+  }
+  delay(GFI_TEST_CLEAR_TIME);
+  testInProgress = false;
+}
+#endif // GFI_SELFTEST
 #endif // GFI
 //-- begin J1772Pilot
 
@@ -1110,6 +1139,12 @@ void J1772EVSEController::chargingOff()
 #ifdef GFI
 inline void J1772EVSEController::SetGfiTripped()
 {
+#ifdef GFI_SELFTEST
+  if (m_Gfi.SelfTestInProgress()) {
+    m_Gfi.SetTestSuccess();
+    return;
+  }
+#endif
   m_bVFlags |= ECVF_GFI_TRIPPED;
 
   // this is repeated Update(), but we want to keep latency as low as possible
@@ -1133,6 +1168,18 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
   }
   SaveFlags();
 }
+
+#ifdef GFI_SELFTEST
+void J1772EVSEController::EnableGfiTest(uint8_t tf)
+{
+  if (tf) {
+    m_wFlags &= ~ECF_GFI_TEST_DISABLED;
+  }
+  else {
+    m_wFlags |= ECF_GFI_TEST_DISABLED;
+  }
+}
+#endif
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
@@ -1418,6 +1465,18 @@ uint8_t J1772EVSEController::doPost()
 	} // endif test, no EV is plugged in
   } // endif AutoSvcLevelEnabled
   
+#ifdef GFI_SELFTEST
+  if (GfiSelfTestEnabled()) {
+    m_Gfi.SelfTest();
+    if (!m_Gfi.SelfTestSuccess()) {
+      g_OBD.LcdSetBacklightColor(RED);
+      g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
+      delay(500);
+      svcState = FG;
+    }
+  }
+#endif
+
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
   m_Pilot.SetState(PILOT_STATE_P12);
   return int(svcState);
@@ -1486,8 +1545,11 @@ void J1772EVSEController::Init()
   uint8_t psvclvl = doPost(); // auto detect service level overrides any saved values
     
     if ((AutoSvcLevelEnabled()) && ((psvclvl == L1) || (psvclvl == L2)))  svclvl = psvclvl; //set service level
-    if ((GndChkEnabled()) && (psvclvl == OG))  m_EvseState = EVSE_STATE_NO_GROUND, fault = 1; // set No Ground error
-    if ((StuckRelayChkEnabled()) && (psvclvl == SR)) m_EvseState = EVSE_STATE_STUCK_RELAY, fault = 1; // set Stuck Relay error
+    if ((GndChkEnabled()) && (psvclvl == OG))  { m_EvseState = EVSE_STATE_NO_GROUND; fault = 1;} // set No Ground error
+    if ((StuckRelayChkEnabled()) && (psvclvl == SR)) { m_EvseState = EVSE_STATE_STUCK_RELAY; fault = 1; } // set Stuck Relay error
+#ifdef GFI_SELFTEST
+    if ((GfiSelfTestEnabled()) && (psvclvl == FG)) { m_EvseState = EVSE_STATE_GFI_TEST_FAILED; fault = 1; } // set GFI test fail error
+#endif
     if (fault) {
       long faultms = millis();
       while ((millis()-faultms) < GFI_TIMEOUT) {
@@ -1502,7 +1564,7 @@ void J1772EVSEController::Init()
 #endif
       }
     }
-  } while ( fault && ( m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
+  } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
@@ -1969,26 +2031,9 @@ void SetupMenu::Init()
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx >= 10) {
+  if (++m_CurIdx > 10) {
     m_CurIdx = 0;
   }
-#ifndef ADVPWR
-  if (m_CurIdx == 4) {
-    m_CurIdx++;
-  }
-#endif // !ADVPWR
-
-#ifndef DELAYTIMER
-  if (m_CurIdx == 5) {
-    m_CurIdx += 2;
-  }
-#endif //#ifndef DELAYTIMER
-
-#ifndef AUTOSTART_MENU
-  if (m_CurIdx == 7) {
-    m_CurIdx++;
-  }
-#endif //#ifndef AUTOSTART_MENU
 
   const prog_char *title;
   switch(m_CurIdx) {
@@ -2004,29 +2049,46 @@ void SetupMenu::Next()
   case 3:
     title = g_VentReqMenu.m_Title;
     break;
-#ifdef ADVPWR
   case 4:
+#ifdef ADVPWR
     title = g_GndChkMenu.m_Title;
     break;
+#else
+    m_CurIdx++;
+    // fall through
 #endif // ADVPWR
-  case 8:
-    title = g_ResetMenu.m_Title;
-    break;
-#ifdef DELAYTIMER_MENU
-// Add menu items to control Delay Timers - GoldServe
   case 5:
+#ifdef GFI_SELFTEST
+    title = g_GfiTestMenu.m_Title;
+    break;
+#else
+    m_CurIdx++;
+    // fall through
+#endif
+// Add menu items to control Delay Timers - GoldServe
+  case 6:
+#ifdef DELAYTIMER_MENU
     title = g_RTCMenu.m_Title;
     break;
-  case 6:
+  case 7:
     title = g_DelayMenu.m_Title;
     break;
-#endif //#ifdef DELAYTIMER_MENU
+#else
+    m_CurIdx += 2;
+    // fall through
+#endif //#ifdef DELAYTIMER
+  case 8:
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
-  case 7:
     title = g_AutoStartMenu.m_Title;
     break;
+#else
+    m_CurIdx++;
+    // fall through
 #endif //#ifdef AUTOSTART_MENU
+  case 9:
+    title = g_ResetMenu.m_Title;
+    break;
   default:
     title = g_psExit;
     break;
@@ -2053,21 +2115,26 @@ Menu *SetupMenu::Select()
     return &g_GndChkMenu;
   }
 #endif // ADVPWR
-  else if (m_CurIdx == 8) {
+#ifdef GFI_SELFTEST
+  else if (m_CurIdx == 5) {
+    return &g_GfiTestMenu;
+  }
+#endif
+  else if (m_CurIdx == 9) {
     return &g_ResetMenu;
   }
 #ifdef DELAYTIMER_MENU
 // Add menu items to control Delay Timers - GoldServe
-  else if (m_CurIdx == 5) {
+  else if (m_CurIdx == 6) {
     return &g_RTCMenu;
   }
-  else if (m_CurIdx == 6) {
+  else if (m_CurIdx == 7) {
     return &g_DelayMenu;
   }
-#endif //#ifdef DELAYTIMER_MENU
+#endif //#ifdef DELAYTIMER
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
-  else if (m_CurIdx == 7) {
+  else if (m_CurIdx == 8) {
     return &g_AutoStartMenu;
   }
 #endif //#ifdef AUTOSTART_MENU
@@ -2248,6 +2315,49 @@ Menu *DiodeChkMenu::Select()
 
   return &g_SetupMenu;
 }
+
+#ifdef GFI_SELFTEST
+GfiTestMenu::GfiTestMenu()
+{
+  m_Title = g_psGfiTest;
+}
+
+void GfiTestMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.GfiSelfTestEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void GfiTestMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.GfiSelfTestEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *GfiTestMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableGfiTest((m_CurIdx == 0) ? 1 : 0);
+
+  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+#endif // GFI_SELFTEST
 
 VentReqMenu::VentReqMenu()
 {
@@ -3118,4 +3228,3 @@ void loop()
 #endif //#ifdef DELAYTIMER
 
 }
-

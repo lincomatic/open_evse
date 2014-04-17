@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2014 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -273,6 +273,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR      
+#ifdef GFI_SELFTEST
+    case 'S': // GFI self-test
+      if (tokenCnt == 2) {
+	g_EvseController.EnableGfiTest(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
+      }
+      break;
+#endif // GFI_SELFTEST   
 #ifdef DELAYTIMER     
     case 'T': // timer
       if (tokenCnt == 5) {
