@@ -213,7 +213,7 @@ void WatchDogReset()
   wdt_enable(WDTO_1S);   // enable watchdog timer
 }
 
-void SaveFlags()
+void SaveEvseFlags()
 {
   uint16_t flags = g_EvseController.GetFlags();
   EEPROM.write(EOFS_FLAGS,flags >> 8);
@@ -224,7 +224,7 @@ void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
   EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 #ifdef SERIALCLI
@@ -1166,7 +1166,7 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
   else {
     m_wFlags |= ECF_DIODE_CHK_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 #ifdef GFI_SELFTEST
@@ -1178,6 +1178,7 @@ void J1772EVSEController::EnableGfiTest(uint8_t tf)
   else {
     m_wFlags |= ECF_GFI_TEST_DISABLED;
   }
+  SaveEvseFlags();
 }
 #endif
 
@@ -1189,7 +1190,7 @@ void J1772EVSEController::EnableVentReq(uint8_t tf)
   else {
     m_wFlags |= ECF_VENT_REQ_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 #ifdef ADVPWR
@@ -1203,7 +1204,7 @@ void J1772EVSEController::EnableGndChk(uint8_t tf)
     m_NoGndTimeout = 0;
     m_wFlags |= ECF_GND_CHK_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
@@ -1214,7 +1215,7 @@ void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
   else {
     m_wFlags |= ECF_STUCK_RELAY_CHK_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
@@ -1225,7 +1226,7 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
   else {
     m_wFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 
@@ -1241,7 +1242,7 @@ void J1772EVSEController::EnableAutoStart(uint8_t tf)
   else {
     m_wFlags |= ECF_AUTO_START_DISABLED;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 #endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
@@ -1252,7 +1253,7 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
   else {
     m_wFlags &= ~ECF_SERIAL_DBG;
   }
-  SaveFlags();
+  SaveEvseFlags();
 }
 
 #ifdef RGBLCD
@@ -1261,7 +1262,7 @@ int J1772EVSEController::SetBacklightType(uint8_t t)
   g_OBD.LcdSetBacklightType(t);
   if (t == 0) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
-  SaveFlags();
+  SaveEvseFlags();
   return 0;
 }
 #endif // RGBLCD
@@ -1333,7 +1334,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
     m_wFlags &= ~ECF_L2; // set to Level 1
   }
 
-  SaveFlags();
+  SaveEvseFlags();
 
   uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
 
@@ -2212,7 +2213,7 @@ Menu *SvcLevelMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
-  SaveFlags();
+  SaveEvseFlags();
 
   delay(500);
 
@@ -2350,8 +2351,6 @@ Menu *GfiTestMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGfiTest((m_CurIdx == 0) ? 1 : 0);
-
-  EEPROM.write(EOFS_FLAGS,g_EvseController.GetFlags());
 
   delay(500);
 
@@ -2916,7 +2915,7 @@ Menu *AutoStartMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
-  SaveFlags();
+  SaveEvseFlags();
   delay(500);
   return &g_SetupMenu;
 }

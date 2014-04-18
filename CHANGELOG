@@ -1,4 +1,7 @@
 Change Log
+v3.1.A9 SCL 20140418
+- fixed bug in saving GFI self test setting
+	
 v3.1.A8 SCL 20140417
 - added S.Low's (scanchain) CheckTime() fixes
 	
