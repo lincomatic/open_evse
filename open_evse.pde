@@ -3054,61 +3054,68 @@ void DelayTimer::Init(){
   
   FlexiTimer2::set(60000, DelayTimerInterrupt); // Set 1 minute interrupt for Delay Timer handling
   FlexiTimer2::start(); // Start interrupt
-};
-void DelayTimer::CheckTime(){
+}
+void DelayTimer::CheckTime()
+{
   if (m_CheckNow == 1){
     g_CurrTime = g_RTC.now();
     m_CurrHour = g_CurrTime.hour();
     m_CurrMin = g_CurrTime.minute();
     
     if (IsTimerEnabled() && IsTimerValid()){
-      uint16_t m_StartTimerSeconds = m_StartTimerHour * 360 + m_StartTimerMin * 6;
-      uint16_t m_StopTimerSeconds = m_StopTimerHour * 360 + m_StopTimerMin * 6;
-      uint16_t m_CurrTimeSeconds = m_CurrHour * 360 + m_CurrMin * 6;
+      uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
+      uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
+      uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
       
       //Serial.println(m_StartTimerSeconds);
       //Serial.println(m_StopTimerSeconds);
       //Serial.println(m_CurrTimeSeconds);
       
-      if (m_StopTimerSeconds < m_StartTimerSeconds) {
-      //End time is for next day 
-        if ( ( (m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds >= m_StopTimerSeconds) ) || ( (m_CurrTimeSeconds <= m_StartTimerSeconds) && (m_CurrTimeSeconds <= m_StopTimerSeconds) ) ){
-           // Within time interval
+      if (stopTimerMinutes < startTimerMinutes) {
+	//End time is for next day 
+	if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
+             ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
+	  // Within time interval
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
 #ifdef BTN_MENU
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING && !g_BtnHandler.InMenu()){
-#else
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING){
-#endif //#ifdef BTN_MENU
-  	    g_EvseController.Enable();
-          }           
-        } else {
-          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
-            // Not in time interval
-            g_EvseController.Sleep();         
-          }
-        }
-      } else {
-        if ((m_CurrTimeSeconds >= m_StartTimerSeconds) && (m_CurrTimeSeconds < m_StopTimerSeconds)) {
-          // Within time interval
+	      && !g_BtnHandler.InMenu()
+#endif
+	      ){
+	    g_EvseController.Enable();
+	  }           
+	}
+	else {
+	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
+	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
+	    // Not in time interval
+	    g_EvseController.Sleep();         
+	  }
+	}
+      }
+      else { // not crossing midnite
+	if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
+	  // Within time interval
+	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
 #ifdef BTN_MENU
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING && !g_BtnHandler.InMenu()){
-#else
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING){
-#endif //#ifdef BTN_MENU
-  	    g_EvseController.Enable();
-          }          
-        } else {
-          if (m_CurrTimeSeconds == m_StopTimerSeconds) {
-            // Not in time interval
-            g_EvseController.Sleep();          
-          }
-        }
+	      && !g_BtnHandler.InMenu()
+#endif
+	      ){
+	    g_EvseController.Enable();
+	  }          
+	}
+	else {
+	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
+	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
+	    // Not in time interval
+	    g_EvseController.Sleep();          
+	  }
+	}
       }
     }
     m_CheckNow = 0;
   }
-};
-void DelayTimer::Enable(){;
+}
+void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
   EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(0);
@@ -3123,7 +3130,7 @@ void DelayTimer::Disable(){
   g_EvseController.EnableAutoStart(1);
   SaveSettings();
   g_OBD.Update(1);
-};
+}
 void DelayTimer::PrintTimerIcon(){
   //g_OBD.LcdClear();
   //g_OBD.LcdSetCursor(0,0);
@@ -3132,10 +3139,10 @@ void DelayTimer::PrintTimerIcon(){
     g_OBD.LcdWrite(0x0);
 #endif //#ifdef BTN_MENU
   }
-};
+}
 void DelayTimerInterrupt(){
   g_DelayTimer.CheckNow();
-};
+}
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER
 

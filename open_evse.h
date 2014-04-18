@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.1.A7"
+#define VERSION "3.1.A8"
 
 //-- begin features
 
@@ -377,8 +377,10 @@ public:
 #ifdef GFI
 class Gfi {
  uint8_t m_GfiFault;
+#ifdef GFI_SELFTEST
  uint8_t testSuccess;
  uint8_t testInProgress;
+#endif // GFI_SELFTEST
 public:
   Gfi() {}
   void Init();
