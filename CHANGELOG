@@ -1,4 +1,7 @@
 Change Log
+v3.1.A7 SCL 20140417
+- bumped version to 3.x.x to avoid confusion w/ main branch code
+	
 v2.1.A7 SCL 20140417
 - added nsayer's GFI_SELFTEST + menu tweaks
 	
