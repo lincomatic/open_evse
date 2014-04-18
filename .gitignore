@@ -1,4 +1,6 @@
-Download/**
+download/**
+archive/**
+rapi_checksum/**
 *.bak
 *~
 #################
