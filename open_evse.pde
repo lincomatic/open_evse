@@ -787,6 +787,22 @@ void OnboardDisplay::Update(int8_t force)
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psCharging);
+#ifdef AMMETER
+      unsigned long current;
+      current = g_EvseController.GetChargingCurrent();
+      int ma;
+      if (current < 1000) {
+	// nnnmA
+	ma = (int)current;
+	sprintf(g_sTmp,"%4dmA",ma);
+      }
+      else {
+	// nn.nA
+	int a = current / 1000;
+	ma = ((current % 1000) + 50) / 100;
+	sprintf(g_sTmp,"%3d.%dA",a,ma);
+      }
+#endif // AMMETER
       LcdPrint(10,0,g_sTmp);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is on
@@ -1844,6 +1860,9 @@ void J1772EVSEController::Update()
   // End Sensor Readings
 
   if (m_EvseState == EVSE_STATE_C) {
+#ifdef AMMETER
+    m_ChargingCurrent = readAmmeter();
+#endif // AMMETER
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeStartTime;
   }
@@ -1931,6 +1950,57 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 
   return rc;
 }
+
+#ifdef AMMETER
+static inline unsigned long ulong_sqrt(unsigned long in) {
+  unsigned long out;
+  // find the last int whose square is not too big
+  // Yes, it's wasteful, but we only theoretically ever have to go to 512.
+  // Removing floating point saves us almost 1K of flash.
+  for(out = 1; out*out <= in; out++) ;
+  return out - 1;
+}
+
+unsigned long J1772EVSEController::readAmmeter() {
+  unsigned long sum = 0;
+  unsigned int zero_crossings = 0;
+  unsigned long last_zero_crossing_time = 0, now_ms;
+  long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
+  unsigned int sample_count = 0;
+  for(unsigned long start = millis(); (now_ms = millis()) - start < CURRENT_SAMPLE_INTERVAL; ) {
+    long sample = analogRead(CURRENT_PIN);
+    // If this isn't the first sample, and if the sign of the value differs from the
+    // sign of the previous value, then count that as a zero crossing.
+    if (last_sample != -1 && ((last_sample > 512) != (sample > 512))) {
+      // Once we've seen a zero crossing, don't look for one for a little bit.
+      // It's possible that a little noise near zero could cause a two-sample
+      // inversion.
+      if (now_ms - last_zero_crossing_time > CURRENT_ZERO_DEBOUNCE_INTERVAL) {
+        zero_crossings++;
+        last_zero_crossing_time = now_ms;
+      }
+    }
+    last_sample = sample;
+    switch(zero_crossings) {
+    case 0: 
+      continue; // Still waiting to start sampling
+    case 1:
+    case 2:
+      // Gather the sum-of-the-squares and count how many samples we've collected.
+      sum += (unsigned long)((sample - 512) * (sample - 512));
+      sample_count++;
+      continue;
+    case 3:
+      // The answer is the square root of the mean of the squares.
+      // But additionally, that value must be scaled to a real current value.
+      return ulong_sqrt(sum / sample_count) * CURRENT_SCALE_FACTOR;
+    }
+  }
+  // ran out of time. Assume that it's simply not oscillating any. 
+  return 0;
+}
+
+#endif // AMMETER
 
 
 //-- end J1772EVSEController

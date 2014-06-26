@@ -39,6 +39,9 @@
 
 //-- begin features
 
+// current measurement
+//#define AMMETER
+
 // serial remote api
 //#define RAPI
 
@@ -159,7 +162,7 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
 
 //J1772EVSEController
-//#define CURRENT_PIN 0 // analog current reading pin A0
+#define CURRENT_PIN 0 // analog current reading pin A0
 #define VOLT_PIN 1 // analog voltage reading pin A1
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
@@ -254,6 +257,28 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // for J1772.ReadPilot()
 // 1x = 114us 20x = 2.3ms 100x = 11.3ms
 #define PILOT_LOOP_CNT 100
+
+#ifdef AMMETER
+// This multiplier is the number of milliamps per A/d converter unit.
+
+// First, you need to select the burden resistor for the CT. You choose the largest value possible such that // the maximum peak-to-peak voltage for the current range is 5 volts. To obtain this value, divide the maximum // outlet current by the Te. That value is the maximum CT current RMS. You must convert that to P-P, so multiply // by 2*sqrt(2). Divide 5 by that value and select the next lower standard resistor value. For the reference // design, Te is 1018 and the outlet maximum is 30. 5/((30/1018)*2*sqrt(2)) = 59.995, so a 56 ohm resistor // is called for. Call this value Rb (burden resistor).
+
+// Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent() // method calculates the RMS value before the scaling factor, so RMS need not be taken into account.
+// (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
+
+// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
+#define CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
+//#define CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+
+// The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
+// one and a half cycles at 50 Hz is 30 ms.
+#define CURRENT_SAMPLE_INTERVAL 35
+
+// Once we detect a zero-crossing, we should not look for one for another quarter cycle or so. 1/4 // cycle at 50 Hz is 5 ms.
+#define CURRENT_ZERO_DEBOUNCE_INTERVAL 5
+
+#endif // AMMETER
+
 
 //-- end configuration
 
@@ -521,6 +546,12 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
+#ifdef AMMETER
+  unsigned long m_ChargingCurrent;
+
+  unsigned long readAmmeter();
+#endif // AMMETER
+
 public:
   J1772EVSEController();
   void Init();
@@ -610,6 +641,9 @@ public:
   int SetBacklightType(uint8_t t); // 0=mono,1=RGB
 #endif // RGBLCD
 
+#ifdef AMMETER
+  unsigned long GetChargingCurrent() { return m_ChargingCurrent; }
+#endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
 };
 
