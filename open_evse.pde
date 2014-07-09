@@ -787,23 +787,6 @@ void OnboardDisplay::Update(int8_t force)
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psCharging);
-#ifdef AMMETER
-      unsigned long current;
-      current = g_EvseController.GetChargingCurrent();
-      int ma;
-      if (current < 1000) {
-	// nnnmA
-	ma = (int)current;
-	sprintf(g_sTmp,"%4dmA",ma);
-      }
-      else {
-	// nn.nA
-	int a = current / 1000;
-	ma = ((current % 1000) + 50) / 100;
-	sprintf(g_sTmp,"%3d.%dA",a,ma);
-      }
-#endif // AMMETER
-      LcdPrint(10,0,g_sTmp);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is on
       break;
@@ -883,6 +866,23 @@ void OnboardDisplay::Update(int8_t force)
 
 #ifdef LCD16X2
   if (curstate == EVSE_STATE_C) {
+#ifdef AMMETER
+      unsigned long current;
+      current = g_EvseController.GetChargingCurrent();
+      int ma;
+      if (current < 1000) {
+	// nnnmA
+	ma = (int)current;
+	sprintf(g_sTmp,"%4dmA",ma);
+      }
+      else {
+	// nn.nA
+	int a = current / 1000;
+	ma = ((current % 1000) + 50) / 100;
+	sprintf(g_sTmp,"%3d.%dA",a,ma);
+      }
+      LcdPrint(10,0,g_sTmp);
+#endif // AMMETER
     time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
     if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
       int h = hour(elapsedTime);
@@ -980,7 +980,7 @@ void Gfi::SelfTest()
     delayMicroseconds(GFI_PULSE_DURATION_MS);
     if (testSuccess) break; // no need to keep trying.
   }
-  delay(GFI_TEST_CLEAR_TIME);
+  while(digitalRead(GFI_PIN) == HIGH) ; // calm down!
   testInProgress = false;
 }
 #endif // GFI_SELFTEST

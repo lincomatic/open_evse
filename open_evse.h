@@ -210,7 +210,6 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
 #define GFI_TEST_CYCLES 50 // 50 cycles
 #define GFI_PULSE_DURATION_MS 8000 // of roughly 60 Hz. - 8 ms as a half-cycle
-#define GFI_TEST_CLEAR_TIME 250 // Takes the GFCI this long to clear
 #endif
 
 
