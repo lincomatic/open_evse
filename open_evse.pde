@@ -1387,6 +1387,11 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #ifdef ADVPWR
 uint8_t J1772EVSEController::doPost()
 {
+#ifdef SERIALCLI
+  if (SerDbgEnabled()) {
+    g_CLI.print_P(PSTR("POST start..."));
+  }
+#endif //#ifdef SERIALCLI
 
   int RelayOff, Relay1, Relay2; //Relay Power status
   int svcState = UD;	// service state = undefined
@@ -1496,6 +1501,14 @@ uint8_t J1772EVSEController::doPost()
 
   g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
   m_Pilot.SetState(PILOT_STATE_P12);
+
+#ifdef SERIALCLI
+  if (SerDbgEnabled()) {
+    g_CLI.print_P(PSTR("POST result: "));
+    Serial.println((int)svcState);
+  }
+#endif //#ifdef SERIALCLI
+
   return int(svcState);
 }
 #endif // ADVPWR
