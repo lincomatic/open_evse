@@ -168,7 +168,8 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
-#define CHARGING_PIN 8 // digital Charging LED and Relay Trigger pin
+#define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
+#define CHARGING_PINAC 9 //digital Charging pin for AC relay
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
