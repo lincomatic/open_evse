@@ -1135,7 +1135,8 @@ J1772EVSEController::J1772EVSEController()
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
   digitalWrite(CHARGING_PIN,HIGH); 
-  digitalWrite(CHARGING_PIN2,HIGH); 
+  digitalWrite(CHARGING_PIN2,HIGH);
+  digitalWrite(CHARGING_PINAC,HIGH);
   m_bVFlags |= ECVF_CHARGING_ON;
   
   m_ChargeStartTime = now();
@@ -1145,7 +1146,8 @@ void J1772EVSEController::chargingOn()
 void J1772EVSEController::chargingOff()
 { // turn off charging current
   digitalWrite(CHARGING_PIN,LOW); 
-  digitalWrite(CHARGING_PIN2,LOW); 
+  digitalWrite(CHARGING_PIN2,LOW);
+  digitalWrite(CHARGING_PINAC,LOW);
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
   m_ChargeOffTime = now();
@@ -1419,9 +1421,11 @@ uint8_t J1772EVSEController::doPost()
           
 // save state with Relay 1 on 
       digitalWrite(CHARGING_PIN, HIGH);
+      digitalWrite(CHARGING_PINAC, HIGH);
       delay(RelaySettlingTime);
       Relay1 = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
       digitalWrite(CHARGING_PIN, LOW);
+      digitalWrite(CHARGING_PINAC, LOW);
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
 // save state for Relay 2 on
@@ -1529,6 +1533,7 @@ void J1772EVSEController::Init()
 
   pinMode(CHARGING_PIN,OUTPUT);
   pinMode(CHARGING_PIN2,OUTPUT);
+  pinMode(CHARGING_PINAC,OUTPUT);
 
 #ifdef ADVPWR
   pinMode(ACLINE1_PIN, INPUT);
