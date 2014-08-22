@@ -1,4 +1,8 @@
 Change Log
+v3.1.0 SCL 20140822
+- added CHARGING_PINAC
+- promote from alpha to production status
+	
 v3.1.A9 SCL 20140418
 - fixed bug in saving GFI self test setting
 	
