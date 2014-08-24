@@ -3,7 +3,7 @@
  * Open EVSE Firmware
  *
  * Copyright (c) 2011-2014 Sam C. Lin <lincomatic@gmail.com>
- * Copyright (c) 2011-2013 Chris Howell <chris1howell@msn.com>
+ * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014 Nick Sayer <nsayer@kfu.com>
 
@@ -54,6 +54,7 @@ char *g_BlankLine = "                ";
 
 #ifdef BTN_MENU
 prog_char g_psSetup[] PROGMEM = "Setup";
+prog_char g_psLCDtype[] PROGMEM = "LCD Type";
 prog_char g_psSvcLevel[] PROGMEM = "Service Level";
 prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
 prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
@@ -86,6 +87,7 @@ prog_char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
 #endif // DELAYTIMER_MENU
 
 SetupMenu g_SetupMenu;
+LCDtypeMenu g_LCDtypeMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
@@ -2135,30 +2137,33 @@ void SetupMenu::Init()
 {
   m_CurIdx = 0;
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,g_SvcLevelMenu.m_Title);
+  g_OBD.LcdPrint_P(1,g_LCDtypeMenu.m_Title);
 }
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx > 10) {
+  if (++m_CurIdx > 11) {
     m_CurIdx = 0;
   }
 
   const prog_char *title;
   switch(m_CurIdx) {
   case 0:
-    title = g_SvcLevelMenu.m_Title;
+    title = g_LCDtypeMenu.m_Title;
     break;
   case 1:
-    title = g_MaxCurrentMenu.m_Title;
+    title = g_SvcLevelMenu.m_Title;
     break;
   case 2:
-    title = g_DiodeChkMenu.m_Title;
+    title = g_MaxCurrentMenu.m_Title;
     break;
   case 3:
-    title = g_VentReqMenu.m_Title;
+    title = g_DiodeChkMenu.m_Title;
     break;
   case 4:
+    title = g_VentReqMenu.m_Title;
+    break;
+  case 5:
 #ifdef ADVPWR
     title = g_GndChkMenu.m_Title;
     break;
@@ -2166,7 +2171,7 @@ void SetupMenu::Next()
     m_CurIdx++;
     // fall through
 #endif // ADVPWR
-  case 5:
+  case 6:
 #ifdef GFI_SELFTEST
     title = g_GfiTestMenu.m_Title;
     break;
@@ -2175,18 +2180,18 @@ void SetupMenu::Next()
     // fall through
 #endif
 // Add menu items to control Delay Timers - GoldServe
-  case 6:
+  case 7:
 #ifdef DELAYTIMER_MENU
     title = g_RTCMenu.m_Title;
     break;
-  case 7:
+  case 8:
     title = g_DelayMenu.m_Title;
     break;
 #else
     m_CurIdx += 2;
     // fall through
 #endif //#ifdef DELAYTIMER
-  case 8:
+  case 9:
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
     title = g_AutoStartMenu.m_Title;
@@ -2195,7 +2200,7 @@ void SetupMenu::Next()
     m_CurIdx++;
     // fall through
 #endif //#ifdef AUTOSTART_MENU
-  case 9:
+  case 10:
     title = g_ResetMenu.m_Title;
     break;
   default:
@@ -2208,42 +2213,45 @@ void SetupMenu::Next()
 Menu *SetupMenu::Select()
 {
   if (m_CurIdx == 0) {
-    return &g_SvcLevelMenu;
+    return &g_LCDtypeMenu;
   }
   else if (m_CurIdx == 1) {
-    return &g_MaxCurrentMenu;
+    return &g_SvcLevelMenu;
   }
   else if (m_CurIdx == 2) {
-    return &g_DiodeChkMenu;
+    return &g_MaxCurrentMenu;
   }
   else if (m_CurIdx == 3) {
+    return &g_DiodeChkMenu;
+  }
+  else if (m_CurIdx == 4) {
     return &g_VentReqMenu;
   }
 #ifdef ADVPWR
-  else if (m_CurIdx == 4) {
+  else if (m_CurIdx == 5) {
     return &g_GndChkMenu;
   }
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
-  else if (m_CurIdx == 5) {
+  else if (m_CurIdx == 6) {
     return &g_GfiTestMenu;
   }
 #endif
-  else if (m_CurIdx == 9) {
+  else if (m_CurIdx == 10) {
     return &g_ResetMenu;
   }
 #ifdef DELAYTIMER_MENU
 // Add menu items to control Delay Timers - GoldServe
-  else if (m_CurIdx == 6) {
+  else if (m_CurIdx == 7) {
     return &g_RTCMenu;
   }
-  else if (m_CurIdx == 7) {
+  else if (m_CurIdx == 8) {
     return &g_DelayMenu;
   }
 #endif //#ifdef DELAYTIMER
 #ifdef AUTOSTART_MENU
 // Add menu items to control Auto Start - GoldServe
-  else if (m_CurIdx == 8) {
+  else if (m_CurIdx == 9) {
     return &g_AutoStartMenu;
   }
 #endif //#ifdef AUTOSTART_MENU
@@ -2253,6 +2261,44 @@ Menu *SetupMenu::Select()
   }
 }
 
+char *g_LCDmenuItems[] = {"RGB","Monochrome"};
+LCDtypeMenu::LCDtypeMenu()
+{
+  m_Title = g_psLCDtype;
+}
+void LCDtypeMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.SetBacklightType() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_LCDmenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void LCDtypeMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.SetBacklightType();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_LCDmenuItems[m_CurIdx]);
+}
+
+Menu *LCDtypeMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_LCDmenuItems[m_CurIdx]);
+
+  g_EvseController.SetBacklightType((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+  return &g_SetupMenu;
+
+}
 #ifdef ADVPWR
 #define SVC_LVL_MNU_ITEMCNT 3
 #else
