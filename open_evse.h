@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.1.0"
+#define VERSION "3.2.0"
 
 //-- begin features
 
@@ -682,6 +682,14 @@ public:
 class SetupMenu : public Menu {
 public:
   SetupMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+
+class LCDtypeMenu : public Menu {
+public:
+  LCDtypeMenu();
   void Init();
   void Next();
   Menu *Select();
