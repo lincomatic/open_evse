@@ -691,6 +691,14 @@ public:
   Menu *Select();
 };
 
+class LCDtypeMenu : public Menu {
+public:
+  LCDtypeMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+
 class SvcLevelMenu : public Menu {
 public:
   SvcLevelMenu();
