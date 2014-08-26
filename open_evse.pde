@@ -270,7 +270,7 @@ CLI::CLI()
 void CLI::info()
 {
   println_P(PSTR("OpenEVSE")); // CLI print prompt when serial is ready
-  print_P(PSTR("Software - Open EVSE V")); //CLI info
+  print_P(PSTR("Firmware - Open EVSE V")); //CLI info
   println_P(VERSTR);
   printlnn();
 }
@@ -1438,13 +1438,15 @@ uint8_t J1772EVSEController::doPost()
   int RelayOff, Relay1, Relay2; //Relay Power status
   int svcState = UD;	// service state = undefined
 
-  m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in - write early so it will stabilize before reading.
+  m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
+
   g_OBD.SetRedLed(HIGH); 
 #ifdef LCD16X2 //Adafruit RGB LCD
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
 #endif //Adafruit RGB LCD 
 
   if (AutoSvcLevelEnabled()) {
+    delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
@@ -2164,7 +2166,6 @@ SetupMenu::SetupMenu()
 
   m_menuCnt = 0;
   while (g_MenuList[m_menuCnt]) {
-    g_MenuList[m_menuCnt]->SetMenuIdx(m_menuCnt);
     m_menuCnt++;
   }
 }

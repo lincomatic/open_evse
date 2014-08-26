@@ -1,4 +1,8 @@
 Change Log
+v3.2.1 SCL 20140826
+- fix POST problem when LCD not attached
+- remove superfluous m_menuidx added in last update
+	
 v3.2.0 SCL 20140825
 - revamped SetupMenu to greatly simplify adding/removing items
 - added LCD backlight type setting to menus (C. Howell)

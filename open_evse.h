@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.0"
+#define VERSION "3.2.1"
 
 //-- begin features
 
@@ -666,7 +666,6 @@ public:
 
 
 class Menu {
-  uint8_t m_menuidx;
 public:
   prog_char *m_Title;
   uint8_t m_CurIdx;
@@ -674,8 +673,6 @@ public:
   void init(const char *firstitem);
 
   Menu();
-  void SetMenuIdx(uint8_t idx) { m_menuidx = idx; }
-  uint8_t GetMenuIdx() { return m_menuidx; }
 
   virtual void Init() = 0;
   virtual void Next() = 0;
