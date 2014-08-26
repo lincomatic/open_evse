@@ -3,7 +3,7 @@
  * Open EVSE Firmware
  *
  * Copyright (c) 2011-2014 Sam C. Lin <lincomatic@gmail.com>
- * Copyright (c) 2011-2013 Chris Howell <chris1howell@msn.com>
+ * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014 Nick Sayer <nsayer@kfu.com>
 
@@ -58,6 +58,9 @@ prog_char g_psSvcLevel[] PROGMEM = "Service Level";
 prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
 prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
 prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
+#ifdef RGBLCD
+prog_char g_psBklType[] PROGMEM = "Backlight Type";
+#endif
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
@@ -89,6 +92,9 @@ SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
 DiodeChkMenu g_DiodeChkMenu;
+#ifdef RGBLCD
+BklTypeMenu g_BklTypeMenu;
+#endif // RGBLCD
 #ifdef GFI_SELFTEST
 GfiTestMenu g_GfiTestMenu;
 #endif
@@ -115,6 +121,32 @@ DelayMenuStopHour g_DelayMenuStopHour;
 DelayMenuStartMin g_DelayMenuStartMin;
 DelayMenuStopMin g_DelayMenuStopMin;
 #endif // DELAYTIMER_MENU
+
+Menu *g_MenuList[] =
+{
+#ifdef RGBLCD
+  &g_BklTypeMenu,
+#endif // RGBLCD
+  &g_SvcLevelMenu,
+  &g_MaxCurrentMenu,
+  &g_DiodeChkMenu,
+  &g_VentReqMenu,
+#ifdef ADVPWR
+  &g_GndChkMenu,
+#endif // ADVPWR
+#ifdef GFI_SELFTEST
+  &g_GfiTestMenu,
+#endif // GFI_SELFTEST
+#ifdef DELAYTIMER_MENU
+  &g_RTCMenu,
+  &g_DelayMenu,
+#endif // DELAYTIMER_MENU
+#ifdef AUTOSTART_MENU
+  &g_AutoStartMenu,
+#endif // AUTOSTART_MENU
+  &g_ResetMenu,
+  NULL
+};
 
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
@@ -2129,124 +2161,43 @@ void Menu::init(const char *firstitem)
 SetupMenu::SetupMenu()
 {
   m_Title = g_psSetup;
+
+  m_menuCnt = 0;
+  while (g_MenuList[m_menuCnt]) {
+    g_MenuList[m_menuCnt]->SetMenuIdx(m_menuCnt);
+    m_menuCnt++;
+  }
 }
 
 void SetupMenu::Init()
 {
   m_CurIdx = 0;
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,g_SvcLevelMenu.m_Title);
+  g_OBD.LcdPrint_P(1,g_MenuList[0]->m_Title);
 }
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx > 10) {
+  if (++m_CurIdx > m_menuCnt) {
     m_CurIdx = 0;
   }
 
   const prog_char *title;
-  switch(m_CurIdx) {
-  case 0:
-    title = g_SvcLevelMenu.m_Title;
-    break;
-  case 1:
-    title = g_MaxCurrentMenu.m_Title;
-    break;
-  case 2:
-    title = g_DiodeChkMenu.m_Title;
-    break;
-  case 3:
-    title = g_VentReqMenu.m_Title;
-    break;
-  case 4:
-#ifdef ADVPWR
-    title = g_GndChkMenu.m_Title;
-    break;
-#else
-    m_CurIdx++;
-    // fall through
-#endif // ADVPWR
-  case 5:
-#ifdef GFI_SELFTEST
-    title = g_GfiTestMenu.m_Title;
-    break;
-#else
-    m_CurIdx++;
-    // fall through
-#endif
-// Add menu items to control Delay Timers - GoldServe
-  case 6:
-#ifdef DELAYTIMER_MENU
-    title = g_RTCMenu.m_Title;
-    break;
-  case 7:
-    title = g_DelayMenu.m_Title;
-    break;
-#else
-    m_CurIdx += 2;
-    // fall through
-#endif //#ifdef DELAYTIMER
-  case 8:
-#ifdef AUTOSTART_MENU
-// Add menu items to control Auto Start - GoldServe
-    title = g_AutoStartMenu.m_Title;
-    break;
-#else
-    m_CurIdx++;
-    // fall through
-#endif //#ifdef AUTOSTART_MENU
-  case 9:
-    title = g_ResetMenu.m_Title;
-    break;
-  default:
-    title = g_psExit;
-    break;
+  if (m_CurIdx < m_menuCnt) {
+    title = g_MenuList[m_CurIdx]->m_Title;
   }
+  else {
+    title = g_psExit;
+  }
+
   g_OBD.LcdPrint_P(1,title);
 }
 
 Menu *SetupMenu::Select()
 {
-  if (m_CurIdx == 0) {
-    return &g_SvcLevelMenu;
+  if (m_CurIdx < m_menuCnt) {
+    return g_MenuList[m_CurIdx];
   }
-  else if (m_CurIdx == 1) {
-    return &g_MaxCurrentMenu;
-  }
-  else if (m_CurIdx == 2) {
-    return &g_DiodeChkMenu;
-  }
-  else if (m_CurIdx == 3) {
-    return &g_VentReqMenu;
-  }
-#ifdef ADVPWR
-  else if (m_CurIdx == 4) {
-    return &g_GndChkMenu;
-  }
-#endif // ADVPWR
-#ifdef GFI_SELFTEST
-  else if (m_CurIdx == 5) {
-    return &g_GfiTestMenu;
-  }
-#endif
-  else if (m_CurIdx == 9) {
-    return &g_ResetMenu;
-  }
-#ifdef DELAYTIMER_MENU
-// Add menu items to control Delay Timers - GoldServe
-  else if (m_CurIdx == 6) {
-    return &g_RTCMenu;
-  }
-  else if (m_CurIdx == 7) {
-    return &g_DelayMenu;
-  }
-#endif //#ifdef DELAYTIMER
-#ifdef AUTOSTART_MENU
-// Add menu items to control Auto Start - GoldServe
-  else if (m_CurIdx == 8) {
-    return &g_AutoStartMenu;
-  }
-#endif //#ifdef AUTOSTART_MENU
   else {
     g_OBD.LcdClear();
     return NULL;
@@ -2265,6 +2216,47 @@ const char *g_SvcLevelMenuItems[] = {
   "Level 1",
   "Level 2"
 };
+
+#ifdef RGBLCD
+char *g_BklMenuItems[] = {"RGB","Monochrome"};
+BklTypeMenu::BklTypeMenu()
+{
+  m_Title = g_psBklType;
+}
+void BklTypeMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_BtnHandler.GetSavedLcdMode() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_BklMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void BklTypeMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_BtnHandler.GetSavedLcdMode() ? 0 : 1;
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
+}
+
+Menu *BklTypeMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
+
+  g_BtnHandler.SetSavedLcdMode((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+  return &g_SetupMenu;
+
+}
+#endif // RGBLCD
 
 
 SvcLevelMenu::SvcLevelMenu()
@@ -3092,7 +3084,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #else  
 	g_EvseController.Enable();
 #endif        
-	g_OBD.LcdSetBacklightType(m_CurLcdMode); // restore LCD mode
+	g_OBD.LcdSetBacklightType(m_CurLcdMode); // exiting menus - restore LCD mode
 	g_OBD.Update(1);
       }
     }
@@ -3103,7 +3095,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Sleep();
 	m_CurLcdMode = g_OBD.IsLcdBacklightMono() ? 0 : 1;
-	g_OBD.LcdSetBacklightType(0); // set to mono
+	g_OBD.LcdSetBacklightType(0); // set to mono so menus are always white
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
 #ifndef BTN_ENABLE_TOGGLE

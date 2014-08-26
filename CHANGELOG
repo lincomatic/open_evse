@@ -1,4 +1,8 @@
 Change Log
+v3.2.0 SCL 20140825
+- revamped SetupMenu to greatly simplify adding/removing items
+- added LCD backlight type setting to menus (C. Howell)
+	
 v3.1.0 SCL 20140822
 - added CHARGING_PINAC
 - promote from alpha to production status

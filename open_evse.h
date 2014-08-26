@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.1.0"
+#define VERSION "3.2.0"
 
 //-- begin features
 
@@ -60,7 +60,7 @@
 #define GFI_SELFTEST
 
 
-//Adafruit RGBLCD
+//Adafruit RGBLCD - can have RGB or monochrome backlight
 #define RGBLCD
 
 //select default LCD backlight mode. can be overridden w/CLI/RAPI
@@ -666,6 +666,7 @@ public:
 
 
 class Menu {
+  uint8_t m_menuidx;
 public:
   prog_char *m_Title;
   uint8_t m_CurIdx;
@@ -673,6 +674,8 @@ public:
   void init(const char *firstitem);
 
   Menu();
+  void SetMenuIdx(uint8_t idx) { m_menuidx = idx; }
+  uint8_t GetMenuIdx() { return m_menuidx; }
 
   virtual void Init() = 0;
   virtual void Next() = 0;
@@ -680,6 +683,7 @@ public:
 };
 
 class SetupMenu : public Menu {
+  uint8_t m_menuCnt;
 public:
   SetupMenu();
   void Init();
@@ -752,6 +756,15 @@ public:
   Menu *Select();
 };
 
+#ifdef RGBLCD
+class BklTypeMenu : public Menu {
+public:
+  BklTypeMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif // RGBLCD
 
 #ifdef AUTOSTART_MENU
 class AutoStartMenu : public Menu {
@@ -861,6 +874,8 @@ public:
   void init() { m_Btn.init(); }
   void ChkBtn(int8_t notoggle=0);
   uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
+  uint8_t GetSavedLcdMode() { return m_CurLcdMode; }
+  void SetSavedLcdMode(uint8_t mode ) { m_CurLcdMode = mode; }
 };
 
 #endif // BTN_MENU
