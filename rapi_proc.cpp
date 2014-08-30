@@ -204,7 +204,7 @@ int EvseRapiProcessor::processCmd()
     case '0': // set LCD type
       if (tokenCnt == 2) {
 #ifdef RGBLCD
-	rc = g_EvseController.SetBacklightType(dtou(tokens[1]));
+	rc = g_EvseController.SetBacklightType((tokens[1] == 0) ? BKL_TYPE_MONO : BKL_TYPE_RGB);
 #endif // RGBLCD
       }
       break;

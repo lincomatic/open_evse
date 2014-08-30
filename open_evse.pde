@@ -52,6 +52,10 @@ void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 char *g_BlankLine = "                ";
 #endif // LCD16X2
 
+#ifdef GFI_SELFTEST
+prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
+#endif
+
 #ifdef BTN_MENU
 prog_char g_psSetup[] PROGMEM = "Setup";
 prog_char g_psSvcLevel[] PROGMEM = "Service Level";
@@ -64,9 +68,6 @@ prog_char g_psBklType[] PROGMEM = "Backlight Type";
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
 #endif // ADVPWR
-#ifdef GFI_SELFTEST
-prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
-#endif
 prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
@@ -1315,10 +1316,10 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
 }
 
 #ifdef RGBLCD
-int J1772EVSEController::SetBacklightType(uint8_t t)
+int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 {
-  g_OBD.LcdSetBacklightType(t);
-  if (t == 0) m_wFlags |= ECF_MONO_LCD;
+  g_OBD.LcdSetBacklightType(t,update);
+  if (t == BKL_TYPE_MONO) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
   SaveEvseFlags();
   return 0;
@@ -1545,8 +1546,10 @@ uint8_t J1772EVSEController::doPost()
   if (GfiSelfTestEnabled()) {
     m_Gfi.SelfTest();
     if (!m_Gfi.SelfTestSuccess()) {
+#ifdef LCD16X2
       g_OBD.LcdSetBacklightColor(RED);
       g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
+#endif // LCD16X2
       delay(500);
       svcState = FG;
     }
@@ -1604,6 +1607,9 @@ void J1772EVSEController::Init()
 
   if (rflgs == 0xffff) { // uninitialized EEPROM
     m_wFlags = ECF_DEFAULT;
+    if (DEFAULT_LCD_BKL_TYPE == BKL_TYPE_MONO) {
+      m_wFlags |= ECF_MONO_LCD;
+    }
   }
   else {
     m_wFlags = rflgs;
@@ -2227,7 +2233,7 @@ BklTypeMenu::BklTypeMenu()
 void BklTypeMenu::Init()
 {
   g_OBD.LcdPrint_P(0,m_Title);
-  m_CurIdx = g_BtnHandler.GetSavedLcdMode() ? 0 : 1;
+  m_CurIdx = (g_BtnHandler.GetSavedLcdMode() == BKL_TYPE_RGB) ? 0 : 1;
   sprintf(g_sTmp,"+%s",g_BklMenuItems[m_CurIdx]);
   g_OBD.LcdPrint(1,g_sTmp);
 }
@@ -2239,10 +2245,7 @@ void BklTypeMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
-  uint8_t dce = g_BtnHandler.GetSavedLcdMode() ? 0 : 1;
-  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
-  }
+  g_OBD.LcdPrint("+");
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 }
 
@@ -2251,7 +2254,10 @@ Menu *BklTypeMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 
-  g_BtnHandler.SetSavedLcdMode((m_CurIdx == 0) ? 1 : 0);
+  g_EvseController.SetBacklightType((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO,0);
+  g_BtnHandler.SetSavedLcdMode((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO);
+
+  g_OBD.LcdSetBacklightType(0,0); // set to mono so menus are always white
 
   delay(500);
   return &g_SetupMenu;
@@ -3095,7 +3101,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Sleep();
-	m_CurLcdMode = g_OBD.IsLcdBacklightMono() ? 0 : 1;
+	m_CurLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
 	g_OBD.LcdSetBacklightType(0); // set to mono so menus are always white
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;

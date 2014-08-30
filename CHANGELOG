@@ -1,4 +1,7 @@
 Change Log
+v3.2.1 SCL 20140829
+- setting RGB/mono backlight fixes
+	
 v3.2.1 SCL 20140826
 - fix POST problem when LCD not attached
 - remove superfluous m_menuidx added in last update

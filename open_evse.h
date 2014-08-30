@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.1"
+#define VERSION "3.2.2"
 
 //-- begin features
 
@@ -43,7 +43,7 @@
 //#define AMMETER
 
 // serial remote api
-//#define RAPI
+#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -64,8 +64,10 @@
 #define RGBLCD
 
 //select default LCD backlight mode. can be overridden w/CLI/RAPI
-#define DEFAULT_LCD_MODE 1 // RGB
-#define DEFAULT_LCD_MODE 0 // monochrome backlight
+#define BKL_TYPE_MONO 0
+#define BKL_TYPE_RGB  1
+#define DEFAULT_LCD_BKL_TYPE BKL_TYPE_RGB
+//#define DEFAULT_LCD_BKL_TYPE BLK_TYPE_MONO
 
 // Adafruit LCD backpack in I2C mode
 //#define I2CLCD
@@ -377,10 +379,10 @@ public:
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
-  void LcdSetBacklightType(uint8_t rgb) { // 1=rgb,0=mono
-    if (rgb) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
+  void LcdSetBacklightType(uint8_t t,uint8_t update=1) { // BKL_TYPE_XXX
+    if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
     else m_bFlags |= OBDF_MONO_BACKLIGHT;
-    Update(1);
+    Update(update);
   }
   uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
   void LcdSetBacklightColor(uint8_t c) {
@@ -638,7 +640,7 @@ public:
 #endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
 #ifdef RGBLCD
-  int SetBacklightType(uint8_t t); // 0=mono,1=RGB
+  int SetBacklightType(uint8_t t,uint8_t update=1); // BKL_TYPE_XXX
 #endif // RGBLCD
 
 #ifdef AMMETER
