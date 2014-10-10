@@ -1,7 +1,5 @@
-This is the stable version of OpenEVSE firmware.
+This is the V2.1.0 version of OpenEVSE firmware.
 Not further updates will be applied to this version.
-All further updates/enhancments will only be applied to the
-RAPI branch: https://github.com/lincomatic/open_evse/tree/rapi
 
 
 Firmware for Open EVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
