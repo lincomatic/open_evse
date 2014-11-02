@@ -43,6 +43,8 @@
 #include <FlexiTimer2.h> // Required for RTC and Delay Timer
 #include <Time.h>
 #include <LiquidTWI2.h>
+// if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
+//#include <LiquidCrystal_I2C.h>
 #include "open_evse.h"
 
 prog_char VERSTR[] PROGMEM = VERSION;
@@ -653,8 +655,14 @@ void CLI::print_P(prog_char *s)
 
 OnboardDisplay::OnboardDisplay()
 #if defined(I2CLCD) || defined(RGBLCD)
+#ifdef I2CLCD_PCF8574
+// Set the pins on the I2C chip used for LCD connections:
+//                    addr, en,rw,rs,d4,d5,d6,d7,bl,blpol
+  : m_Lcd(LCD_I2C_ADDR, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE)
+#else
   : m_Lcd(LCD_I2C_ADDR,1)
-#endif
+#endif // I2CLCD_PCF8574
+#endif // defined(I2CLCD) || defined(RGBLCD)
 {
 }
 
@@ -711,7 +719,7 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 #ifdef LCD16X2
 void OnboardDisplay::LcdPrint_P(const prog_char *s)
 {
-  if (m_Lcd.LcdDetected()) {
+  if (LcdDetected()) {
     strcpy_P(m_strBuf,s);
     m_Lcd.print(m_strBuf);
   }
@@ -739,7 +747,7 @@ void OnboardDisplay::LcdMsg_P(const prog_char *l1,const prog_char *l2)
 // print at (0,y), filling out the line with trailing spaces
 void OnboardDisplay::LcdPrint(int y,const char *s)
 {
-  if (m_Lcd.LcdDetected()) {
+  if (LcdDetected()) {
     m_Lcd.setCursor(0,y);
     char ss[LCD_MAX_CHARS_PER_LINE+1];
 // n.b the 16 in the string below needs to be adjusted if LCD_MAX_CHARS_PER_LINE != 16

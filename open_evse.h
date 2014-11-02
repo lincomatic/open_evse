@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.2"
+#define VERSION "3.2.3"
 
 //-- begin features
 
@@ -60,7 +60,7 @@
 #define GFI_SELFTEST
 
 
-//Adafruit RGBLCD - can have RGB or monochrome backlight
+//Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
 #define RGBLCD
 
 //select default LCD backlight mode. can be overridden w/CLI/RAPI
@@ -69,14 +69,21 @@
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_RGB
 //#define DEFAULT_LCD_BKL_TYPE BLK_TYPE_MONO
 
-// Adafruit LCD backpack in I2C mode
+// Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
+// Support PCF8574* based I2C backpack using F. Malpartida's library
+// https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
+// note: When enabling I2CLCD_PCF8754, due to stupidity of Arduino, at 
+//   top of open_evse.pde must
+//   uncomment #include <LiquidCrystal_I2C.h> and
+//   comment out #include <LiquidTWI2.h>
+//#define I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
-// connect an SPST button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
+// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
 // How to use 1-button menu
 // Long press activates menu
@@ -238,8 +245,13 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // Using LiquidTWI2 for both types of I2C LCD's
 // see http://blog.lincomatic.com/?p=956 for installation instructions
 #include <Wire.h>
+#ifdef I2CLCD_PCF8574
+#include <LiquidCrystal_I2C.h>
+#define LCD_I2C_ADDR 0x27
+#else
 #include <LiquidTWI2.h>
 #define LCD_I2C_ADDR 0x20 // for adafruit shield or backpack
+#endif // I2CLCD_PCF8574
 #endif // RGBLCD || I2CLCD
 
 #define BTN_PIN A3 // button sensing pin
@@ -326,8 +338,13 @@ class OnboardDisplay
 
 {
 #if defined(RGBLCD) || defined(I2CLCD)
-LiquidTWI2 m_Lcd;
-#endif
+#ifdef I2CLCD_PCF8574
+#include <LiquidCrystal_I2C.h>
+  LiquidCrystal_I2C m_Lcd;  
+#else
+  LiquidTWI2 m_Lcd;
+#endif // I2CLCD_PCF8574
+#endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
 
@@ -341,35 +358,42 @@ public:
 #ifdef LCD16X2
   void LcdBegin(int x,int y) { 
 #ifdef I2CLCD
+#ifndef I2CLCD_PCF8574
     m_Lcd.setMCPType(LTI_TYPE_MCP23008);
+#endif
     m_Lcd.begin(x,y); 
     m_Lcd.setBacklight(HIGH);
 #elif defined(RGBLCD)
     m_Lcd.setMCPType(LTI_TYPE_MCP23017);
     m_Lcd.begin(x,y,2); 
     m_Lcd.setBacklight(WHITE);
-#endif
+#endif // I2CLCD
   }
+#ifdef I2CLCD_PCF8574
+  uint8_t LcdDetected() { return 1; }
+#else
+  uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
+#endif 
   void LcdPrint(const char *s) { 
-    if (m_Lcd.LcdDetected()) m_Lcd.print(s); 
+    if (LcdDetected()) m_Lcd.print(s); 
   }
   void LcdPrint_P(const prog_char *s);
   void LcdPrint(int y,const char *s);
   void LcdPrint_P(int y,const prog_char *s);
   void LcdPrint(int x,int y,const char *s) { 
     m_Lcd.setCursor(x,y);
-    if (m_Lcd.LcdDetected()) m_Lcd.print(s); 
+    if (LcdDetected()) m_Lcd.print(s); 
   }
   void LcdPrint_P(int x,int y,const prog_char *s);
   void LcdPrint(int i) { 
-    if (m_Lcd.LcdDetected()) m_Lcd.print(i); 
+    if (LcdDetected()) m_Lcd.print(i); 
   }
   void LcdSetCursor(int x,int y) { 
     m_Lcd.setCursor(x,y); 
   }
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
-    if (m_Lcd.LcdDetected()) m_Lcd.print(g_BlankLine);
+    if (LcdDetected()) m_Lcd.print(g_BlankLine);
   }
   void LcdClear() { 
     m_Lcd.clear();
