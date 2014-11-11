@@ -1,4 +1,7 @@
 Change Log
+v3.2.4 SCL 20141110
+- added CraigK's current averaging AMMETER_AVERAGING
+	
 v3.2.3 SCL 20140829
 - added support for PCF8574-based I2C LCD backpacks
 	

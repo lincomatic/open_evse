@@ -161,10 +161,12 @@ int EvseRapiProcessor::processCmd()
   switch(*(s++)) { 
   case 'F': // function
     switch(*s) {
+#ifdef LCD16X2
     case 'B': // LCD backlight
       g_OBD.LcdSetBacklightColor(dtou(tokens[1]));
       rc = 0;
       break;
+#endif // LCD16X2      
     case 'D': // disable EVSE
       g_EvseController.Disable();
       rc = 0;
@@ -173,6 +175,7 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Enable();
       rc = 0;
       break;
+#ifdef LCD16X2
     case 'P': // print to LCD
       {
 	uint8 x = dtou(tokens[1]);
@@ -185,6 +188,7 @@ int EvseRapiProcessor::processCmd()
       }
       rc = 0;
       break;
+#endif // LCD16X2      
     case 'R': // reset EVSE
       extern void WatchDogReset();
       WatchDogReset();
@@ -201,6 +205,7 @@ int EvseRapiProcessor::processCmd()
 
   case 'S': // set parameter
     switch(*s) {
+#ifdef LCD16X2
     case '0': // set LCD type
       if (tokenCnt == 2) {
 #ifdef RGBLCD
@@ -208,6 +213,7 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
+#endif // LCD16X2      
 #ifdef RTC      
     case '1': // set RTC
       if (tokenCnt == 7) {

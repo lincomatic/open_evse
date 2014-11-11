@@ -35,12 +35,17 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.3"
+#define VERSION "3.2.4"
 
 //-- begin features
 
 // current measurement
-//#define AMMETER
+#define AMMETER
+
+#define AMMETER_AVERAGING
+#define AMMETER_MEMORY 32 // number of points of moving average
+
+#define AMMETER_CURRENT_OFFSET 950 // mA //Craig K,  this resolves the zero offset that I observed
 
 // serial remote api
 #define RAPI
@@ -132,7 +137,13 @@
 
 //-- end features
 
+#ifndef AMMETER
+#undef AMMETER_AVERAGING
+#endif
 
+#ifndef RGBLCD
+#define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
+#endif
 
 #if defined(RGBLCD) || defined(I2CLCD)
 #define LCD16X2
@@ -140,6 +151,10 @@
 #else
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
+
+#ifndef I2CLCD
+#undef I2CLCD_PCF8574
+#endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(RTC) && defined(LCD16X2)
@@ -281,8 +296,11 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
 
 // Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
-#define CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
+//#define CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
 //#define CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+// Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
+// then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
+#define CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -404,11 +422,19 @@ public:
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=1) { // BKL_TYPE_XXX
+#ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
     else m_bFlags |= OBDF_MONO_BACKLIGHT;
     Update(update);
+#endif // RGBLCD
   }
-  uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
+  uint8_t IsLcdBacklightMono() {
+#ifdef RGBLCD
+    return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0;
+#else
+    return 1;
+#endif // RGBLCD
+  }
   void LcdSetBacklightColor(uint8_t c) {
 #ifdef RGBLCD
     if (IsLcdBacklightMono()) {
