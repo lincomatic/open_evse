@@ -16,6 +16,7 @@
   8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
   8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
   9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
+  10/25/14               Craig K            add smoothing to the Amperage readout
   
  * This file is part of Open EVSE.
 
@@ -223,6 +224,10 @@ prog_char g_psSleeping[] PROGMEM = "Sleeping";
 prog_char g_psEvConnected[] PROGMEM = "EV Connected";
 prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
 #endif // LCD16X2
+
+#ifdef AMMETER_AVERAGING
+unsigned long g_Current[AMMETER_MEMORY];
+#endif // AMMETER_AVERAGING
 
 //-- end global variables
 
@@ -675,7 +680,11 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+#ifdef RGBLCD
   m_bFlags = 0;
+#else
+  m_bFlags = OBDF_MONO_BACKLIGHT;
+#endif // RGBLCD
 
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
@@ -910,6 +919,19 @@ void OnboardDisplay::Update(int8_t force)
 #ifdef AMMETER
       unsigned long current;
       current = g_EvseController.GetChargingCurrent();
+
+#ifdef AMMETER_AVERAGING
+      unsigned long currtot = current;
+      for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
+	g_Current[c] = g_Current[c-1];
+	currtot += g_Current[c];
+      }
+      g_Current[0] = current;
+
+      current = currtot / AMMETER_MEMORY;
+      current -= AMMETER_CURRENT_OFFSET;
+#endif // AMMETER_AVERAGING
+
       int ma;
       if (current < 1000) {
 	// nnnmA
@@ -1326,10 +1348,13 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
 #ifdef RGBLCD
 int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 {
+#ifdef RGBLCD
   g_OBD.LcdSetBacklightType(t,update);
   if (t == BKL_TYPE_MONO) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
   SaveEvseFlags();
+  Serial.print("wflags");Serial.print(m_wFlags,HEX);
+#endif // RGBLCD
   return 0;
 }
 #endif // RGBLCD
@@ -1615,14 +1640,20 @@ void J1772EVSEController::Init()
 
   if (rflgs == 0xffff) { // uninitialized EEPROM
     m_wFlags = ECF_DEFAULT;
+#ifdef RGBLCD
     if (DEFAULT_LCD_BKL_TYPE == BKL_TYPE_MONO) {
       m_wFlags |= ECF_MONO_LCD;
     }
+#endif // RGBLCD
   }
   else {
     m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
   }
+
+#ifndef RGBLCD
+    m_wFlags |= ECF_MONO_LCD;
+#endif
 
   m_bVFlags = ECVF_DEFAULT;
 
