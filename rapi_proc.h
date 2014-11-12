@@ -111,6 +111,9 @@ GC - get current capacity range in amps
 GE - get current settings
  response: OK amps flags
  $GE*B0
+GG - get charging current
+ response: OK amps
+ $GG*B2
 GS - get state
  response: OK state elapsed
  state: EVSE_STATE_xxx

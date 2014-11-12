@@ -352,6 +352,14 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+#ifdef AMMETER
+    case 'G':
+      u1 = g_EvseController.GetChargingCurrent();
+      sprintf(buffer,"%u",u1);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // AMMETER
     case 'S': // get state
       sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
       bufCnt = 1; // flag response text output
