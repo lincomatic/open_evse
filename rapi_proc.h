@@ -72,6 +72,7 @@ S0 0|1 - set LCD type
  $S0 0*F7 = monochrome backlight
  $S0 1*F8 = RGB backlight
 S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
+SA currentscalefactor currentoffset - set ammeter settings
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
  $SD 0*0B
@@ -79,6 +80,9 @@ SD 0|1 - disable/enable diode check
 SE 0|1 - disable/enable command echo
  $SE 0*0C
  $SE 1*0D
+SF 0|1 - disable/enable GFI self test
+ $SF 0*0D
+ $SF 1*0E
 SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
@@ -98,6 +102,9 @@ SV 0|1 - disable/enable vent required
  $SV 0*1D
  $SV 1*1E
 
+GA - get ammeter settings
+ response: OK currentscalefactor currentoffset
+ $GA*AC
 GC - get current capacity range in amps
  response: OK minamps maxamps
  $GC*AE
@@ -128,7 +135,7 @@ typedef unsigned char uint8;
 
 #ifdef RAPI
 
-#define RAPIVER "1.0.0"
+#define RAPIVER "1.0.1"
 
 #define ESRAPI_BUFLEN 30
 #define ESRAPI_SOC '$' // start of command

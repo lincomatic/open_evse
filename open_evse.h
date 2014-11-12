@@ -35,17 +35,14 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.5"
+#define VERSION "3.2.6"
 
 //-- begin features
 
 // current measurement
 #define AMMETER
 
-#define AMMETER_AVERAGING
-#define AMMETER_MEMORY 32 // number of points of moving average
-
-#define AMMETER_CURRENT_OFFSET 950 // mA //Craig K,  this resolves the zero offset that I observed
+#define AMMETER_AVERAGING // moving average on ammeter readings
 
 // serial remote api
 #define RAPI
@@ -216,6 +213,11 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
+#ifdef AMMETER
+#define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
+#define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
+#endif // AMMETER
+
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
 // must transition to state A from contacts closed in < 100ms according to spec
@@ -296,11 +298,19 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
 
 // Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
-//#define CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
-//#define CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+//#define DEFAULT_CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
+//#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
 // Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
 // then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
-#define CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
+#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
+
+// number of points of moving average
+#define AMMETER_MEMORY 32
+
+// subtract this from ammeter current reading to correct zero offset
+#define DEFAULT_AMMETER_CURRENT_OFFSET 0
+//#define DEFAULT_AMMETER_CURRENT_OFFSET 950 // mA //Craig K,  this resolves the zero offset that I observed
+
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -577,6 +587,8 @@ class J1772EVSEController {
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
 
+
+
 #ifdef ADVPWR
 // Define the Power states read from the L1 and L2 test lines
 // 00 = both, 01 = L1on, 10 = L2on, 11 = none ( active low )
@@ -599,9 +611,16 @@ class J1772EVSEController {
   }
 
 #ifdef AMMETER
-  unsigned long m_ChargingCurrent;
+  uint32_t m_AmmeterReading;
+  uint32_t m_AmmeterCurrentOffset;
+  uint32_t m_CurrentScaleFactor;
 
-  unsigned long readAmmeter();
+#ifdef AMMETER_AVERAGING
+  uint32_t m_Current[AMMETER_MEMORY];
+#endif // AMMETER_AVERAGING
+
+
+  void readAmmeter();
 #endif // AMMETER
 
 public:
@@ -675,7 +694,7 @@ public:
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
   }
-  void EnableGfiTest(uint8_t tf);
+  void EnableGfiSelfTest(uint8_t tf);
 #endif
 #endif // GFI
   uint8_t SerDbgEnabled() { 
@@ -694,7 +713,19 @@ public:
 #endif // RGBLCD
 
 #ifdef AMMETER
-  unsigned long GetChargingCurrent() { return m_ChargingCurrent; }
+  uint32_t GetChargingCurrent();
+  uint32_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
+  uint32_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
+  void SetAmmeterCurrentOffset(uint32_t offset) {
+    m_AmmeterCurrentOffset = offset;
+    EEPROM.write(EOFS_AMMETER_CURR_OFFSET,(offset & 0x0000ff00) >> 8);
+    EEPROM.write(EOFS_AMMETER_CURR_OFFSET+1,offset & 0x000000ff);
+  }
+  void SetCurrentScaleFactor(uint32_t scale) {
+    m_CurrentScaleFactor = scale;
+    EEPROM.write(EOFS_CURRENT_SCALE_FACTOR,(scale & 0x0000ff00) >> 8);
+    EEPROM.write(EOFS_CURRENT_SCALE_FACTOR+1,scale & 0x000000ff);
+  }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
 };

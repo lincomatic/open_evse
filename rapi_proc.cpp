@@ -224,6 +224,15 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // RTC      
+#ifdef AMMETER
+    case 'A':
+      if (tokenCnt == 3) {
+	g_EvseController.SetCurrentScaleFactor(dtou(tokens[1]));
+	g_EvseController.SetAmmeterCurrentOffset(dtou(tokens[2]));
+	rc = 0;
+      }
+      break;
+#endif // AMMETER
     case 'C': // current capacity
       if (tokenCnt == 2) {
 	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]),1);
@@ -241,6 +250,14 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
+#ifdef GFI_SELFTEST
+    case 'F': // GFI self test
+      if (tokenCnt == 2) {
+	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
+      }
+      break;
+#endif // GFI_SELFTEST
 #ifdef ADVPWR
     case 'G': // ground check
       if (tokenCnt == 2) {
@@ -282,7 +299,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef GFI_SELFTEST
     case 'S': // GFI self-test
       if (tokenCnt == 2) {
-	g_EvseController.EnableGfiTest(*tokens[1] == '0' ? 0 : 1);
+	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
@@ -314,6 +331,15 @@ int EvseRapiProcessor::processCmd()
 
   case 'G': // get parameter
     switch(*s) {
+#ifdef AMMETER
+    case 'A':
+      u1 = g_EvseController.GetCurrentScaleFactor();
+      u2 = g_EvseController.GetAmmeterCurrentOffset();
+      sprintf(buffer,"%u %u",u1,u2);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // AMMETER
     case 'C': // get current capacity range
       sprintf(buffer,"%d %d",MIN_CURRENT_CAPACITY,(g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
       bufCnt = 1; // flag response text output

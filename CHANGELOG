@@ -1,5 +1,9 @@
 Change Log
 	
+v3.2.6 SCL 20141111
+- restructured ammeter code
+- add RAPI SF,SA,GA commands
+
 v3.2.5 SCL 20141111
 - don't display charging current <1A
 	

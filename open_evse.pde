@@ -225,10 +225,6 @@ prog_char g_psEvConnected[] PROGMEM = "EV Connected";
 prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
 #endif // LCD16X2
 
-#ifdef AMMETER_AVERAGING
-unsigned long g_Current[AMMETER_MEMORY];
-#endif // AMMETER_AVERAGING
-
 //-- end global variables
 
 void EvseReset();
@@ -917,23 +913,10 @@ void OnboardDisplay::Update(int8_t force)
 #ifdef LCD16X2
   if (curstate == EVSE_STATE_C) {
 #ifdef AMMETER
-      unsigned long current = g_EvseController.GetChargingCurrent();
+    uint32_t current = g_EvseController.GetChargingCurrent();
 
       if (current >= 1000) { // display only if > 1000
-#ifdef AMMETER_AVERAGING
-	unsigned long currtot = current;
-	for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
-	  g_Current[c] = g_Current[c-1];
-	  currtot += g_Current[c];
-	}
-	g_Current[0] = current;
-	
-	current = currtot / AMMETER_MEMORY;
-	if (current >= AMMETER_CURRENT_OFFSET) {
-	  current -= AMMETER_CURRENT_OFFSET;
-	}
-#endif // AMMETER_AVERAGING
-	
+	/*
 	int ma;
 	if (current < 1000) {
 	  // nnnmA
@@ -946,6 +929,10 @@ void OnboardDisplay::Update(int8_t force)
 	  ma = ((current % 1000) + 50) / 100;
 	  sprintf(g_sTmp,"%3d.%dA",a,ma);
 	}
+	*/
+	// nnA
+	int a = (current + 500) / 1000;
+	sprintf(g_sTmp,"%3dA",a);
 	LcdPrint(10,0,g_sTmp);
       }
 #endif // AMMETER
@@ -1262,7 +1249,7 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
 }
 
 #ifdef GFI_SELFTEST
-void J1772EVSEController::EnableGfiTest(uint8_t tf)
+void J1772EVSEController::EnableGfiSelfTest(uint8_t tf)
 {
   if (tf) {
     m_wFlags &= ~ECF_GFI_TEST_DISABLED;
@@ -1648,10 +1635,25 @@ void J1772EVSEController::Init()
       m_wFlags |= ECF_MONO_LCD;
     }
 #endif // RGBLCD
+
+#ifdef AMMETER
+    m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
+    m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
+#endif // AMMETER
   }
   else {
     m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
+
+#ifdef AMMETER
+    m_AmmeterCurrentOffset = EEPROM.read(EOFS_AMMETER_CURR_OFFSET);
+    m_AmmeterCurrentOffset <<= 8;
+    m_AmmeterCurrentOffset |= EEPROM.read(EOFS_AMMETER_CURR_OFFSET+1);
+
+    m_CurrentScaleFactor = EEPROM.read(EOFS_CURRENT_SCALE_FACTOR);
+    m_CurrentScaleFactor <<= 8;
+    m_CurrentScaleFactor |= EEPROM.read(EOFS_CURRENT_SCALE_FACTOR+1);
+#endif // AMMETER
   }
 
 #ifndef RGBLCD
@@ -1979,7 +1981,7 @@ void J1772EVSEController::Update()
 
   if (m_EvseState == EVSE_STATE_C) {
 #ifdef AMMETER
-    m_ChargingCurrent = readAmmeter();
+    readAmmeter();
 #endif // AMMETER
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeStartTime;
@@ -2070,8 +2072,8 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 }
 
 #ifdef AMMETER
-static inline unsigned long ulong_sqrt(unsigned long in) {
-  unsigned long out;
+static inline uint32_t ulong_sqrt(uint32_t in) {
+  uint32_t out;
   // find the last int whose square is not too big
   // Yes, it's wasteful, but we only theoretically ever have to go to 512.
   // Removing floating point saves us almost 1K of flash.
@@ -2079,8 +2081,8 @@ static inline unsigned long ulong_sqrt(unsigned long in) {
   return out - 1;
 }
 
-unsigned long J1772EVSEController::readAmmeter() {
-  unsigned long sum = 0;
+void J1772EVSEController::readAmmeter() {
+  uint32_t sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
   long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
@@ -2105,19 +2107,41 @@ unsigned long J1772EVSEController::readAmmeter() {
     case 1:
     case 2:
       // Gather the sum-of-the-squares and count how many samples we've collected.
-      sum += (unsigned long)((sample - 512) * (sample - 512));
+      sum += (uint32_t)((sample - 512) * (sample - 512));
       sample_count++;
       continue;
     case 3:
       // The answer is the square root of the mean of the squares.
       // But additionally, that value must be scaled to a real current value.
-      return ulong_sqrt(sum / sample_count) * CURRENT_SCALE_FACTOR;
+      m_AmmeterReading = ulong_sqrt(sum / sample_count) * m_CurrentScaleFactor;
     }
   }
+
   // ran out of time. Assume that it's simply not oscillating any. 
-  return 0;
+  m_AmmeterReading = 0;
 }
 
+uint32_t J1772EVSEController::GetChargingCurrent()
+{
+  uint32_t current = m_AmmeterReading;
+
+#ifdef AMMETER_AVERAGING
+  uint32_t currtot = current;
+  for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
+    m_Current[c] = m_Current[c-1];
+    currtot += m_Current[c];
+  }
+  m_Current[0] = current;
+  
+  current = currtot / AMMETER_MEMORY;
+#endif // AMMETER_AVERAGING
+  
+  if (current >= g_EvseController.GetAmmeterCurrentOffset()) {
+    current -= g_EvseController.GetAmmeterCurrentOffset();
+  }
+  
+  return current;
+}
 #endif // AMMETER
 
 
@@ -2497,7 +2521,7 @@ Menu *GfiTestMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
-  g_EvseController.EnableGfiTest((m_CurIdx == 0) ? 1 : 0);
+  g_EvseController.EnableGfiSelfTest((m_CurIdx == 0) ? 1 : 0);
 
   delay(500);
 
