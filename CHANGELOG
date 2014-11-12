@@ -1,5 +1,9 @@
 Change Log
 	
+vD3.2.7 SCL 20141111
+- fixed ammeter no display bug introduced in 3.2.6
+
+
 v3.2.6 SCL 20141111
 - restructured ammeter code
 - add RAPI SF,SA,GA,GG commands

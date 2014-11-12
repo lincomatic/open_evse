@@ -2115,6 +2115,7 @@ void J1772EVSEController::readAmmeter() {
       // The answer is the square root of the mean of the squares.
       // But additionally, that value must be scaled to a real current value.
       m_AmmeterReading = ulong_sqrt(sum / sample_count) * m_CurrentScaleFactor;
+      return;
     }
   }
 
@@ -2139,6 +2140,9 @@ uint32_t J1772EVSEController::GetChargingCurrent()
   
   if (current >= g_EvseController.GetAmmeterCurrentOffset()) {
     current -= g_EvseController.GetAmmeterCurrentOffset();
+  }
+  else {
+    current = 0;
   }
   
   return current;
