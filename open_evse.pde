@@ -917,37 +917,40 @@ void OnboardDisplay::Update(int8_t force)
 #ifdef LCD16X2
   if (curstate == EVSE_STATE_C) {
 #ifdef AMMETER
-      unsigned long current;
-      current = g_EvseController.GetChargingCurrent();
+      unsigned long current = g_EvseController.GetChargingCurrent();
 
+      if (current >= 1000) { // display only if > 1000
 #ifdef AMMETER_AVERAGING
-      unsigned long currtot = current;
-      for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
-	g_Current[c] = g_Current[c-1];
-	currtot += g_Current[c];
-      }
-      g_Current[0] = current;
-
-      current = currtot / AMMETER_MEMORY;
-      current -= AMMETER_CURRENT_OFFSET;
+	unsigned long currtot = current;
+	for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
+	  g_Current[c] = g_Current[c-1];
+	  currtot += g_Current[c];
+	}
+	g_Current[0] = current;
+	
+	current = currtot / AMMETER_MEMORY;
+	if (current >= AMMETER_CURRENT_OFFSET) {
+	  current -= AMMETER_CURRENT_OFFSET;
+	}
 #endif // AMMETER_AVERAGING
-
-      int ma;
-      if (current < 1000) {
-	// nnnmA
-	ma = (int)current;
-	sprintf(g_sTmp,"%4dmA",ma);
+	
+	int ma;
+	if (current < 1000) {
+	  // nnnmA
+	  ma = (int)current;
+	  sprintf(g_sTmp,"%4dmA",ma);
+	}
+	else {
+	  // nn.nA
+	  int a = current / 1000;
+	  ma = ((current % 1000) + 50) / 100;
+	  sprintf(g_sTmp,"%3d.%dA",a,ma);
+	}
+	LcdPrint(10,0,g_sTmp);
       }
-      else {
-	// nn.nA
-	int a = current / 1000;
-	ma = ((current % 1000) + 50) / 100;
-	sprintf(g_sTmp,"%3d.%dA",a,ma);
-      }
-      LcdPrint(10,0,g_sTmp);
 #endif // AMMETER
-    time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
-    if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
+      time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
+      if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
       int h = hour(elapsedTime);
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
@@ -1973,8 +1976,6 @@ void J1772EVSEController::Update()
   }
 
   m_PrevEvseState = prevevsestate;
-
-  // End Sensor Readings
 
   if (m_EvseState == EVSE_STATE_C) {
 #ifdef AMMETER
