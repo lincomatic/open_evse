@@ -72,6 +72,9 @@ S0 0|1 - set LCD type
  $S0 0*F7 = monochrome backlight
  $S0 1*F8 = RGB backlight
 S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
+S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not charging
+ $S2 0*F9
+ $S2 1*FA
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
