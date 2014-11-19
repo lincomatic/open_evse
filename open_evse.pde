@@ -910,33 +910,50 @@ void OnboardDisplay::Update(int8_t force)
     }
   }
 
-#ifdef LCD16X2
-  if (curstate == EVSE_STATE_C) {
 #ifdef AMMETER
-    uint32_t current = g_EvseController.GetChargingCurrent();
+    if (force || (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty())) {
+      SetAmmeterDirty(0);
 
-    /*
-      int ma;
-      if (current < 1000) {
-      // nnnmA
-      ma = (int)current;
-      sprintf(g_sTmp,"%4dmA",ma);
+      uint32_t current = g_EvseController.GetChargingCurrent();
+      
+      /*      int ma;
+	      if (current < 1000) {
+	      // nnnmA
+	      ma = (int)current;
+	      sprintf(g_sTmp,"%4dmA",ma);
+	      }
+	      else {
+	      // nn.nA
+	      int a = current / 1000;
+	      ma = ((current % 1000) + 50) / 100;
+	      sprintf(g_sTmp,"%3d.%dA",a,ma);
+	      }
+	      LcdPrint(10,0,g_sTmp);
+      */
+      //      sprintf(g_sTmp,"%lu ",current);
+      //      Serial.print(g_sTmp);
+      if (current >= 1000) { // display only if > 1000
+	// nnA
+	//int a = (current + 500) / 1000;
+	
+	// nn.nA
+	int a = current / 1000;
+	int ma = ((current % 1000) + 50) / 100;
+	if (ma > 9) {
+	  ma = 0;
+	  a++;
+	}
+	sprintf(g_sTmp,"%3d.%dA",a,ma);
       }
       else {
-      // nn.nA
-      int a = current / 1000;
-      ma = ((current % 1000) + 50) / 100;
-      sprintf(g_sTmp,"%3d.%dA",a,ma);
+	strcpy(g_sTmp,"    0A");
       }
       LcdPrint(10,0,g_sTmp);
-    */
-    if (current >= 1000) { // display only if > 1000
-      // nnA
-      int a = (current + 500) / 1000;
-      sprintf(g_sTmp,"%3dA",a);
-      LcdPrint(12,0,g_sTmp);
     }
 #endif // AMMETER
+
+#ifdef LCD16X2
+  if (curstate == EVSE_STATE_C) {
     time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
     if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
       int h = hour(elapsedTime);
@@ -1636,26 +1653,33 @@ void J1772EVSEController::Init()
       m_wFlags |= ECF_MONO_LCD;
     }
 #endif // RGBLCD
-
-#ifdef AMMETER
-    m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
-    m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
-#endif // AMMETER
   }
   else {
     m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
 
-#ifdef AMMETER
-    m_AmmeterCurrentOffset = EEPROM.read(EOFS_AMMETER_CURR_OFFSET);
-    m_AmmeterCurrentOffset <<= 8;
-    m_AmmeterCurrentOffset |= EEPROM.read(EOFS_AMMETER_CURR_OFFSET+1);
-
-    m_CurrentScaleFactor = EEPROM.read(EOFS_CURRENT_SCALE_FACTOR);
-    m_CurrentScaleFactor <<= 8;
-    m_CurrentScaleFactor |= EEPROM.read(EOFS_CURRENT_SCALE_FACTOR+1);
-#endif // AMMETER
   }
+
+#ifdef AMMETER
+  m_AmmeterCurrentOffset = EEPROM.read(EOFS_AMMETER_CURR_OFFSET);
+  m_AmmeterCurrentOffset <<= 8;
+  m_AmmeterCurrentOffset |= EEPROM.read(EOFS_AMMETER_CURR_OFFSET+1);
+  
+  m_CurrentScaleFactor = EEPROM.read(EOFS_CURRENT_SCALE_FACTOR);
+  m_CurrentScaleFactor <<= 8;
+  m_CurrentScaleFactor |= EEPROM.read(EOFS_CURRENT_SCALE_FACTOR+1);
+  
+  if (m_AmmeterCurrentOffset == 0x0000ffff) {
+    m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
+  }
+  if (m_CurrentScaleFactor == 0x0000ffff) {
+    m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
+  }
+  
+  m_AmmeterReading = 0;
+  m_ChargingCurrent = 0;
+  //  m_LastAmmeterReadMs = 0;
+#endif // AMMETER
 
 #ifndef RGBLCD
     m_wFlags |= ECF_MONO_LCD;
@@ -1793,7 +1817,7 @@ void J1772EVSEController::Update()
 
  if (chargingIsOn()) { // ground check - can only test when relay closed
     if (GndChkEnabled()) {
-      if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
+      if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
 	
 	tmpevsestate = EVSE_STATE_NO_GROUND;
@@ -1804,7 +1828,7 @@ void J1772EVSEController::Update()
 	if (m_NoGndTripCnt < 255) {
 	  m_NoGndTripCnt++;
 	}
-	m_NoGndTimeout = millis() + GFI_TIMEOUT;
+	m_NoGndTimeout = curms + GFI_TIMEOUT;
 
 	nofault = 0;
       }
@@ -1813,7 +1837,7 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       if ((m_NoGndRetryCnt < GFI_RETRY_COUNT) &&
-	  (millis() >= m_NoGndTimeout)) {
+	  (curms >= m_NoGndTimeout)) {
 	m_NoGndRetryCnt++;
       }
       else {
@@ -1826,11 +1850,11 @@ void J1772EVSEController::Update()
     else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
       if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
          if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
-            m_StuckRelayStartTimeMS = millis(); // mark start state
+            m_StuckRelayStartTimeMS = curms; // mark start state
             StuckRelayTripCnt++;
          }   
-        if ( ( ((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-               ((millis()-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
         	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	// stuck relay
 	tmpevsestate = EVSE_STATE_STUCK_RELAY;
@@ -1855,12 +1879,12 @@ void J1772EVSEController::Update()
 	  m_GfiTripCnt++;
 	}
  	m_GfiRetryCnt = 0;
-	m_GfiTimeout = millis() + GFI_TIMEOUT;
+	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
-      else if (millis() >= m_GfiTimeout) {
+      else if (curms >= m_GfiTimeout) {
 	m_Gfi.Reset();
 	m_GfiRetryCnt++;
-	m_GfiTimeout = millis() + GFI_TIMEOUT;
+	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
     }
 
@@ -1909,9 +1933,9 @@ void J1772EVSEController::Update()
     // debounce state transitions
     if (tmpevsestate != prevevsestate) {
       if (tmpevsestate != m_TmpEvseState) {
-        m_TmpEvseStateStart = millis();
+        m_TmpEvseStateStart = curms;
       }
-      else if ((millis()-m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
+      else if ((curms-m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
         m_EvseState = tmpevsestate;
       }
     }
@@ -1980,10 +2004,28 @@ void J1772EVSEController::Update()
 
   m_PrevEvseState = prevevsestate;
 
-  if (m_EvseState == EVSE_STATE_C) {
 #ifdef AMMETER
+  if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
+    //    if ((curms - m_LastAmmeterReadMs) > AMMETER_READ_INTERVAL) {
+    //      m_LastAmmeterReadMs = curms;
+    
     readAmmeter();
+    uint32_t ma = MovingAverage(m_AmmeterReading);
+    if (ma != 0xffffffff) {
+      m_ChargingCurrent = ma * m_CurrentScaleFactor + m_AmmeterCurrentOffset;
+      if (m_ChargingCurrent < 0) {
+	m_ChargingCurrent = 0;
+      }
+      g_OBD.SetAmmeterDirty(1);
+      //	sprintf(g_sTmp,"*%lu %lu %lu*",ma,m_CurrentScaleFactor,m_ChargingCurrent);
+      //	sprintf(g_sTmp,"%lu ",m_ChargingCurrent);
+      //	sprintf(g_sTmp,"ma %lu ",ma);
+      //	Serial.print(g_sTmp);
+    }
+    //    }
+  }
 #endif // AMMETER
+  if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeStartTime;
   }
@@ -2073,8 +2115,9 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 }
 
 #ifdef AMMETER
-static inline uint32_t ulong_sqrt(uint32_t in) {
-  uint32_t out;
+static inline unsigned long ulong_sqrt(unsigned long in)
+{
+  unsigned long out;
   // find the last int whose square is not too big
   // Yes, it's wasteful, but we only theoretically ever have to go to 512.
   // Removing floating point saves us almost 1K of flash.
@@ -2082,8 +2125,9 @@ static inline uint32_t ulong_sqrt(uint32_t in) {
   return out - 1;
 }
 
-void J1772EVSEController::readAmmeter() {
-  uint32_t sum = 0;
+void J1772EVSEController::readAmmeter()
+{
+  unsigned long sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
   long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
@@ -2108,45 +2152,60 @@ void J1772EVSEController::readAmmeter() {
     case 1:
     case 2:
       // Gather the sum-of-the-squares and count how many samples we've collected.
-      sum += (uint32_t)((sample - 512) * (sample - 512));
+      sum += (unsigned long)((sample - 512) * (sample - 512));
       sample_count++;
       continue;
     case 3:
       // The answer is the square root of the mean of the squares.
       // But additionally, that value must be scaled to a real current value.
-      m_AmmeterReading = ulong_sqrt(sum / sample_count) * m_CurrentScaleFactor;
+      // we will do that elsewhere
+      m_AmmeterReading = ulong_sqrt(sum / sample_count);
       return;
     }
   }
-
   // ran out of time. Assume that it's simply not oscillating any. 
   m_AmmeterReading = 0;
 }
 
-uint32_t J1772EVSEController::GetChargingCurrent()
+#define MA_PTS 32 // # points in moving average MUST BE power of 2
+#define MA_BITS 5 // log2(MA_PTS)
+/*
+uint32_t MovingAverage(uint32_t samp)
 {
-  uint32_t current = m_AmmeterReading;
+  static uint32_t samps[MA_PTS] = {0};
+  uint32_t tot = samp;
+  samps[0] = samp;
 
-#ifdef AMMETER_AVERAGING
-  uint32_t currtot = current;
-  for (int8 c=AMMETER_MEMORY-1;c > 0;c--) {
-    m_Current[c] = m_Current[c-1];
-    currtot += m_Current[c];
-  }
-  m_Current[0] = current;
-  
-  current = currtot / AMMETER_MEMORY;
-#endif // AMMETER_AVERAGING
-  
-  if (current >= g_EvseController.GetAmmeterCurrentOffset()) {
-    current -= g_EvseController.GetAmmeterCurrentOffset();
-  }
-  else {
-    current = 0;
+  for (int8 c=MA_PTS-1;c > 0;c--) {
+    samps[c] = samps[c-1];
+    tot += samps[c];
   }
   
-  return current;
+  return tot >> MA_BITS;
 }
+*/
+
+// to save memory
+// instead of doing a real moving average we just do a non-overlapping
+// sliding window and output a value every MA_PTS
+uint32_t MovingAverage(uint32_t samp)
+{
+  static uint32_t tot = 0;
+  static int8 curidx = 0;
+  
+  if (curidx == 0) {
+    tot = 0;
+  }
+
+  tot += samp;
+
+  if (++curidx == MA_PTS) {
+    curidx = 0;
+    return tot >> MA_BITS; // tot / MA_PTS
+  }
+  return 0xffffffff;
+}
+
 #endif // AMMETER
 
 

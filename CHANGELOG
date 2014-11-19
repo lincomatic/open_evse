@@ -1,8 +1,15 @@
 Change Log
 	
+vD3.2.8 SCL 20141119
+- restructure and fix ammeter bugs
+- don't update charging amps display unless ammeter value is updated
+- don't show charging amps if m_CurrentScaleFactor == 0
+- replace moving average w/ sliding window average to save RAM
+- added ammeter calibration RAPI function $S2
+- replace redundant calls to millis() with variable in J1772EVSEController::Update()
+	
 vD3.2.7 SCL 20141111
 - fixed ammeter no display bug introduced in 3.2.6
-
 
 v3.2.6 SCL 20141111
 - restructured ammeter code

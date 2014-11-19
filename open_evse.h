@@ -35,14 +35,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.2.7"
+#define VERSION "D3.2.8"
 
 //-- begin features
 
 // current measurement
 #define AMMETER
-
-#define AMMETER_AVERAGING // moving average on ammeter readings
 
 // serial remote api
 #define RAPI
@@ -133,10 +131,6 @@
 #define PAFC_PWM
 
 //-- end features
-
-#ifndef AMMETER
-#undef AMMETER_AVERAGING
-#endif
 
 #ifndef RGBLCD
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
@@ -302,15 +296,13 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 //#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
 // Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
 // then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
-#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
-
-// number of points of moving average
-#define AMMETER_MEMORY 32
+//#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
+// NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
+#define DEFAULT_CURRENT_SCALE_FACTOR 0
 
 // subtract this from ammeter current reading to correct zero offset
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0
-//#define DEFAULT_AMMETER_CURRENT_OFFSET 950 // mA //Craig K,  this resolves the zero offset that I observed
-
+//#define DEFAULT_AMMETER_CURRENT_OFFSET -950 // mA //Craig K,  this resolves the zero offset that I observed
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -318,6 +310,9 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 
 // Once we detect a zero-crossing, we should not look for one for another quarter cycle or so. 1/4 // cycle at 50 Hz is 5 ms.
 #define CURRENT_ZERO_DEBOUNCE_INTERVAL 5
+
+// how often to read the ammeter (ms)
+//not used yet#define AMMETER_READ_INTERVAL 0
 
 #endif // AMMETER
 
@@ -362,6 +357,7 @@ extern char *g_BlankLine;
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
+#define OBDF_AMMETER_DIRTY  0x80
 class OnboardDisplay 
 
 {
@@ -458,6 +454,14 @@ public:
 #endif // RGBLCD
 #endif // LCD16X2
 
+#ifdef AMMETER
+  void SetAmmeterDirty(uint8_t tf) {
+    if (tf) m_bFlags |= OBDF_AMMETER_DIRTY;
+    else m_bFlags &= ~OBDF_AMMETER_DIRTY;
+  }
+  int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
+#endif // AMMETER
+
   void Update(int8_t force=0);
 };
 
@@ -549,6 +553,7 @@ typedef struct calibdata {
 #define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
+#define ECF_AMMETER_CAL        0x0400 // ammeter calibration mode
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
@@ -611,14 +616,11 @@ class J1772EVSEController {
   }
 
 #ifdef AMMETER
-  uint32_t m_AmmeterReading;
-  uint32_t m_AmmeterCurrentOffset;
-  uint32_t m_CurrentScaleFactor;
-
-#ifdef AMMETER_AVERAGING
-  uint32_t m_Current[AMMETER_MEMORY];
-#endif // AMMETER_AVERAGING
-
+  //  long m_LastAmmeterReadMs;
+  unsigned long m_AmmeterReading;
+  int32_t m_ChargingCurrent;
+  int32_t m_AmmeterCurrentOffset;
+  int32_t m_CurrentScaleFactor;
 
   void readAmmeter();
 #endif // AMMETER
@@ -713,7 +715,7 @@ public:
 #endif // RGBLCD
 
 #ifdef AMMETER
-  uint32_t GetChargingCurrent();
+  uint32_t GetChargingCurrent() { return m_ChargingCurrent; }
   uint32_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
   uint32_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
   void SetAmmeterCurrentOffset(uint32_t offset) {
@@ -726,6 +728,18 @@ public:
     EEPROM.write(EOFS_CURRENT_SCALE_FACTOR,(scale & 0x0000ff00) >> 8);
     EEPROM.write(EOFS_CURRENT_SCALE_FACTOR+1,scale & 0x000000ff);
   }
+  uint8_t AmmeterCalEnabled() { 
+    return (m_wFlags & ECF_AMMETER_CAL) ? 1 : 0;
+  }
+  void EnableAmmeterCal(uint8_t tf) {
+    if (tf) {
+      m_wFlags |= ECF_AMMETER_CAL;
+    }
+    else {
+      m_wFlags &= ~ECF_AMMETER_CAL;
+    }
+  }
+
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
 };

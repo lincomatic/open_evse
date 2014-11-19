@@ -1,6 +1,10 @@
 download/**
 archive/**
 genrapi/**
+craig/*
+ma/*
+*.sav
+*.zip
 *.bak
 *~
 #################

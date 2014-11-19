@@ -225,6 +225,12 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // RTC      
 #ifdef AMMETER
+    case '2': // ammeter calibration mode
+      if (tokenCnt == 2) {
+	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
+	rc = 0;
+      }
+      break;
     case 'A':
       if (tokenCnt == 3) {
 	g_EvseController.SetCurrentScaleFactor(dtou(tokens[1]));
