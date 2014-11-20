@@ -37,7 +37,7 @@ prog_char RAPI_VER[] PROGMEM = RAPIVER;
 
 
 // convert 2-digit hex string to uint8
-uint8 htou(const char *s)
+uint8 htou8(const char *s)
 {
   uint8 u = 0;
   for (int i=0;i < 2;i++) {
@@ -54,7 +54,7 @@ uint8 htou(const char *s)
 }
 
 // convert decimal string to uint8
-uint8 dtou(const char *s)
+uint8 dtou8(const char *s)
 {
   uint8 u = 0;
   while (*s) {
@@ -138,7 +138,7 @@ int EvseRapiProcessor::tokenize()
     }
     else if (*s == '*') {
       *(s++) = '\0';
-      ichkSum = htou(s);
+      ichkSum = htou8(s);
 	  break;
     }
     else {
@@ -153,6 +153,8 @@ int EvseRapiProcessor::processCmd()
 {
   int rc = -1;
   unsigned u1,u2;
+  int i,i2;
+  uint8 x,y;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -163,7 +165,7 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
 #ifdef LCD16X2
     case 'B': // LCD backlight
-      g_OBD.LcdSetBacklightColor(dtou(tokens[1]));
+      g_OBD.LcdSetBacklightColor(dtou8(tokens[1]));
       rc = 0;
       break;
 #endif // LCD16X2      
@@ -178,13 +180,13 @@ int EvseRapiProcessor::processCmd()
 #ifdef LCD16X2
     case 'P': // print to LCD
       {
-	uint8 x = dtou(tokens[1]);
-	uint8 y = dtou(tokens[2]);
+	u1 = dtou8(tokens[1]); // x
+	u2 = dtou8(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
-	for (int i=4;i < tokenCnt;i++) {
+	for (i=4;i < tokenCnt;i++) {
 	  *(tokens[i]-1) = ' ';
 	}
-	g_OBD.LcdPrint(x,y,tokens[3]);
+	g_OBD.LcdPrint(u1,u2,tokens[3]);
       }
       rc = 0;
       break;
@@ -218,8 +220,8 @@ int EvseRapiProcessor::processCmd()
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s);
-	SetRTC(dtou(tokens[1]),dtou(tokens[2]),dtou(tokens[3]),
-	       dtou(tokens[4]),dtou(tokens[5]),dtou(tokens[6]));
+	SetRTC(dtou8(tokens[1]),dtou8(tokens[2]),dtou8(tokens[3]),
+	       dtou8(tokens[4]),dtou8(tokens[5]),dtou8(tokens[6]));
 	rc = 0;
       }
       break;
@@ -233,15 +235,17 @@ int EvseRapiProcessor::processCmd()
       break;
     case 'A':
       if (tokenCnt == 3) {
-	g_EvseController.SetCurrentScaleFactor(dtou(tokens[1]));
-	g_EvseController.SetAmmeterCurrentOffset(dtou(tokens[2]));
+	sscanf(tokens[1],"%d",&i);
+	g_EvseController.SetCurrentScaleFactor(i);
+	sscanf(tokens[2],"%d",&i);
+	g_EvseController.SetAmmeterCurrentOffset(i);
 	rc = 0;
       }
       break;
 #endif // AMMETER
     case 'C': // current capacity
       if (tokenCnt == 2) {
-	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]),1);
+	rc = g_EvseController.SetCurrentCapacity(dtou8(tokens[1]),1);
       }
       break;
     case 'D': // diode check
@@ -318,8 +322,8 @@ int EvseRapiProcessor::processCmd()
 	  g_DelayTimer.Disable();
 	}
 	else {
-	  g_DelayTimer.SetStartTimer(dtou(tokens[1]),dtou(tokens[2]));
-	  g_DelayTimer.SetStopTimer(dtou(tokens[3]),dtou(tokens[4]));
+	  g_DelayTimer.SetStartTimer(dtou8(tokens[1]),dtou8(tokens[2]));
+	  g_DelayTimer.SetStopTimer(dtou8(tokens[3]),dtou8(tokens[4]));
 	  g_DelayTimer.Enable();
 	}
 	rc = 0;
@@ -339,9 +343,9 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
 #ifdef AMMETER
     case 'A':
-      u1 = g_EvseController.GetCurrentScaleFactor();
-      u2 = g_EvseController.GetAmmeterCurrentOffset();
-      sprintf(buffer,"%u %u",u1,u2);
+      i = g_EvseController.GetCurrentScaleFactor();
+      i2 = g_EvseController.GetAmmeterCurrentOffset();
+      sprintf(buffer,"%d %d",i,i2);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

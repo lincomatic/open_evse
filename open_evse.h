@@ -619,8 +619,8 @@ class J1772EVSEController {
   //  long m_LastAmmeterReadMs;
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
-  int32_t m_AmmeterCurrentOffset;
-  int32_t m_CurrentScaleFactor;
+  int16_t m_AmmeterCurrentOffset;
+  int16_t m_CurrentScaleFactor;
 
   void readAmmeter();
 #endif // AMMETER
@@ -715,15 +715,15 @@ public:
 #endif // RGBLCD
 
 #ifdef AMMETER
-  uint32_t GetChargingCurrent() { return m_ChargingCurrent; }
-  uint32_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
-  uint32_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
-  void SetAmmeterCurrentOffset(uint32_t offset) {
+  int32_t GetChargingCurrent() { return m_ChargingCurrent; }
+  int16_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
+  int16_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
+  void SetAmmeterCurrentOffset(int16_t offset) {
     m_AmmeterCurrentOffset = offset;
     EEPROM.write(EOFS_AMMETER_CURR_OFFSET,(offset & 0x0000ff00) >> 8);
     EEPROM.write(EOFS_AMMETER_CURR_OFFSET+1,offset & 0x000000ff);
   }
-  void SetCurrentScaleFactor(uint32_t scale) {
+  void SetCurrentScaleFactor(int16_t scale) {
     m_CurrentScaleFactor = scale;
     EEPROM.write(EOFS_CURRENT_SCALE_FACTOR,(scale & 0x0000ff00) >> 8);
     EEPROM.write(EOFS_CURRENT_SCALE_FACTOR+1,scale & 0x000000ff);
