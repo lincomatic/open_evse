@@ -1,4 +1,7 @@
 Change Log
+
+vD3.2.9 SCL 20141120
+- make ammeter calibration mode volatile
 	
 vD3.2.8 SCL 20141119
 - restructure and fix ammeter bugs
