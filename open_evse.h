@@ -553,10 +553,10 @@ typedef struct calibdata {
 #define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
-#define ECF_AMMETER_CAL        0x0400 // ammeter calibration mode
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x80 // gfi has tripped at least once
@@ -729,14 +729,14 @@ public:
     EEPROM.write(EOFS_CURRENT_SCALE_FACTOR+1,scale & 0x000000ff);
   }
   uint8_t AmmeterCalEnabled() { 
-    return (m_wFlags & ECF_AMMETER_CAL) ? 1 : 0;
+    return (m_bVFlags & ECVF_AMMETER_CAL) ? 1 : 0;
   }
   void EnableAmmeterCal(uint8_t tf) {
     if (tf) {
-      m_wFlags |= ECF_AMMETER_CAL;
+      m_bVFlags |= ECVF_AMMETER_CAL;
     }
     else {
-      m_wFlags &= ~ECF_AMMETER_CAL;
+      m_bVFlags &= ~ECVF_AMMETER_CAL;
     }
   }
 
