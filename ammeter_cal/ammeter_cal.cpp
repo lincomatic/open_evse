@@ -30,7 +30,7 @@
 #define SLEEP(x) sleep(x)
 #endif
 
-#define VERSTR "V0.10"
+#define VERSTR "V0.11"
 
 //#define LOG
 
@@ -240,6 +240,8 @@ int8 EvseRapi::GetChargingCurrent(int *ma)
 
 int main(int argc,char *argv[])
 {
+  int rc;
+
   printf("Lincomatic OpenEVSE Ammeter Calibrator %s  %s %s\n\n",VERSTR,__DATE__,__TIME__);
  
   char s[128];
@@ -248,32 +250,37 @@ int main(int argc,char *argv[])
   if (argc != 2) {
     printf("Usage: %s commport\n",argv[0]);
     printf("e.g. %s COM3\n",argv[0]);
-    return 1;
+    rc = 1;
+    goto bye;
   }
 
   sprintf(s,"%s:",argv[1]);
   if (rapi.OpenLink(s)) {
     printf("ERROR opening %s\n",argv[1]);
-    return 2;
+    rc = 2;
+    goto bye;
   }
 
   if (rapi.GetVersion(s)) {
     printf("ERROR getting version\n");
-    return 3;
+    rc = 3;
+    goto bye;
   }
   printf("OpenEVSE Firmware/RAPI Version: %s\n",s);
 
   printf("\nEnabling ammeter calibration\n");
   if (rapi.EnableAmmeterCal(1)) {
     printf("ERROR enabling ammeter calibration\n");
-    return 4;
+    rc = 4;
+    goto bye;
   }
 
   printf("\nGetting current ammeter settings\n");
   int scale,offset;
   if (rapi.GetAmmeter(&scale,&offset)) {
     printf("ERROR getting current ammeter settings\n");
-    return 5;
+    rc = 5;
+    goto bye;
   }
   printf("current settings:  scale=%d offset=%d\n",scale,offset);
 
@@ -293,60 +300,79 @@ int main(int argc,char *argv[])
       printf("\nSaving ammeter settings: scale=%d offset=%d\n",scale,offset);
       if (rapi.SetAmmeter(scale,offset)) {
 	printf("ERROR saving ammeter settings\n");
-	return 5;
+	rc = 5;
+	goto bye;
       }
     }
-    printf("\nSuccess - restarting EVSE\n");
-    rapi.ResetEvse();
+    printf("\nSuccess\n");
   }
   else if (sel == 2) {
     int oscale=scale,ooffset=offset;
     if (rapi.EnableAmmeterCal(1)) {
       printf("ERROR enabling ammeter calibration\n");
-      return 1;
+      rc = 1;
+      goto bye;
     }
     if (rapi.SetAmmeter(1,0)) {
       printf("ERROR setting ammeter for calibration\n");
-      return 1;
+      rc = 1;
+      goto bye;
     }
     printf("\nMake sure there is no load current on EVSE. Continue (y/n)? ");
     do {scanf("%c",&sel);} while(!isalpha(sel));
-    printf("\nCalculating zero offset...");
-    SLEEP(5);
-    int toffset;
-    if (rapi.GetChargingCurrent(&toffset)) {
-      printf("ERROR getting charging current\n");
-      return 1;
+    if (tolower(sel) == 'y') {
+      printf("\nCalculating zero offset...");
+      SLEEP(5);
+      int toffset;
+      if (rapi.GetChargingCurrent(&toffset)) {
+	printf("ERROR getting charging current\n");
+	rc = 1;
+	goto bye;
+      }
+      printf("%d...done\n",toffset);
+      
+      printf("\nApply a known load current of at least 5A to the EVSE. Continue (y/n)? ");
+      do {scanf("%c",&sel);} while(!isalpha(sel));
+      printf("\nMeasuring load current...");
+      SLEEP(5);
+      int c;
+      if (rapi.GetChargingCurrent(&c)) {
+	printf("ERROR getting charging current\n");
+	rc = 1;
+	goto bye;
+      }
+      double dc = (double)c;
+      double dto = (double)toffset;
+      printf("%d...done\n",c);
+      printf("\nEnter load current in amps which was applied above: ");
+      double refamps;
+      scanf("%lf",&refamps);
+      printf("refamps: %lf\n",refamps);
+      double m = (refamps * 1000.0) / (dc-dto);
+      scale = (int)(m + .5);
+      offset = - (int)(m*dto + .5);
+      printf("\nSaving ammeter settings: scale=%d offset=%d\n",scale,offset);
+      if (rapi.SetAmmeter(scale,offset)) {
+	printf("ERROR saving ammeter settings\n");
+	rc = 5;
+	goto bye;
+      }
+      printf("\nSuccess\n");
     }
-    printf("%d...done\n",toffset);
-
-    printf("\nApply a known load current of at least 5A to the EVSE. Continue (y/n)? ");
-    do {scanf("%c",&sel);} while(!isalpha(sel));
-    printf("\nMeasuring load current...");
-    SLEEP(5);
-    int c;
-    if (rapi.GetChargingCurrent(&c)) {
-      printf("ERROR getting charging current\n");
-      return 1;
+    else {
+      printf("\nRestoring ammeter settings: scale=%d offset=%d\n",scale,offset);
+      if (rapi.SetAmmeter(scale,offset)) {
+	printf("ERROR saving ammeter settings\n");
+	rc = 5;
+	goto bye;
+      }
     }
-    double dc = (double)c;
-    double dto = (double)toffset;
-    printf("%d...done\n",c);
-    printf("\nEnter load current in amps which was applied above: ");
-    double refamps;
-    scanf("%lf",&refamps);
-    printf("refamps: %lf\n",refamps);
-    double m = (refamps * 1000.0) / (dc-dto);
-    scale = (int)(m + .5);
-    offset = - (int)(m*dto + .5);
-    printf("\nSaving ammeter settings: scale=%d offset=%d\n",scale,offset);
-    if (rapi.SetAmmeter(scale,offset)) {
-      printf("ERROR saving ammeter settings\n");
-      return 5;
-    }
-    printf("\nSuccess - restarting EVSE\n");
-    rapi.ResetEvse();
   }
 
-  return 0;
+  rc = 0;
+
+ bye:
+  printf("Restarting EVSE\n");
+  rapi.ResetEvse();
+  return rc;
 }
