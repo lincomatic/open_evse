@@ -643,12 +643,14 @@ void CLI::getInput()
 void CLI::println_P(prog_char *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   println(m_strBuf);
 }
 
 void CLI::print_P(prog_char *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   print(m_strBuf);
 }
 
@@ -665,6 +667,7 @@ OnboardDisplay::OnboardDisplay()
 #endif // I2CLCD_PCF8574
 #endif // defined(I2CLCD) || defined(RGBLCD)
 {
+  m_strBufLen = LCD_MAX_CHARS_PER_LINE+1;
 }
 
 
@@ -725,21 +728,25 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 void OnboardDisplay::LcdPrint_P(const prog_char *s)
 {
   if (LcdDetected()) {
-    strcpy_P(m_strBuf,s);
+    strncpy_P(m_strBuf,s,m_strBufLen);
+    m_strBuf[m_strBufLen-1] = 0;
     m_Lcd.print(m_strBuf);
   }
 }
 
 void OnboardDisplay::LcdPrint_P(int y,const prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
+  strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   LcdPrint(y,m_strBuf);
 }
 
 void OnboardDisplay::LcdPrint_P(int x,int y,const prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
-  LcdPrint(x,y,m_strBuf);
+  strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
+  m_Lcd.setCursor(x,y);
+  m_Lcd.print(m_strBuf);
 }
 
 void OnboardDisplay::LcdMsg_P(const prog_char *l1,const prog_char *l2)
@@ -754,12 +761,16 @@ void OnboardDisplay::LcdPrint(int y,const char *s)
 {
   if (LcdDetected()) {
     m_Lcd.setCursor(0,y);
-    char ss[LCD_MAX_CHARS_PER_LINE+1];
-// n.b the 16 in the string below needs to be adjusted if LCD_MAX_CHARS_PER_LINE != 16
-    sprintf(ss,"%-16s",s);
-    ss[LCD_MAX_CHARS_PER_LINE] = '\0';
-    m_Lcd.print(ss);
-   }
+    uint8_t i,len = strlen(s);
+    if (len > LCD_MAX_CHARS_PER_LINE)
+      len = LCD_MAX_CHARS_PER_LINE;
+    for (i=0;i < len;i++) {
+      m_Lcd.write(s[i]);
+    }
+    for (i=len;i < LCD_MAX_CHARS_PER_LINE;i++) {
+      m_Lcd.write(' ');
+    }
+  }
 }
 
 void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
@@ -769,6 +780,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 }
 #endif // LCD16X2
 
+
 char g_sRdyLAstr[] = "L%d:%dA";
 prog_char g_psReady[] PROGMEM = "Ready";
 prog_char g_psCharging[] PROGMEM = "Charging";
@@ -777,10 +789,6 @@ void OnboardDisplay::Update(int8_t force)
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int i;
-
-#if defined(DELAYTIMER) && defined(LCD16X2)
-  DateTime curtime = g_RTC.now();
-#endif //#ifdef DELAYTIMER
 
   if (g_EvseController.StateTransition() || force) {
     // Optimize function call - GoldServe
@@ -910,7 +918,7 @@ void OnboardDisplay::Update(int8_t force)
     }
   }
 
-#ifdef AMMETER
+#if defined(AMMETER) && defined(LCD16X2)
     if (force || (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty())) {
       SetAmmeterDirty(0);
 
@@ -952,6 +960,10 @@ void OnboardDisplay::Update(int8_t force)
     }
 #endif // AMMETER
 
+#if defined(DELAYTIMER) && defined(LCD16X2)
+  DateTime curtime = g_RTC.now();
+#endif //#ifdef DELAYTIMER
+
 #ifdef LCD16X2
   if (curstate == EVSE_STATE_C) {
     time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
@@ -960,7 +972,7 @@ void OnboardDisplay::Update(int8_t force)
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
 #ifdef DELAYTIMER
-      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,curtime.hour(),curtime.minute());
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)curtime.hour(),(int)curtime.minute());
 #else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #endif //#ifdef DELAYTIMER
@@ -1575,11 +1587,13 @@ uint8_t J1772EVSEController::doPost()
 #ifdef LCD16X2
 	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
-	  if ((svcState == OG) || (svcState == SR))  g_OBD.LcdSetBacklightColor(RED); 
+	  if ((svcState == OG) || (svcState == SR))  {
+            g_OBD.LcdSetBacklightColor(RED);
+          }
 	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
 	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-	   delay(500);
-#endif
+#endif // LCD16X2
+	  delay(500);
 	} // endif test, no EV is plugged in
   } // endif AutoSvcLevelEnabled
   
@@ -1597,7 +1611,13 @@ uint8_t J1772EVSEController::doPost()
   }
 #endif
 
-  g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
+  if ((svcState == OG)||(svcState == SR)||(svcState == FG)) {
+    g_OBD.SetGreenLed(LOW);
+    g_OBD.SetRedLed(HIGH);
+  }
+  else {
+    g_OBD.SetRedLed(LOW);
+  }
   m_Pilot.SetState(PILOT_STATE_P12);
 
 #ifdef SERIALCLI
@@ -3382,12 +3402,11 @@ void DelayTimerInterrupt(){
 
 void EvseReset()
 {
-#ifdef DELAYTIMER
-  // Initialize Delay Timer - GoldServe
+#ifdef RTC
   Wire.begin();
   g_RTC.begin();
   g_DelayTimer.Init();
-#endif //#ifdef DELAYTIMER
+#endif
 
 #ifdef SERIALCLI
   g_CLI.Init();
