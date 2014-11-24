@@ -40,7 +40,7 @@
 //-- begin features
 
 // current measurement
-#define AMMETER
+//#define AMMETER
 
 // serial remote api
 #define RAPI
@@ -55,6 +55,7 @@
 
 // GFI support
 #define GFI
+
 // If you loop a wire from the third GFI pin through the CT a few times and then to ground,
 // enable this. ADVPWR must also be defined.
 #define GFI_SELFTEST
@@ -102,7 +103,7 @@
 #endif // BTN_MENU
 
 // Option for RTC and DelayTime
-#define RTC // enable RTC & timer functions
+//#define RTC // enable RTC & timer functions
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
@@ -371,6 +372,7 @@ class OnboardDisplay
 #endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
+  uint8_t m_strBufLen;
 
 
 public:
@@ -398,15 +400,17 @@ public:
 #else
   uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
 #endif 
-  void LcdPrint(const char *s) { 
+  void LcdPrint(const char *s) {
     if (LcdDetected()) m_Lcd.print(s); 
   }
   void LcdPrint_P(const prog_char *s);
   void LcdPrint(int y,const char *s);
   void LcdPrint_P(int y,const prog_char *s);
   void LcdPrint(int x,int y,const char *s) { 
-    m_Lcd.setCursor(x,y);
-    if (LcdDetected()) m_Lcd.print(s); 
+    if (LcdDetected()) {
+      m_Lcd.setCursor(x,y);
+      m_Lcd.print(s); 
+    }
   }
   void LcdPrint_P(int x,int y,const prog_char *s);
   void LcdPrint(int i) { 
@@ -420,10 +424,10 @@ public:
     if (LcdDetected()) m_Lcd.print(g_BlankLine);
   }
   void LcdClear() { 
-    m_Lcd.clear();
+    if (LcdDetected()) m_Lcd.clear();
   }
   void LcdWrite(uint8_t data) { 
-    m_Lcd.write(data);
+    if (LcdDetected()) m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);

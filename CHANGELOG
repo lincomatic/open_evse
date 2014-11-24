@@ -1,5 +1,9 @@
 Change Log
 
+vD3.3.1 SCL 20141124
+- fix some random crashes caused by string overflow on LCD display
+  one such crash was when I2CLCD enabled and RTC enabled w/o RTC hardware
+	
 vD3.3.0 SCL 20141120
 - promote version to 3.3.x since features were added
 	
