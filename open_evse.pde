@@ -2236,6 +2236,7 @@ Btn::Btn()
 {
   buttonState = BTN_STATE_OFF;
   lastDebounceTime = 0;
+  vlongDebounceTime = 0;
 }
 
 void Btn::init()
@@ -2247,6 +2248,7 @@ void Btn::init()
 void Btn::read()
 {
   uint8_t sample;
+  long delta;
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
@@ -2261,7 +2263,7 @@ void Btn::read()
       if (!lastDebounceTime && (buttonState == BTN_STATE_OFF)) {
 	lastDebounceTime = millis();
       }
-      long delta = millis() - lastDebounceTime;
+      delta = millis() - lastDebounceTime;
 
       if (buttonState == BTN_STATE_OFF) {
 	if (delta >= BTN_PRESS_SHORT) {
@@ -2278,6 +2280,14 @@ void Btn::read()
       lastDebounceTime = 0;
     }
   }
+#ifdef RAPI
+  else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
+    if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
+      vlongDebounceTime = 0;
+      g_ERP.setWifiMode(WIFI_MODE_AP);
+    }
+  }
+#endif // RAPI
 }
 
 uint8_t Btn::shortPress()
@@ -2294,6 +2304,7 @@ uint8_t Btn::shortPress()
 uint8_t Btn::longPress()
 {
   if ((buttonState == BTN_STATE_LONG) && lastDebounceTime) {
+    vlongDebounceTime = lastDebounceTime;
     lastDebounceTime = 0;
     return 1;
   }

@@ -1,5 +1,8 @@
 Change Log
 
+vD3.3.2 SCL 20141205
+- added very long press RAPI code for WiFi AP mode reset ($WF)
+	
 vD3.3.1 SCL 20141124
 - fix some random crashes caused by string overflow on LCD display
   one such crash was when I2CLCD enabled and RTC enabled w/o RTC hardware

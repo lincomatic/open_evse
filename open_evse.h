@@ -35,12 +35,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.3.1"
+#define VERSION "D3.3.2"
 
 //-- begin features
 
 // current measurement
-//#define AMMETER
+#define AMMETER
 
 // serial remote api
 #define RAPI
@@ -103,7 +103,8 @@
 #endif // BTN_MENU
 
 // Option for RTC and DelayTime
-//#define RTC // enable RTC & timer functions
+// REQUIRES HARDWARE RTC: DS1307 connected via I2C
+#define RTC // enable RTC & timer functions
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
@@ -269,6 +270,7 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define BTN_PIN A3 // button sensing pin
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
+#define BTN_PRESS_VERYLONG 10000
 
 
 #ifdef RTC
@@ -755,6 +757,7 @@ public:
 class Btn {
   uint8_t buttonState;
   long lastDebounceTime;  // the last time the output pin was toggled
+  long vlongDebounceTime;  // for verylong press
   
 public:
   Btn();
