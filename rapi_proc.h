@@ -143,6 +143,10 @@ typedef unsigned char uint8;
 
 #define RAPIVER "1.0.1"
 
+#define WIFI_MODE_AP 0
+#define WIFI_MODE_CLIENT 1
+#define WIFI_MODE_AP_DEFAULT 2
+
 #define ESRAPI_BUFLEN 30
 #define ESRAPI_SOC '$' // start of command
 #define ESRAPI_EOC 0xd // CR end of command
@@ -173,6 +177,7 @@ public:
   EvseRapiProcessor();
   int doCmd(int8 sendstatetrans=1);
   void sendEvseState();
+  void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
   
   /*
   void Init();
