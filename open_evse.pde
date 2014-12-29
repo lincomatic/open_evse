@@ -1456,6 +1456,10 @@ uint8_t J1772EVSEController::doPost()
 	}
 #endif //#ifdef SERIALCLI
 
+#ifdef OPENEVSE_2
+    if (digitalRead(GROUND_TEST_PIN) != HIGH) svcState = OG;
+    
+#else
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
 
@@ -1527,8 +1531,11 @@ uint8_t J1772EVSEController::doPost()
               g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
               g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
               g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
- }  
+            }
           #endif //#ifdef SERIALCLI
+
+	} // endif test, no EV is plugged in
+#endif // OPENEVSE_2
 
 // update LCD
 #ifdef LCD16X2
@@ -1539,7 +1546,7 @@ uint8_t J1772EVSEController::doPost()
 	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
 	   delay(500);
 #endif
-	} // endif test, no EV is plugged in
+
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
@@ -1593,10 +1600,14 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+  pinMode(GROUND_TEST_PIN, INPUT);
+#else
   pinMode(ACLINE1_PIN, INPUT);
   pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
   digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
+#endif // OPENEVSE_2
 #endif // ADVPWR
 
   chargingOff();
@@ -1743,6 +1754,22 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+  if (GndChkEnabled()) {
+    if (digitalRead(GROUND_TEST_PIN) != HIGH) {
+      tmpevsestate = EVSE_STATE_NO_GROUND;
+      m_EvseState = EVSE_STATE_NO_GROUND;
+      chargingOff(); // open the relay
+
+      if (m_NoGndTripCnt < 255) {
+	  m_NoGndTripCnt++;
+      }
+      m_NoGndTimeout = millis() + GFI_TIMEOUT;
+
+      nofault = 0;
+    }
+  }
+#else
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
 
@@ -1796,7 +1823,7 @@ void J1772EVSEController::Update()
       else StuckRelayTripCnt = 0; // not stuck - reset count
      } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
-  
+#endif // OPENEVSE_2
 #endif // ADVPWR
    
 #ifdef GFI
