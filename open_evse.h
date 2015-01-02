@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.3.2"
+#define VERSION "D3.3.3"
 
 //-- begin features
 
@@ -52,6 +52,9 @@
 
 // enable watchdog timer
 //#define WATCHDOG
+
+// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
+//#define OPENEVSE_2
 
 // GFI support
 #define GFI
@@ -152,12 +155,16 @@
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(RTC) && defined(LCD16X2)
 #if defined(SERIALCLI)
-INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
+#error INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
 #endif
 #endif
 
 #if defined(RAPI) && defined(SERIALCLI)
-INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
+#error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
+#endif
+
+#if defined(OPENEVSE_2) && !defined(ADVPWR)
+#error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
 
 //-- begin configuration
@@ -180,9 +187,14 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin A0
-#define VOLT_PIN 1 // analog voltage reading pin A1
+#define VOLT_PIN 1 // analog pilot voltage reading pin A1
+#ifdef OPENEVSE_2
+#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
+#define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
+#else
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
+#endif
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
@@ -301,6 +313,7 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
 // NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
+// until it is overridden via RAPI
 #define DEFAULT_CURRENT_SCALE_FACTOR 0
 
 // subtract this from ammeter current reading to correct zero offset
@@ -313,9 +326,6 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 
 // Once we detect a zero-crossing, we should not look for one for another quarter cycle or so. 1/4 // cycle at 50 Hz is 5 ms.
 #define CURRENT_ZERO_DEBOUNCE_INTERVAL 5
-
-// how often to read the ammeter (ms)
-//not used yet#define AMMETER_READ_INTERVAL 0
 
 #endif // AMMETER
 
@@ -597,8 +607,6 @@ class J1772EVSEController {
   time_t m_ChargeOffTime;
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
-
-
 
 #ifdef ADVPWR
 // Define the Power states read from the L1 and L2 test lines

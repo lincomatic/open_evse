@@ -1243,7 +1243,10 @@ void J1772EVSEController::chargingOff()
 
   m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
-} 
+
+#ifdef AMMETER
+  m_ChargingCurrent = 0;
+#endif} 
 
 #ifdef GFI
 inline void J1772EVSEController::SetGfiTripped()
