@@ -1,5 +1,8 @@
 Change Log
 
+vD3.3.3 SCL 20141205
+- clear charging current in chargingOff() - thanks to CapnBry
+	
 vD3.3.2 SCL 20141205
 - added very long press RAPI code for WiFi AP mode reset ($WF)
 	
