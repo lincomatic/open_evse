@@ -1246,7 +1246,8 @@ void J1772EVSEController::chargingOff()
 
 #ifdef AMMETER
   m_ChargingCurrent = 0;
-#endif} 
+#endif
+} 
 
 #ifdef GFI
 inline void J1772EVSEController::SetGfiTripped()
