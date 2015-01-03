@@ -35,7 +35,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
-#include <EEPROM.h>
+#include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
 #include <pins_arduino.h>
@@ -252,14 +252,13 @@ void WatchDogReset()
 void SaveEvseFlags()
 {
   uint16_t flags = g_EvseController.GetFlags();
-  EEPROM.write(EOFS_FLAGS,flags >> 8);
-  EEPROM.write(EOFS_FLAGS+1,flags & 0x00ff);
+  eeprom_write_word((uint16_t *)EOFS_FLAGS,flags);
 }
 
 void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
+  eeprom_write_byte((uint8_t *)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)g_EvseController.GetCurrentCapacity());
   SaveEvseFlags();
 }
 
@@ -1452,7 +1451,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
   SaveEvseFlags();
 
-  uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
+  uint8_t ampacity =  eeprom_read_byte((uint8_t*)((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2));
 
   if ((ampacity == 0xff) || (ampacity == 0)) {
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
@@ -1638,9 +1637,7 @@ uint8_t J1772EVSEController::doPost()
 void J1772EVSEController::Init()
 {
   // read settings from EEPROM
-  uint16_t rflgs = EEPROM.read(EOFS_FLAGS);
-  rflgs <<= 8;
-  rflgs |= EEPROM.read(EOFS_FLAGS+1);
+  uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
 #ifdef RGBLCD
     if ((rflgs != 0xffff) && (rflgs & ECF_MONO_LCD)) {
@@ -1685,13 +1682,8 @@ void J1772EVSEController::Init()
   }
 
 #ifdef AMMETER
-  m_AmmeterCurrentOffset = EEPROM.read(EOFS_AMMETER_CURR_OFFSET);
-  m_AmmeterCurrentOffset <<= 8;
-  m_AmmeterCurrentOffset |= EEPROM.read(EOFS_AMMETER_CURR_OFFSET+1);
-  
-  m_CurrentScaleFactor = EEPROM.read(EOFS_CURRENT_SCALE_FACTOR);
-  m_CurrentScaleFactor <<= 8;
-  m_CurrentScaleFactor |= EEPROM.read(EOFS_CURRENT_SCALE_FACTOR+1);
+  m_AmmeterCurrentOffset = eeprom_read_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET);
+  m_CurrentScaleFactor = eeprom_read_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR);
   
   if (m_AmmeterCurrentOffset == 0x0000ffff) {
     m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
@@ -2125,7 +2117,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
     rc = 2;
   }
 
-  EEPROM.write((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)m_CurrentCapacity);
+  eeprom_write_byte((uint8_t*)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)m_CurrentCapacity);
 
   if (m_Pilot.GetState() == PILOT_STATE_PWM) {
     m_Pilot.SetPWM(m_CurrentCapacity);
@@ -2542,7 +2534,7 @@ Menu *MaxCurrentMenu::Select()
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
   delay(500);
-  EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,m_MaxAmpsList[m_CurIdx]);  
+  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_MaxAmpsList[m_CurIdx]);  
   g_EvseController.SetCurrentCapacity(m_MaxAmpsList[m_CurIdx]);
   return &g_SetupMenu;
 }
@@ -3280,42 +3272,42 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #ifdef DELAYTIMER
 void DelayTimer::Init(){
   //Read EEPROM settings
-  uint8_t rflgs = EEPROM.read(EOFS_TIMER_FLAGS);
+  uint8_t rflgs = eeprom_read_byte((uint8_t*)EOFS_TIMER_FLAGS);
   if (rflgs == 0xff) { // uninitialized EEPROM
     m_DelayTimerEnabled = 0x00;
-    EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   }
   else {
     m_DelayTimerEnabled = rflgs;
   }
-  uint8_t rtmp = EEPROM.read(EOFS_TIMER_START_HOUR);
+  uint8_t rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerHour = DEFAULT_START_HOUR;
-    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
   }
   else {
     m_StartTimerHour = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_START_MIN);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_MIN);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerMin = DEFAULT_START_MIN;
-    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
   }
   else {
     m_StartTimerMin = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_STOP_HOUR);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_STOP_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StopTimerHour = DEFAULT_STOP_HOUR;
-    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
   }
   else {
     m_StopTimerHour = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_STOP_MIN);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_STOP_MIN);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StopTimerMin = DEFAULT_STOP_MIN;
-    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
   }
   else {
     m_StopTimerMin = rtmp;
@@ -3386,7 +3378,7 @@ void DelayTimer::CheckTime()
 }
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
-  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(0);
   SaveSettings();
   CheckNow();
@@ -3395,7 +3387,7 @@ void DelayTimer::Enable(){
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
-  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(1);
   SaveSettings();
   g_OBD.Update(1);

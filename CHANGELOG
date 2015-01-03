@@ -1,6 +1,9 @@
 Change Log
 
-vD3.3.3 SCL 20141205
+vD3.3.4 SCL 20150102
+- switch from EEPROM.h to avr/eeprom.h functions
+	
+vD3.3.3 SCL 20150102
 - clear charging current in chargingOff() - thanks to CapnBry
 	
 vD3.3.2 SCL 20141205

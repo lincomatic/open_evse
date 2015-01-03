@@ -22,9 +22,9 @@
 
 
 
-#include <EEPROM.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include <Wire.h>
 #include <FlexiTimer2.h> // Required for RTC and Delay Timer
@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.3.3"
+#define VERSION "D3.3.4"
 
 //-- begin features
 
@@ -734,13 +734,11 @@ public:
   int16_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
   void SetAmmeterCurrentOffset(int16_t offset) {
     m_AmmeterCurrentOffset = offset;
-    EEPROM.write(EOFS_AMMETER_CURR_OFFSET,(offset & 0x0000ff00) >> 8);
-    EEPROM.write(EOFS_AMMETER_CURR_OFFSET+1,offset & 0x000000ff);
+    eeprom_write_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET,offset);
   }
   void SetCurrentScaleFactor(int16_t scale) {
     m_CurrentScaleFactor = scale;
-    EEPROM.write(EOFS_CURRENT_SCALE_FACTOR,(scale & 0x0000ff00) >> 8);
-    EEPROM.write(EOFS_CURRENT_SCALE_FACTOR+1,scale & 0x000000ff);
+    eeprom_write_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR,scale);
   }
   uint8_t AmmeterCalEnabled() { 
     return (m_bVFlags & ECVF_AMMETER_CAL) ? 1 : 0;
@@ -1030,15 +1028,15 @@ public:
   void SetStartTimer(uint8_t hour, uint8_t min){
     m_StartTimerHour = hour;
     m_StartTimerMin = min;
-    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
-    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
     SaveSettings();
   };
   void SetStopTimer(uint8_t hour, uint8_t min){
     m_StopTimerHour = hour;
     m_StopTimerMin = min;
-    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
-    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     SaveSettings();
   };
   uint8_t IsTimerValid(){
