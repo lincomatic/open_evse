@@ -54,7 +54,12 @@
 //#define WATCHDOG
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-//#define OPENEVSE_2
+#define OPENEVSE_2
+
+#ifdef OPENEVSE_2
+// If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
+#define L2_VOLTAGE_THRESHOLD (150000)
+#endif
 
 // GFI support
 #define GFI
@@ -191,14 +196,16 @@
 #ifdef OPENEVSE_2
 #define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
 #define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
+#define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
+#define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
 #else
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
-#endif
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
+#endif
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
@@ -628,6 +635,10 @@ class J1772EVSEController {
   void clrFlags(uint16_t flags) { 
     m_wFlags &= ~flags; 
   }
+
+#ifdef OPENEVSE_2
+  uint32_t readVoltmeter();
+#endif
 
 #ifdef AMMETER
   //  long m_LastAmmeterReadMs;

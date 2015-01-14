@@ -684,12 +684,14 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
+#ifndef OPENEVSE_2
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
 
   SetGreenLed(LOW);
   SetRedLed(LOW);
-  
+#endif
+
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
   LcdSetBacklightColor(WHITE);
@@ -720,7 +722,9 @@ void OnboardDisplay::SetGreenLed(uint8_t state)
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
+#ifndef OPENEVSE_2
   digitalWrite(RED_LED_PIN,state);
+#endif
 }
 
 #ifdef LCD16X2
@@ -1503,6 +1507,24 @@ uint8_t J1772EVSEController::doPost()
 #endif //Adafruit RGB LCD 
 
   if (AutoSvcLevelEnabled()) {
+#ifdef OPENEVSE_2
+    unsigned long ac_volts = readVoltmeter();
+    if (ac_volts > L2_VOLTAGE_THRESHOLD) {
+      svcState = L2;
+    } else {
+      svcState = L1;
+    }
+#ifdef SERIALCLI
+    if (SerDbgEnabled()) {
+      g_CLI.print_P(PSTR("AC millivolts: "));Serial.println(ac_volts);
+      g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+    }  
+#endif //#ifdef SERIALCLI
+#ifdef LCD16X2
+    if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+    if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+#endif //LCD16x2
+#else
     delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
@@ -1598,6 +1620,8 @@ uint8_t J1772EVSEController::doPost()
 #endif // LCD16X2
 	  delay(500);
 	} // endif test, no EV is plugged in
+#endif //#else OPENEVSE_2
+
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
@@ -1655,10 +1679,13 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+#else
   pinMode(ACLINE1_PIN, INPUT);
   pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
   digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
+#endif
 #endif // ADVPWR
 
   chargingOff();
@@ -1828,9 +1855,43 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+ if (GndChkEnabled()) {
+   if (digitalRead(GROUND_TEST_PIN) != HIGH) {
+     	
+	tmpevsestate = EVSE_STATE_NO_GROUND;
+	m_EvseState = EVSE_STATE_NO_GROUND;
+	
+	chargingOff(); // open the relay
+
+	if (m_NoGndTripCnt < 255) {
+	  m_NoGndTripCnt++;
+	}
+	m_NoGndTimeout = curms + GFI_TIMEOUT;
+
+	nofault = 0;
+   }
+ }
+ if (StuckRelayChkEnabled()) {
+   if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
+        if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
+            m_StuckRelayStartTimeMS = curms; // mark start state
+            StuckRelayTripCnt++;
+         }   
+        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+        	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+	// stuck relay
+	tmpevsestate = EVSE_STATE_STUCK_RELAY;
+	m_EvseState = EVSE_STATE_STUCK_RELAY;
+	nofault = 0;
+   }
+ }
+ }
+#else
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
-
+  
  if (chargingIsOn()) { // ground check - can only test when relay closed
     if (GndChkEnabled()) {
       if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
@@ -1881,7 +1942,7 @@ void J1772EVSEController::Update()
       else StuckRelayTripCnt = 0; // not stuck - reset count
      } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
-  
+#endif //!OPENEVSE_2
 #endif // ADVPWR
    
 #ifdef GFI
@@ -2140,6 +2201,22 @@ static inline unsigned long ulong_sqrt(unsigned long in)
   for(out = 1; out*out <= in; out++) ;
   return out - 1;
 }
+
+#ifdef OPENEVSE_2
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+// This is just a wild guess
+#define VOLTMETER_SCALE_FACTOR (450)
+unsigned long J1772EVSEController::readVoltmeter()
+{
+  unsigned int peak = 0;
+  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
+    unsigned int val = analogRead(VOLTMETER_PIN);
+    if (val > peak) peak = val;
+  }
+  return peak * VOLTMETER_SCALE_FACTOR;
+}
+#endif
 
 void J1772EVSEController::readAmmeter()
 {
