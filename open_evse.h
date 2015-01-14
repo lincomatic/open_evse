@@ -53,9 +53,6 @@
 // enable watchdog timer
 //#define WATCHDOG
 
-// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-//#define OPENEVSE_2
-
 // GFI support
 #define GFI
 
@@ -163,10 +160,6 @@
 #error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
 #endif
 
-#if defined(OPENEVSE_2) && !defined(ADVPWR)
-#error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
-#endif
-
 //-- begin configuration
 
 #define LCD_MAX_CHARS_PER_LINE 16
@@ -188,13 +181,8 @@
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin A0
 #define VOLT_PIN 1 // analog pilot voltage reading pin A1
-#ifdef OPENEVSE_2
-#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
-#define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
-#else
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
-#endif
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
