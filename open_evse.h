@@ -22,9 +22,9 @@
 
 
 
-#include <EEPROM.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include <Wire.h>
 #include <FlexiTimer2.h> // Required for RTC and Delay Timer
@@ -35,12 +35,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.2.2"
+#define VERSION "D3.3.4"
 
 //-- begin features
 
 // current measurement
-//#define AMMETER
+#define AMMETER
 
 // serial remote api
 #define RAPI
@@ -53,14 +53,23 @@
 // enable watchdog timer
 //#define WATCHDOG
 
+// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
+#define OPENEVSE_2
+
+#ifdef OPENEVSE_2
+// If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
+#define L2_VOLTAGE_THRESHOLD (150000)
+#endif
+
 // GFI support
 #define GFI
+
 // If you loop a wire from the third GFI pin through the CT a few times and then to ground,
 // enable this. ADVPWR must also be defined.
 #define GFI_SELFTEST
 
 
-//Adafruit RGBLCD - can have RGB or monochrome backlight
+//Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
 #define RGBLCD
 
 //select default LCD backlight mode. can be overridden w/CLI/RAPI
@@ -69,14 +78,21 @@
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_RGB
 //#define DEFAULT_LCD_BKL_TYPE BLK_TYPE_MONO
 
-// Adafruit LCD backpack in I2C mode
+// Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
+// Support PCF8574* based I2C backpack using F. Malpartida's library
+// https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
+// note: When enabling I2CLCD_PCF8754, due to stupidity of Arduino, at 
+//   top of open_evse.pde must
+//   uncomment #include <LiquidCrystal_I2C.h> and
+//   comment out #include <LiquidTWI2.h>
+//#define I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
 // single button menus (needs LCD enabled)
-// connect an SPST button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
+// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
 // How to use 1-button menu
 // Long press activates menu
@@ -95,6 +111,7 @@
 #endif // BTN_MENU
 
 // Option for RTC and DelayTime
+// REQUIRES HARDWARE RTC: DS1307 connected via I2C
 #define RTC // enable RTC & timer functions
 
 #ifdef RTC
@@ -125,7 +142,9 @@
 
 //-- end features
 
-
+#ifndef RGBLCD
+#define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
+#endif
 
 #if defined(RGBLCD) || defined(I2CLCD)
 #define LCD16X2
@@ -134,15 +153,23 @@
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
 
+#ifndef I2CLCD
+#undef I2CLCD_PCF8574
+#endif
+
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(RTC) && defined(LCD16X2)
 #if defined(SERIALCLI)
-INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
+#error INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
 #endif
 #endif
 
 #if defined(RAPI) && defined(SERIALCLI)
-INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
+#error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
+#endif
+
+#if defined(OPENEVSE_2) && !defined(ADVPWR)
+#error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
 
 //-- begin configuration
@@ -165,13 +192,20 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin A0
-#define VOLT_PIN 1 // analog voltage reading pin A1
+#define VOLT_PIN 1 // analog pilot voltage reading pin A1
+#ifdef OPENEVSE_2
+#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
+#define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
+#define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
+#define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
+#else
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
+#endif
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
@@ -193,6 +227,11 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 #define EOFS_TIMER_START_MIN     6 // 1 byte
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
+
+#ifdef AMMETER
+#define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
+#define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
+#endif // AMMETER
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -238,13 +277,19 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // Using LiquidTWI2 for both types of I2C LCD's
 // see http://blog.lincomatic.com/?p=956 for installation instructions
 #include <Wire.h>
+#ifdef I2CLCD_PCF8574
+#include <LiquidCrystal_I2C.h>
+#define LCD_I2C_ADDR 0x27
+#else
 #include <LiquidTWI2.h>
 #define LCD_I2C_ADDR 0x20 // for adafruit shield or backpack
+#endif // I2CLCD_PCF8574
 #endif // RGBLCD || I2CLCD
 
 #define BTN_PIN A3 // button sensing pin
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
+#define BTN_PRESS_VERYLONG 10000
 
 
 #ifdef RTC
@@ -269,8 +314,18 @@ INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE T
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
 
 // Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
-#define CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
-//#define CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+//#define DEFAULT_CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
+//#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+// Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
+// then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
+//#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
+// NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
+// until it is overridden via RAPI
+#define DEFAULT_CURRENT_SCALE_FACTOR 0
+
+// subtract this from ammeter current reading to correct zero offset
+#define DEFAULT_AMMETER_CURRENT_OFFSET 0
+//#define DEFAULT_AMMETER_CURRENT_OFFSET -950 // mA //Craig K,  this resolves the zero offset that I observed
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -322,14 +377,21 @@ extern char *g_BlankLine;
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
+#define OBDF_AMMETER_DIRTY  0x80
 class OnboardDisplay 
 
 {
 #if defined(RGBLCD) || defined(I2CLCD)
-LiquidTWI2 m_Lcd;
-#endif
+#ifdef I2CLCD_PCF8574
+#include <LiquidCrystal_I2C.h>
+  LiquidCrystal_I2C m_Lcd;  
+#else
+  LiquidTWI2 m_Lcd;
+#endif // I2CLCD_PCF8574
+#endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
+  uint8_t m_strBufLen;
 
 
 public:
@@ -341,50 +403,67 @@ public:
 #ifdef LCD16X2
   void LcdBegin(int x,int y) { 
 #ifdef I2CLCD
+#ifndef I2CLCD_PCF8574
     m_Lcd.setMCPType(LTI_TYPE_MCP23008);
+#endif
     m_Lcd.begin(x,y); 
     m_Lcd.setBacklight(HIGH);
 #elif defined(RGBLCD)
     m_Lcd.setMCPType(LTI_TYPE_MCP23017);
     m_Lcd.begin(x,y,2); 
     m_Lcd.setBacklight(WHITE);
-#endif
+#endif // I2CLCD
   }
-  void LcdPrint(const char *s) { 
-    if (m_Lcd.LcdDetected()) m_Lcd.print(s); 
+#ifdef I2CLCD_PCF8574
+  uint8_t LcdDetected() { return 1; }
+#else
+  uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
+#endif 
+  void LcdPrint(const char *s) {
+    if (LcdDetected()) m_Lcd.print(s); 
   }
   void LcdPrint_P(const prog_char *s);
   void LcdPrint(int y,const char *s);
   void LcdPrint_P(int y,const prog_char *s);
   void LcdPrint(int x,int y,const char *s) { 
-    m_Lcd.setCursor(x,y);
-    if (m_Lcd.LcdDetected()) m_Lcd.print(s); 
+    if (LcdDetected()) {
+      m_Lcd.setCursor(x,y);
+      m_Lcd.print(s); 
+    }
   }
   void LcdPrint_P(int x,int y,const prog_char *s);
   void LcdPrint(int i) { 
-    if (m_Lcd.LcdDetected()) m_Lcd.print(i); 
+    if (LcdDetected()) m_Lcd.print(i); 
   }
   void LcdSetCursor(int x,int y) { 
     m_Lcd.setCursor(x,y); 
   }
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
-    if (m_Lcd.LcdDetected()) m_Lcd.print(g_BlankLine);
+    if (LcdDetected()) m_Lcd.print(g_BlankLine);
   }
   void LcdClear() { 
-    m_Lcd.clear();
+    if (LcdDetected()) m_Lcd.clear();
   }
   void LcdWrite(uint8_t data) { 
-    m_Lcd.write(data);
+    if (LcdDetected()) m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const prog_char *l1,const prog_char *l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=1) { // BKL_TYPE_XXX
+#ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
     else m_bFlags |= OBDF_MONO_BACKLIGHT;
     Update(update);
+#endif // RGBLCD
   }
-  uint8_t IsLcdBacklightMono() { return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0; }
+  uint8_t IsLcdBacklightMono() {
+#ifdef RGBLCD
+    return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0;
+#else
+    return 1;
+#endif // RGBLCD
+  }
   void LcdSetBacklightColor(uint8_t c) {
 #ifdef RGBLCD
     if (IsLcdBacklightMono()) {
@@ -397,6 +476,14 @@ public:
   uint8_t readButtons() { return m_Lcd.readButtons(); }
 #endif // RGBLCD
 #endif // LCD16X2
+
+#ifdef AMMETER
+  void SetAmmeterDirty(uint8_t tf) {
+    if (tf) m_bFlags |= OBDF_AMMETER_DIRTY;
+    else m_bFlags &= ~OBDF_AMMETER_DIRTY;
+  }
+  int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
+#endif // AMMETER
 
   void Update(int8_t force=0);
 };
@@ -492,6 +579,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x80 // gfi has tripped at least once
@@ -548,10 +636,18 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
-#ifdef AMMETER
-  unsigned long m_ChargingCurrent;
+#ifdef OPENEVSE_2
+  uint32_t readVoltmeter();
+#endif
 
-  unsigned long readAmmeter();
+#ifdef AMMETER
+  //  long m_LastAmmeterReadMs;
+  unsigned long m_AmmeterReading;
+  int32_t m_ChargingCurrent;
+  int16_t m_AmmeterCurrentOffset;
+  int16_t m_CurrentScaleFactor;
+
+  void readAmmeter();
 #endif // AMMETER
 
 public:
@@ -625,7 +721,7 @@ public:
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
   }
-  void EnableGfiTest(uint8_t tf);
+  void EnableGfiSelfTest(uint8_t tf);
 #endif
 #endif // GFI
   uint8_t SerDbgEnabled() { 
@@ -644,7 +740,29 @@ public:
 #endif // RGBLCD
 
 #ifdef AMMETER
-  unsigned long GetChargingCurrent() { return m_ChargingCurrent; }
+  int32_t GetChargingCurrent() { return m_ChargingCurrent; }
+  int16_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
+  int16_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
+  void SetAmmeterCurrentOffset(int16_t offset) {
+    m_AmmeterCurrentOffset = offset;
+    eeprom_write_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET,offset);
+  }
+  void SetCurrentScaleFactor(int16_t scale) {
+    m_CurrentScaleFactor = scale;
+    eeprom_write_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR,scale);
+  }
+  uint8_t AmmeterCalEnabled() { 
+    return (m_bVFlags & ECVF_AMMETER_CAL) ? 1 : 0;
+  }
+  void EnableAmmeterCal(uint8_t tf) {
+    if (tf) {
+      m_bVFlags |= ECVF_AMMETER_CAL;
+    }
+    else {
+      m_bVFlags &= ~ECVF_AMMETER_CAL;
+    }
+  }
+
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
 };
@@ -656,6 +774,7 @@ public:
 class Btn {
   uint8_t buttonState;
   long lastDebounceTime;  // the last time the output pin was toggled
+  long vlongDebounceTime;  // for verylong press
   
 public:
   Btn();
@@ -920,15 +1039,15 @@ public:
   void SetStartTimer(uint8_t hour, uint8_t min){
     m_StartTimerHour = hour;
     m_StartTimerMin = min;
-    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
-    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
     SaveSettings();
   };
   void SetStopTimer(uint8_t hour, uint8_t min){
     m_StopTimerHour = hour;
     m_StopTimerMin = min;
-    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
-    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     SaveSettings();
   };
   uint8_t IsTimerValid(){

@@ -16,6 +16,7 @@
   8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
   8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
   9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
+  10/25/14               Craig K            add smoothing to the Amperage readout
   
  * This file is part of Open EVSE.
 
@@ -34,7 +35,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
-#include <EEPROM.h>
+#include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
 #include <pins_arduino.h>
@@ -43,6 +44,8 @@
 #include <FlexiTimer2.h> // Required for RTC and Delay Timer
 #include <Time.h>
 #include <LiquidTWI2.h>
+// if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
+//#include <LiquidCrystal_I2C.h>
 #include "open_evse.h"
 
 prog_char VERSTR[] PROGMEM = VERSION;
@@ -249,14 +252,13 @@ void WatchDogReset()
 void SaveEvseFlags()
 {
   uint16_t flags = g_EvseController.GetFlags();
-  EEPROM.write(EOFS_FLAGS,flags >> 8);
-  EEPROM.write(EOFS_FLAGS+1,flags & 0x00ff);
+  eeprom_write_word((uint16_t *)EOFS_FLAGS,flags);
 }
 
 void SaveSettings()
 {
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)g_EvseController.GetCurrentCapacity());
+  eeprom_write_byte((uint8_t *)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)g_EvseController.GetCurrentCapacity());
   SaveEvseFlags();
 }
 
@@ -640,12 +642,14 @@ void CLI::getInput()
 void CLI::println_P(prog_char *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   println(m_strBuf);
 }
 
 void CLI::print_P(prog_char *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   print(m_strBuf);
 }
 
@@ -653,9 +657,16 @@ void CLI::print_P(prog_char *s)
 
 OnboardDisplay::OnboardDisplay()
 #if defined(I2CLCD) || defined(RGBLCD)
+#ifdef I2CLCD_PCF8574
+// Set the pins on the I2C chip used for LCD connections:
+//                    addr, en,rw,rs,d4,d5,d6,d7,bl,blpol
+  : m_Lcd(LCD_I2C_ADDR, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE)
+#else
   : m_Lcd(LCD_I2C_ADDR,1)
-#endif
+#endif // I2CLCD_PCF8574
+#endif // defined(I2CLCD) || defined(RGBLCD)
 {
+  m_strBufLen = LCD_MAX_CHARS_PER_LINE+1;
 }
 
 
@@ -667,14 +678,20 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+#ifdef RGBLCD
   m_bFlags = 0;
+#else
+  m_bFlags = OBDF_MONO_BACKLIGHT;
+#endif // RGBLCD
 
+#ifndef OPENEVSE_2
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
 
   SetGreenLed(LOW);
   SetRedLed(LOW);
-  
+#endif
+
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
   LcdSetBacklightColor(WHITE);
@@ -705,28 +722,34 @@ void OnboardDisplay::SetGreenLed(uint8_t state)
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
+#ifndef OPENEVSE_2
   digitalWrite(RED_LED_PIN,state);
+#endif
 }
 
 #ifdef LCD16X2
 void OnboardDisplay::LcdPrint_P(const prog_char *s)
 {
-  if (m_Lcd.LcdDetected()) {
-    strcpy_P(m_strBuf,s);
+  if (LcdDetected()) {
+    strncpy_P(m_strBuf,s,m_strBufLen);
+    m_strBuf[m_strBufLen-1] = 0;
     m_Lcd.print(m_strBuf);
   }
 }
 
 void OnboardDisplay::LcdPrint_P(int y,const prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
+  strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
   LcdPrint(y,m_strBuf);
 }
 
 void OnboardDisplay::LcdPrint_P(int x,int y,const prog_char *s)
 {
-  strcpy_P(m_strBuf,s);
-  LcdPrint(x,y,m_strBuf);
+  strncpy_P(m_strBuf,s,m_strBufLen);
+  m_strBuf[m_strBufLen-1] = 0;
+  m_Lcd.setCursor(x,y);
+  m_Lcd.print(m_strBuf);
 }
 
 void OnboardDisplay::LcdMsg_P(const prog_char *l1,const prog_char *l2)
@@ -739,14 +762,18 @@ void OnboardDisplay::LcdMsg_P(const prog_char *l1,const prog_char *l2)
 // print at (0,y), filling out the line with trailing spaces
 void OnboardDisplay::LcdPrint(int y,const char *s)
 {
-  if (m_Lcd.LcdDetected()) {
+  if (LcdDetected()) {
     m_Lcd.setCursor(0,y);
-    char ss[LCD_MAX_CHARS_PER_LINE+1];
-// n.b the 16 in the string below needs to be adjusted if LCD_MAX_CHARS_PER_LINE != 16
-    sprintf(ss,"%-16s",s);
-    ss[LCD_MAX_CHARS_PER_LINE] = '\0';
-    m_Lcd.print(ss);
-   }
+    uint8_t i,len = strlen(s);
+    if (len > LCD_MAX_CHARS_PER_LINE)
+      len = LCD_MAX_CHARS_PER_LINE;
+    for (i=0;i < len;i++) {
+      m_Lcd.write(s[i]);
+    }
+    for (i=len;i < LCD_MAX_CHARS_PER_LINE;i++) {
+      m_Lcd.write(' ');
+    }
+  }
 }
 
 void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
@@ -756,6 +783,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 }
 #endif // LCD16X2
 
+
 char g_sRdyLAstr[] = "L%d:%dA";
 prog_char g_psReady[] PROGMEM = "Ready";
 prog_char g_psCharging[] PROGMEM = "Charging";
@@ -764,10 +792,6 @@ void OnboardDisplay::Update(int8_t force)
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int i;
-
-#if defined(DELAYTIMER) && defined(LCD16X2)
-  DateTime curtime = g_RTC.now();
-#endif //#ifdef DELAYTIMER
 
   if (g_EvseController.StateTransition() || force) {
     // Optimize function call - GoldServe
@@ -897,32 +921,61 @@ void OnboardDisplay::Update(int8_t force)
     }
   }
 
-#ifdef LCD16X2
-  if (curstate == EVSE_STATE_C) {
-#ifdef AMMETER
-      unsigned long current;
-      current = g_EvseController.GetChargingCurrent();
-      int ma;
-      if (current < 1000) {
-	// nnnmA
-	ma = (int)current;
-	sprintf(g_sTmp,"%4dmA",ma);
-      }
-      else {
+#if defined(AMMETER) && defined(LCD16X2)
+    if (force || (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty())) {
+      SetAmmeterDirty(0);
+
+      uint32_t current = g_EvseController.GetChargingCurrent();
+      
+      /*      int ma;
+	      if (current < 1000) {
+	      // nnnmA
+	      ma = (int)current;
+	      sprintf(g_sTmp,"%4dmA",ma);
+	      }
+	      else {
+	      // nn.nA
+	      int a = current / 1000;
+	      ma = ((current % 1000) + 50) / 100;
+	      sprintf(g_sTmp,"%3d.%dA",a,ma);
+	      }
+	      LcdPrint(10,0,g_sTmp);
+      */
+      //      sprintf(g_sTmp,"%lu ",current);
+      //      Serial.print(g_sTmp);
+      if (current >= 1000) { // display only if > 1000
+	// nnA
+	//int a = (current + 500) / 1000;
+	
 	// nn.nA
 	int a = current / 1000;
-	ma = ((current % 1000) + 50) / 100;
+	int ma = ((current % 1000) + 50) / 100;
+	if (ma > 9) {
+	  ma = 0;
+	  a++;
+	}
 	sprintf(g_sTmp,"%3d.%dA",a,ma);
       }
+      else {
+	strcpy(g_sTmp,"    0A");
+      }
       LcdPrint(10,0,g_sTmp);
+    }
 #endif // AMMETER
+
+#if defined(DELAYTIMER) && defined(LCD16X2)
+  DateTime curtime = g_RTC.now();
+#endif //#ifdef DELAYTIMER
+
+#ifdef LCD16X2
+  if (curstate == EVSE_STATE_C) {
     time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
     if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
       int h = hour(elapsedTime);
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
 #ifdef DELAYTIMER
-      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,curtime.hour(),curtime.minute());
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)curtime.hour(),(int)curtime.minute());
 #else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #endif //#ifdef DELAYTIMER
@@ -1193,6 +1246,10 @@ void J1772EVSEController::chargingOff()
 
   m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
+
+#ifdef AMMETER
+  m_ChargingCurrent = 0;
+#endif
 } 
 
 #ifdef GFI
@@ -1229,7 +1286,7 @@ void J1772EVSEController::EnableDiodeCheck(uint8_t tf)
 }
 
 #ifdef GFI_SELFTEST
-void J1772EVSEController::EnableGfiTest(uint8_t tf)
+void J1772EVSEController::EnableGfiSelfTest(uint8_t tf)
 {
   if (tf) {
     m_wFlags &= ~ECF_GFI_TEST_DISABLED;
@@ -1318,10 +1375,13 @@ void J1772EVSEController::EnableSerDbg(uint8_t tf)
 #ifdef RGBLCD
 int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 {
+#ifdef RGBLCD
   g_OBD.LcdSetBacklightType(t,update);
   if (t == BKL_TYPE_MONO) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
   SaveEvseFlags();
+  Serial.print("wflags");Serial.print(m_wFlags,HEX);
+#endif // RGBLCD
   return 0;
 }
 #endif // RGBLCD
@@ -1395,7 +1455,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
   SaveEvseFlags();
 
-  uint8_t ampacity =  EEPROM.read((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2);
+  uint8_t ampacity =  eeprom_read_byte((uint8_t*)((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2));
 
   if ((ampacity == 0xff) || (ampacity == 0)) {
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
@@ -1447,6 +1507,24 @@ uint8_t J1772EVSEController::doPost()
 #endif //Adafruit RGB LCD 
 
   if (AutoSvcLevelEnabled()) {
+#ifdef OPENEVSE_2
+    unsigned long ac_volts = readVoltmeter();
+    if (ac_volts > L2_VOLTAGE_THRESHOLD) {
+      svcState = L2;
+    } else {
+      svcState = L1;
+    }
+#ifdef SERIALCLI
+    if (SerDbgEnabled()) {
+      g_CLI.print_P(PSTR("AC millivolts: "));Serial.println(ac_volts);
+      g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+    }  
+#endif //#ifdef SERIALCLI
+#ifdef LCD16X2
+    if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+    if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+#endif //LCD16x2
+#else
     delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
@@ -1534,12 +1612,16 @@ uint8_t J1772EVSEController::doPost()
 #ifdef LCD16X2
 	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
-	  if ((svcState == OG) || (svcState == SR))  g_OBD.LcdSetBacklightColor(RED); 
+	  if ((svcState == OG) || (svcState == SR))  {
+            g_OBD.LcdSetBacklightColor(RED);
+          }
 	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
 	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-	   delay(500);
-#endif
+#endif // LCD16X2
+	  delay(500);
 	} // endif test, no EV is plugged in
+#endif //#else OPENEVSE_2
+
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
@@ -1556,7 +1638,13 @@ uint8_t J1772EVSEController::doPost()
   }
 #endif
 
-  g_OBD.SetRedLed(LOW); // Red LED off for ADVPWR
+  if ((svcState == OG)||(svcState == SR)||(svcState == FG)) {
+    g_OBD.SetGreenLed(LOW);
+    g_OBD.SetRedLed(HIGH);
+  }
+  else {
+    g_OBD.SetRedLed(LOW);
+  }
   m_Pilot.SetState(PILOT_STATE_P12);
 
 #ifdef SERIALCLI
@@ -1573,9 +1661,7 @@ uint8_t J1772EVSEController::doPost()
 void J1772EVSEController::Init()
 {
   // read settings from EEPROM
-  uint16_t rflgs = EEPROM.read(EOFS_FLAGS);
-  rflgs <<= 8;
-  rflgs |= EEPROM.read(EOFS_FLAGS+1);
+  uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
 #ifdef RGBLCD
     if ((rflgs != 0xffff) && (rflgs & ECF_MONO_LCD)) {
@@ -1593,10 +1679,13 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+#else
   pinMode(ACLINE1_PIN, INPUT);
   pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
   digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
+#endif
 #endif // ADVPWR
 
   chargingOff();
@@ -1607,14 +1696,37 @@ void J1772EVSEController::Init()
 
   if (rflgs == 0xffff) { // uninitialized EEPROM
     m_wFlags = ECF_DEFAULT;
+#ifdef RGBLCD
     if (DEFAULT_LCD_BKL_TYPE == BKL_TYPE_MONO) {
       m_wFlags |= ECF_MONO_LCD;
     }
+#endif // RGBLCD
   }
   else {
     m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
+
   }
+
+#ifdef AMMETER
+  m_AmmeterCurrentOffset = eeprom_read_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET);
+  m_CurrentScaleFactor = eeprom_read_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR);
+  
+  if (m_AmmeterCurrentOffset == 0x0000ffff) {
+    m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
+  }
+  if (m_CurrentScaleFactor == 0x0000ffff) {
+    m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
+  }
+  
+  m_AmmeterReading = 0;
+  m_ChargingCurrent = 0;
+  //  m_LastAmmeterReadMs = 0;
+#endif // AMMETER
+
+#ifndef RGBLCD
+    m_wFlags |= ECF_MONO_LCD;
+#endif
 
   m_bVFlags = ECVF_DEFAULT;
 
@@ -1743,12 +1855,46 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+ if (GndChkEnabled()) {
+   if (digitalRead(GROUND_TEST_PIN) != HIGH) {
+     	
+	tmpevsestate = EVSE_STATE_NO_GROUND;
+	m_EvseState = EVSE_STATE_NO_GROUND;
+	
+	chargingOff(); // open the relay
+
+	if (m_NoGndTripCnt < 255) {
+	  m_NoGndTripCnt++;
+	}
+	m_NoGndTimeout = curms + GFI_TIMEOUT;
+
+	nofault = 0;
+   }
+ }
+ if (StuckRelayChkEnabled()) {
+   if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
+        if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
+            m_StuckRelayStartTimeMS = curms; // mark start state
+            StuckRelayTripCnt++;
+         }   
+        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+        	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+	// stuck relay
+	tmpevsestate = EVSE_STATE_STUCK_RELAY;
+	m_EvseState = EVSE_STATE_STUCK_RELAY;
+	nofault = 0;
+   }
+ }
+ }
+#else
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
-
+  
  if (chargingIsOn()) { // ground check - can only test when relay closed
     if (GndChkEnabled()) {
-      if (((millis()-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
+      if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
 	
 	tmpevsestate = EVSE_STATE_NO_GROUND;
@@ -1759,7 +1905,7 @@ void J1772EVSEController::Update()
 	if (m_NoGndTripCnt < 255) {
 	  m_NoGndTripCnt++;
 	}
-	m_NoGndTimeout = millis() + GFI_TIMEOUT;
+	m_NoGndTimeout = curms + GFI_TIMEOUT;
 
 	nofault = 0;
       }
@@ -1768,7 +1914,7 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       if ((m_NoGndRetryCnt < GFI_RETRY_COUNT) &&
-	  (millis() >= m_NoGndTimeout)) {
+	  (curms >= m_NoGndTimeout)) {
 	m_NoGndRetryCnt++;
       }
       else {
@@ -1781,11 +1927,11 @@ void J1772EVSEController::Update()
     else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
       if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
          if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
-            m_StuckRelayStartTimeMS = millis(); // mark start state
+            m_StuckRelayStartTimeMS = curms; // mark start state
             StuckRelayTripCnt++;
          }   
-        if ( ( ((millis()-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-               ((millis()-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
         	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	// stuck relay
 	tmpevsestate = EVSE_STATE_STUCK_RELAY;
@@ -1796,7 +1942,7 @@ void J1772EVSEController::Update()
       else StuckRelayTripCnt = 0; // not stuck - reset count
      } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
-  
+#endif //!OPENEVSE_2
 #endif // ADVPWR
    
 #ifdef GFI
@@ -1810,12 +1956,12 @@ void J1772EVSEController::Update()
 	  m_GfiTripCnt++;
 	}
  	m_GfiRetryCnt = 0;
-	m_GfiTimeout = millis() + GFI_TIMEOUT;
+	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
-      else if (millis() >= m_GfiTimeout) {
+      else if (curms >= m_GfiTimeout) {
 	m_Gfi.Reset();
 	m_GfiRetryCnt++;
-	m_GfiTimeout = millis() + GFI_TIMEOUT;
+	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
     }
 
@@ -1864,9 +2010,9 @@ void J1772EVSEController::Update()
     // debounce state transitions
     if (tmpevsestate != prevevsestate) {
       if (tmpevsestate != m_TmpEvseState) {
-        m_TmpEvseStateStart = millis();
+        m_TmpEvseStateStart = curms;
       }
-      else if ((millis()-m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
+      else if ((curms-m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
         m_EvseState = tmpevsestate;
       }
     }
@@ -1935,12 +2081,28 @@ void J1772EVSEController::Update()
 
   m_PrevEvseState = prevevsestate;
 
-  // End Sensor Readings
-
-  if (m_EvseState == EVSE_STATE_C) {
 #ifdef AMMETER
-    m_ChargingCurrent = readAmmeter();
+  if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
+    //    if ((curms - m_LastAmmeterReadMs) > AMMETER_READ_INTERVAL) {
+    //      m_LastAmmeterReadMs = curms;
+    
+    readAmmeter();
+    uint32_t ma = MovingAverage(m_AmmeterReading);
+    if (ma != 0xffffffff) {
+      m_ChargingCurrent = ma * m_CurrentScaleFactor + m_AmmeterCurrentOffset;
+      if (m_ChargingCurrent < 0) {
+	m_ChargingCurrent = 0;
+      }
+      g_OBD.SetAmmeterDirty(1);
+      //	sprintf(g_sTmp,"*%lu %lu %lu*",ma,m_CurrentScaleFactor,m_ChargingCurrent);
+      //	sprintf(g_sTmp,"%lu ",m_ChargingCurrent);
+      //	sprintf(g_sTmp,"ma %lu ",ma);
+      //	Serial.print(g_sTmp);
+    }
+    //    }
+  }
 #endif // AMMETER
+  if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeStartTime;
   }
@@ -2016,7 +2178,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
     rc = 2;
   }
 
-  EEPROM.write((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,(byte)m_CurrentCapacity);
+  eeprom_write_byte((uint8_t*)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)m_CurrentCapacity);
 
   if (m_Pilot.GetState() == PILOT_STATE_PWM) {
     m_Pilot.SetPWM(m_CurrentCapacity);
@@ -2030,7 +2192,8 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 }
 
 #ifdef AMMETER
-static inline unsigned long ulong_sqrt(unsigned long in) {
+static inline unsigned long ulong_sqrt(unsigned long in)
+{
   unsigned long out;
   // find the last int whose square is not too big
   // Yes, it's wasteful, but we only theoretically ever have to go to 512.
@@ -2039,7 +2202,24 @@ static inline unsigned long ulong_sqrt(unsigned long in) {
   return out - 1;
 }
 
-unsigned long J1772EVSEController::readAmmeter() {
+#ifdef OPENEVSE_2
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+// This is just a wild guess
+#define VOLTMETER_SCALE_FACTOR (450)
+unsigned long J1772EVSEController::readVoltmeter()
+{
+  unsigned int peak = 0;
+  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
+    unsigned int val = analogRead(VOLTMETER_PIN);
+    if (val > peak) peak = val;
+  }
+  return peak * VOLTMETER_SCALE_FACTOR;
+}
+#endif
+
+void J1772EVSEController::readAmmeter()
+{
   unsigned long sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
@@ -2071,11 +2251,52 @@ unsigned long J1772EVSEController::readAmmeter() {
     case 3:
       // The answer is the square root of the mean of the squares.
       // But additionally, that value must be scaled to a real current value.
-      return ulong_sqrt(sum / sample_count) * CURRENT_SCALE_FACTOR;
+      // we will do that elsewhere
+      m_AmmeterReading = ulong_sqrt(sum / sample_count);
+      return;
     }
   }
   // ran out of time. Assume that it's simply not oscillating any. 
-  return 0;
+  m_AmmeterReading = 0;
+}
+
+#define MA_PTS 32 // # points in moving average MUST BE power of 2
+#define MA_BITS 5 // log2(MA_PTS)
+/*
+uint32_t MovingAverage(uint32_t samp)
+{
+  static uint32_t samps[MA_PTS] = {0};
+  uint32_t tot = samp;
+  samps[0] = samp;
+
+  for (int8 c=MA_PTS-1;c > 0;c--) {
+    samps[c] = samps[c-1];
+    tot += samps[c];
+  }
+  
+  return tot >> MA_BITS;
+}
+*/
+
+// to save memory
+// instead of doing a real moving average we just do a non-overlapping
+// sliding window and output a value every MA_PTS
+uint32_t MovingAverage(uint32_t samp)
+{
+  static uint32_t tot = 0;
+  static int8 curidx = 0;
+  
+  if (curidx == 0) {
+    tot = 0;
+  }
+
+  tot += samp;
+
+  if (++curidx == MA_PTS) {
+    curidx = 0;
+    return tot >> MA_BITS; // tot / MA_PTS
+  }
+  return 0xffffffff;
 }
 
 #endif // AMMETER
@@ -2088,6 +2309,7 @@ Btn::Btn()
 {
   buttonState = BTN_STATE_OFF;
   lastDebounceTime = 0;
+  vlongDebounceTime = 0;
 }
 
 void Btn::init()
@@ -2099,6 +2321,7 @@ void Btn::init()
 void Btn::read()
 {
   uint8_t sample;
+  long delta;
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
@@ -2113,7 +2336,7 @@ void Btn::read()
       if (!lastDebounceTime && (buttonState == BTN_STATE_OFF)) {
 	lastDebounceTime = millis();
       }
-      long delta = millis() - lastDebounceTime;
+      delta = millis() - lastDebounceTime;
 
       if (buttonState == BTN_STATE_OFF) {
 	if (delta >= BTN_PRESS_SHORT) {
@@ -2130,6 +2353,14 @@ void Btn::read()
       lastDebounceTime = 0;
     }
   }
+#ifdef RAPI
+  else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
+    if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
+      vlongDebounceTime = 0;
+      g_ERP.setWifiMode(WIFI_MODE_AP);
+    }
+  }
+#endif // RAPI
 }
 
 uint8_t Btn::shortPress()
@@ -2146,6 +2377,7 @@ uint8_t Btn::shortPress()
 uint8_t Btn::longPress()
 {
   if ((buttonState == BTN_STATE_LONG) && lastDebounceTime) {
+    vlongDebounceTime = lastDebounceTime;
     lastDebounceTime = 0;
     return 1;
   }
@@ -2379,7 +2611,7 @@ Menu *MaxCurrentMenu::Select()
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
   delay(500);
-  EEPROM.write((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2,m_MaxAmpsList[m_CurIdx]);  
+  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_MaxAmpsList[m_CurIdx]);  
   g_EvseController.SetCurrentCapacity(m_MaxAmpsList[m_CurIdx]);
   return &g_SetupMenu;
 }
@@ -2457,7 +2689,7 @@ Menu *GfiTestMenu::Select()
   g_OBD.LcdPrint(0,1,"+");
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
-  g_EvseController.EnableGfiTest((m_CurIdx == 0) ? 1 : 0);
+  g_EvseController.EnableGfiSelfTest((m_CurIdx == 0) ? 1 : 0);
 
   delay(500);
 
@@ -3117,42 +3349,42 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #ifdef DELAYTIMER
 void DelayTimer::Init(){
   //Read EEPROM settings
-  uint8_t rflgs = EEPROM.read(EOFS_TIMER_FLAGS);
+  uint8_t rflgs = eeprom_read_byte((uint8_t*)EOFS_TIMER_FLAGS);
   if (rflgs == 0xff) { // uninitialized EEPROM
     m_DelayTimerEnabled = 0x00;
-    EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   }
   else {
     m_DelayTimerEnabled = rflgs;
   }
-  uint8_t rtmp = EEPROM.read(EOFS_TIMER_START_HOUR);
+  uint8_t rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerHour = DEFAULT_START_HOUR;
-    EEPROM.write(EOFS_TIMER_START_HOUR, m_StartTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
   }
   else {
     m_StartTimerHour = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_START_MIN);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_MIN);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerMin = DEFAULT_START_MIN;
-    EEPROM.write(EOFS_TIMER_START_MIN, m_StartTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
   }
   else {
     m_StartTimerMin = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_STOP_HOUR);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_STOP_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StopTimerHour = DEFAULT_STOP_HOUR;
-    EEPROM.write(EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
   }
   else {
     m_StopTimerHour = rtmp;
   }
-  rtmp = EEPROM.read(EOFS_TIMER_STOP_MIN);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_STOP_MIN);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StopTimerMin = DEFAULT_STOP_MIN;
-    EEPROM.write(EOFS_TIMER_STOP_MIN, m_StopTimerMin);
+    eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
   }
   else {
     m_StopTimerMin = rtmp;
@@ -3223,7 +3455,7 @@ void DelayTimer::CheckTime()
 }
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
-  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(0);
   SaveSettings();
   CheckNow();
@@ -3232,7 +3464,7 @@ void DelayTimer::Enable(){
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
-  EEPROM.write(EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(1);
   SaveSettings();
   g_OBD.Update(1);
@@ -3254,12 +3486,11 @@ void DelayTimerInterrupt(){
 
 void EvseReset()
 {
-#ifdef DELAYTIMER
-  // Initialize Delay Timer - GoldServe
+#ifdef RTC
   Wire.begin();
   g_RTC.begin();
   g_DelayTimer.Init();
-#endif //#ifdef DELAYTIMER
+#endif
 
 #ifdef SERIALCLI
   g_CLI.Init();

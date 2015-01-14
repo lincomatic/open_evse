@@ -1,4 +1,49 @@
 Change Log
+
+vD3.3.4 SCL 20150102
+- switch from EEPROM.h to avr/eeprom.h functions
+	
+vD3.3.3 SCL 20150102
+- clear charging current in chargingOff() - thanks to CapnBry
+	
+vD3.3.2 SCL 20141205
+- added very long press RAPI code for WiFi AP mode reset ($WF)
+	
+vD3.3.1 SCL 20141124
+- fix some random crashes caused by string overflow on LCD display
+  one such crash was when I2CLCD enabled and RTC enabled w/o RTC hardware
+	
+vD3.3.0 SCL 20141120
+- promote version to 3.3.x since features were added
+	
+vD3.2.9 SCL 20141120
+- make ammeter calibration mode volatile
+	
+vD3.2.8 SCL 20141119
+- restructure and fix ammeter bugs
+- don't update charging amps display unless ammeter value is updated
+- don't show charging amps if m_CurrentScaleFactor == 0
+- replace moving average w/ sliding window average to save RAM
+- added ammeter calibration RAPI function $S2
+- replace redundant calls to millis() with variable in J1772EVSEController::Update()
+	
+vD3.2.7 SCL 20141111
+- fixed ammeter no display bug introduced in 3.2.6
+
+v3.2.6 SCL 20141111
+- restructured ammeter code
+- add RAPI SF,SA,GA,GG commands
+
+v3.2.5 SCL 20141111
+- don't display charging current <1A
+	
+v3.2.4 SCL 20141110
+- minor fixes to RAPI
+- added CraigK's current averaging AMMETER_AVERAGING
+	
+v3.2.3 SCL 20140829
+- added support for PCF8574-based I2C LCD backpacks
+	
 v3.2.2 SCL 20140829
 - setting RGB/mono backlight fixes
 	

@@ -37,7 +37,7 @@ prog_char RAPI_VER[] PROGMEM = RAPIVER;
 
 
 // convert 2-digit hex string to uint8
-uint8 htou(const char *s)
+uint8 htou8(const char *s)
 {
   uint8 u = 0;
   for (int i=0;i < 2;i++) {
@@ -54,7 +54,7 @@ uint8 htou(const char *s)
 }
 
 // convert decimal string to uint8
-uint8 dtou(const char *s)
+uint8 dtou8(const char *s)
 {
   uint8 u = 0;
   while (*s) {
@@ -119,7 +119,14 @@ int EvseRapiProcessor::doCmd(int8 sendstatetrans)
 void EvseRapiProcessor::sendEvseState()
 {
   extern char g_sTmp[64];
-  sprintf(g_sTmp,"%cST %d%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  write(g_sTmp);
+}
+
+void EvseRapiProcessor::setWifiMode(uint8_t mode)
+{
+  extern char g_sTmp[64];
+  sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
   write(g_sTmp);
 }
 
@@ -138,7 +145,7 @@ int EvseRapiProcessor::tokenize()
     }
     else if (*s == '*') {
       *(s++) = '\0';
-      ichkSum = htou(s);
+      ichkSum = htou8(s);
 	  break;
     }
     else {
@@ -153,6 +160,8 @@ int EvseRapiProcessor::processCmd()
 {
   int rc = -1;
   unsigned u1,u2;
+  int i,i2;
+  uint8 x,y;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -161,10 +170,12 @@ int EvseRapiProcessor::processCmd()
   switch(*(s++)) { 
   case 'F': // function
     switch(*s) {
+#ifdef LCD16X2
     case 'B': // LCD backlight
-      g_OBD.LcdSetBacklightColor(dtou(tokens[1]));
+      g_OBD.LcdSetBacklightColor(dtou8(tokens[1]));
       rc = 0;
       break;
+#endif // LCD16X2      
     case 'D': // disable EVSE
       g_EvseController.Disable();
       rc = 0;
@@ -173,18 +184,20 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Enable();
       rc = 0;
       break;
+#ifdef LCD16X2
     case 'P': // print to LCD
       {
-	uint8 x = dtou(tokens[1]);
-	uint8 y = dtou(tokens[2]);
+	u1 = dtou8(tokens[1]); // x
+	u2 = dtou8(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
-	for (int i=4;i < tokenCnt;i++) {
+	for (i=4;i < tokenCnt;i++) {
 	  *(tokens[i]-1) = ' ';
 	}
-	g_OBD.LcdPrint(x,y,tokens[3]);
+	g_OBD.LcdPrint(u1,u2,tokens[3]);
       }
       rc = 0;
       break;
+#endif // LCD16X2      
     case 'R': // reset EVSE
       extern void WatchDogReset();
       WatchDogReset();
@@ -201,6 +214,7 @@ int EvseRapiProcessor::processCmd()
 
   case 'S': // set parameter
     switch(*s) {
+#ifdef LCD16X2
     case '0': // set LCD type
       if (tokenCnt == 2) {
 #ifdef RGBLCD
@@ -208,19 +222,37 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
+#endif // LCD16X2      
 #ifdef RTC      
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s);
-	SetRTC(dtou(tokens[1]),dtou(tokens[2]),dtou(tokens[3]),
-	       dtou(tokens[4]),dtou(tokens[5]),dtou(tokens[6]));
+	SetRTC(dtou8(tokens[1]),dtou8(tokens[2]),dtou8(tokens[3]),
+	       dtou8(tokens[4]),dtou8(tokens[5]),dtou8(tokens[6]));
 	rc = 0;
       }
       break;
 #endif // RTC      
+#ifdef AMMETER
+    case '2': // ammeter calibration mode
+      if (tokenCnt == 2) {
+	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
+	rc = 0;
+      }
+      break;
+    case 'A':
+      if (tokenCnt == 3) {
+	sscanf(tokens[1],"%d",&i);
+	g_EvseController.SetCurrentScaleFactor(i);
+	sscanf(tokens[2],"%d",&i);
+	g_EvseController.SetAmmeterCurrentOffset(i);
+	rc = 0;
+      }
+      break;
+#endif // AMMETER
     case 'C': // current capacity
       if (tokenCnt == 2) {
-	rc = g_EvseController.SetCurrentCapacity(dtou(tokens[1]),1);
+	rc = g_EvseController.SetCurrentCapacity(dtou8(tokens[1]),1);
       }
       break;
     case 'D': // diode check
@@ -235,6 +267,14 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
+#ifdef GFI_SELFTEST
+    case 'F': // GFI self test
+      if (tokenCnt == 2) {
+	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
+      }
+      break;
+#endif // GFI_SELFTEST
 #ifdef ADVPWR
     case 'G': // ground check
       if (tokenCnt == 2) {
@@ -276,7 +316,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef GFI_SELFTEST
     case 'S': // GFI self-test
       if (tokenCnt == 2) {
-	g_EvseController.EnableGfiTest(*tokens[1] == '0' ? 0 : 1);
+	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
@@ -289,8 +329,8 @@ int EvseRapiProcessor::processCmd()
 	  g_DelayTimer.Disable();
 	}
 	else {
-	  g_DelayTimer.SetStartTimer(dtou(tokens[1]),dtou(tokens[2]));
-	  g_DelayTimer.SetStopTimer(dtou(tokens[3]),dtou(tokens[4]));
+	  g_DelayTimer.SetStartTimer(dtou8(tokens[1]),dtou8(tokens[2]));
+	  g_DelayTimer.SetStopTimer(dtou8(tokens[3]),dtou8(tokens[4]));
 	  g_DelayTimer.Enable();
 	}
 	rc = 0;
@@ -308,6 +348,15 @@ int EvseRapiProcessor::processCmd()
 
   case 'G': // get parameter
     switch(*s) {
+#ifdef AMMETER
+    case 'A':
+      i = g_EvseController.GetCurrentScaleFactor();
+      i2 = g_EvseController.GetAmmeterCurrentOffset();
+      sprintf(buffer,"%d %d",i,i2);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // AMMETER
     case 'C': // get current capacity range
       sprintf(buffer,"%d %d",MIN_CURRENT_CAPACITY,(g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
       bufCnt = 1; // flag response text output
@@ -320,6 +369,14 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+#ifdef AMMETER
+    case 'G':
+      u1 = g_EvseController.GetChargingCurrent();
+      sprintf(buffer,"%u",u1);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // AMMETER
     case 'S': // get state
       sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
       bufCnt = 1; // flag response text output
