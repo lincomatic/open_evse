@@ -690,7 +690,7 @@ void OnboardDisplay::Init()
 
   SetGreenLed(LOW);
   SetRedLed(LOW);
-#endif
+#endif //!OPENEVSE_2
 
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
@@ -724,7 +724,7 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 {
 #ifndef OPENEVSE_2
   digitalWrite(RED_LED_PIN,state);
-#endif
+#endif //!OPENEVSE_2
 }
 
 #ifdef LCD16X2
@@ -1524,7 +1524,7 @@ uint8_t J1772EVSEController::doPost()
     if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
     if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
 #endif //LCD16x2
-#else
+#else //!OPENEVSE_2
     delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
@@ -1680,7 +1680,7 @@ void J1772EVSEController::Init()
 
 #ifdef ADVPWR
 #ifdef OPENEVSE_2
-#else
+#else //!OPENEVSE_2
   pinMode(ACLINE1_PIN, INPUT);
   pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
