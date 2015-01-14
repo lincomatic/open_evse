@@ -1,5 +1,8 @@
 Change Log
 
+vD3.3.5 SCL 20150113
+- merge NSAYER pull request for OpenEVSE II code
+	
 vD3.3.4 SCL 20150102
 - switch from EEPROM.h to avr/eeprom.h functions
 	

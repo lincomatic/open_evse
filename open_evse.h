@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.3.4"
+#define VERSION "D3.3.5"
 
 //-- begin features
 
@@ -54,7 +54,7 @@
 //#define WATCHDOG
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-#define OPENEVSE_2
+//#define OPENEVSE_2
 
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
