@@ -70,6 +70,7 @@ prog_char g_psBklType[] PROGMEM = "Backlight Type";
 #endif
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
+prog_char g_psRlyChk[] PROGMEM = "Relay Check";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
@@ -105,6 +106,7 @@ GfiTestMenu g_GfiTestMenu;
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
+RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
@@ -137,6 +139,7 @@ Menu *g_MenuList[] =
   &g_VentReqMenu,
 #ifdef ADVPWR
   &g_GndChkMenu,
+  &g_RlyChkMenu,
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
@@ -2771,6 +2774,44 @@ Menu *GndChkMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+RlyChkMenu::RlyChkMenu()
+{
+  m_Title = g_psRlyChk;
+}
+
+void RlyChkMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.StuckRelayChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void RlyChkMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.StuckRelayChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *RlyChkMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableStuckRelayChk((m_CurIdx == 0) ? 1 : 0);
 
   delay(500);
 
