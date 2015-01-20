@@ -2194,17 +2194,6 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
   return rc;
 }
 
-#ifdef AMMETER
-static inline unsigned long ulong_sqrt(unsigned long in)
-{
-  unsigned long out;
-  // find the last int whose square is not too big
-  // Yes, it's wasteful, but we only theoretically ever have to go to 512.
-  // Removing floating point saves us almost 1K of flash.
-  for(out = 1; out*out <= in; out++) ;
-  return out - 1;
-}
-
 #ifdef OPENEVSE_2
 // 35 ms is just a bit longer than 1.5 cycles at 50 Hz
 #define VOLTMETER_POLL_INTERVAL (35)
@@ -2221,6 +2210,17 @@ unsigned long J1772EVSEController::readVoltmeter()
   return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
 }
 #endif
+
+#ifdef AMMETER
+static inline unsigned long ulong_sqrt(unsigned long in)
+{
+  unsigned long out;
+  // find the last int whose square is not too big
+  // Yes, it's wasteful, but we only theoretically ever have to go to 512.
+  // Removing floating point saves us almost 1K of flash.
+  for(out = 1; out*out <= in; out++) ;
+  return out - 1;
+}
 
 void J1772EVSEController::readAmmeter()
 {
