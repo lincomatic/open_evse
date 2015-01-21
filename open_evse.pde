@@ -240,13 +240,15 @@ void wdt_init(void)
     return;
 }
 
-void WatchDogReset()
+// use watchdog to perform a reset
+void WatchDogResetEvse()
 {
 #ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR("Restarting..."));
+  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
 #endif
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
+  delay(1500);
 }
 
 void SaveEvseFlags()
@@ -678,6 +680,8 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+  WDT_RESET();
+
 #ifdef RGBLCD
   m_bFlags = 0;
 #else
@@ -711,6 +715,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
   delay(800);
+  WDT_RESET();
 #endif //#ifdef LCD16X2
 }
 
@@ -1039,9 +1044,7 @@ void Gfi::Init()
 //RESET GFI LOGIC
 void Gfi::Reset()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef GFI_SELFTEST
   testInProgress = false;
@@ -1490,6 +1493,8 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #ifdef ADVPWR
 uint8_t J1772EVSEController::doPost()
 {
+  WDT_RESET();
+
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
     g_CLI.print_P(PSTR("POST start..."));
@@ -1621,7 +1626,22 @@ uint8_t J1772EVSEController::doPost()
 	  delay(500);
 	} // endif test, no EV is plugged in
 #endif //#else OPENEVSE_2
-
+  }
+  else { // ! AutoSvcLevelEnabled
+    if (StuckRelayChkEnabled()) {
+      if (
+#ifdef OPENEVSE_2
+	  (digitalRead(RELAY_TEST_PIN) == HIGH)
+#else // !OPENEVSE_2
+	  ((digitalRead(ACLINE1_PIN) == LOW) || (digitalRead(ACLINE1_PIN) == LOW))
+#endif // OPENEVSE_2
+	  ) {
+#ifdef LCD16X2
+	g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+	delay(500);
+#endif // LCD16X2
+      }
+    }
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
@@ -1653,6 +1673,8 @@ uint8_t J1772EVSEController::doPost()
     Serial.println((int)svcState);
   }
 #endif //#ifdef SERIALCLI
+
+  WDT_RESET();
 
   return int(svcState);
 }
@@ -2220,6 +2242,8 @@ unsigned long J1772EVSEController::readVoltmeter()
 
 void J1772EVSEController::readAmmeter()
 {
+  WDT_RESET();
+
   unsigned long sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
@@ -2258,6 +2282,8 @@ void J1772EVSEController::readAmmeter()
   }
   // ran out of time. Assume that it's simply not oscillating any. 
   m_AmmeterReading = 0;
+
+  WDT_RESET();
 }
 
 #define MA_PTS 32 // # points in moving average MUST BE power of 2
@@ -3266,7 +3292,7 @@ Menu *ResetMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
-    WatchDogReset();
+    WatchDogResetEvse();
     while (1);
   }
   return NULL;
@@ -3519,19 +3545,13 @@ void setup()
 
   EvseReset();
 
-#ifdef WATCHDOG
-  // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
-  // AN INFINITE RESET LOOP
-  wdt_enable(WDTO_1S);   // enable watchdog timer
-#endif // WATCHDOG
+  WDT_ENABLE();
 } 
 
 
 void loop()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef SERIALCLI
   g_CLI.getInput();

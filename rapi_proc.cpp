@@ -199,8 +199,8 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // LCD16X2      
     case 'R': // reset EVSE
-      extern void WatchDogReset();
-      WatchDogReset();
+      extern void WatchDogResetEvse();
+      WatchDogResetEvse();
       rc = 0;
       break;
     case 'S': // sleep

@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.3.5"
+#define VERSION "D3.3.6"
 
 //-- begin features
 
@@ -51,7 +51,8 @@
 //#define SERIALCLI
 
 // enable watchdog timer
-//#define WATCHDOG
+#define WATCHDOG
+
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -173,6 +174,10 @@
 #endif
 
 //-- begin configuration
+
+// WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
+// AN INFINITE RESET LOOP
+#define WATCHDOG_TIMEOUT WDTO_2S
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
@@ -340,6 +345,14 @@
 //-- end configuration
 
 //-- begin class definitions
+
+#ifdef WATCHDOG
+#define WDT_RESET() wdt_reset()
+#define WDT_ENABLE() wdt_enable(WATCHDOG_TIMEOUT)
+#else
+#define WDT_RESET()
+#define WDT_ENABLE()
+#endif // WATCHDOG
 
 #ifdef SERIALCLI
 #define CLI_BUFLEN 20
