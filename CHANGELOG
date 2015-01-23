@@ -1,5 +1,10 @@
 Change Log
 
+vD3.3.6 SCL 20150120
+- enable WATCHDOG by default
+- minor refactoring of watchdog code
+- perform relay stuck check in doPost() even if not auto svc level
+	
 vD3.3.5 SCL 20150113
 - merge NSAYER pull request for OpenEVSE II code
 	

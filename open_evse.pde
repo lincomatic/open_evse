@@ -70,6 +70,7 @@ prog_char g_psBklType[] PROGMEM = "Backlight Type";
 #endif
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
+prog_char g_psRlyChk[] PROGMEM = "Relay Check";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
@@ -105,6 +106,7 @@ GfiTestMenu g_GfiTestMenu;
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
+RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
@@ -137,6 +139,7 @@ Menu *g_MenuList[] =
   &g_VentReqMenu,
 #ifdef ADVPWR
   &g_GndChkMenu,
+  &g_RlyChkMenu,
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
@@ -240,13 +243,15 @@ void wdt_init(void)
     return;
 }
 
-void WatchDogReset()
+// use watchdog to perform a reset
+void WatchDogResetEvse()
 {
 #ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR("Restarting..."));
+  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
 #endif
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
+  delay(1500);
 }
 
 void SaveEvseFlags()
@@ -678,6 +683,8 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+  WDT_RESET();
+
 #ifdef RGBLCD
   m_bFlags = 0;
 #else
@@ -711,6 +718,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
   delay(800);
+  WDT_RESET();
 #endif //#ifdef LCD16X2
 }
 
@@ -1039,9 +1047,7 @@ void Gfi::Init()
 //RESET GFI LOGIC
 void Gfi::Reset()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef GFI_SELFTEST
   testInProgress = false;
@@ -1490,6 +1496,8 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #ifdef ADVPWR
 uint8_t J1772EVSEController::doPost()
 {
+  WDT_RESET();
+
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
     g_CLI.print_P(PSTR("POST start..."));
@@ -1621,7 +1629,22 @@ uint8_t J1772EVSEController::doPost()
 	  delay(500);
 	} // endif test, no EV is plugged in
 #endif //#else OPENEVSE_2
-
+  }
+  else { // ! AutoSvcLevelEnabled
+    if (StuckRelayChkEnabled()) {
+      if (
+#ifdef OPENEVSE_2
+	  (digitalRead(RELAY_TEST_PIN) == HIGH)
+#else // !OPENEVSE_2
+	  ((digitalRead(ACLINE1_PIN) == LOW) || (digitalRead(ACLINE1_PIN) == LOW))
+#endif // OPENEVSE_2
+	  ) {
+#ifdef LCD16X2
+	g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+	delay(500);
+#endif // LCD16X2
+      }
+    }
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
@@ -1653,6 +1676,8 @@ uint8_t J1772EVSEController::doPost()
     Serial.println((int)svcState);
   }
 #endif //#ifdef SERIALCLI
+
+  WDT_RESET();
 
   return int(svcState);
 }
@@ -2191,6 +2216,23 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
   return rc;
 }
 
+#ifdef OPENEVSE_2
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+// This is just a wild guess
+#define VOLTMETER_SCALE_FACTOR (266)
+#define VOLTMETER_OFFSET_FACTOR (40000)
+unsigned long J1772EVSEController::readVoltmeter()
+{
+  unsigned int peak = 0;
+  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
+    unsigned int val = analogRead(VOLTMETER_PIN);
+    if (val > peak) peak = val;
+  }
+  return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
+}
+#endif
+
 #ifdef AMMETER
 static inline unsigned long ulong_sqrt(unsigned long in)
 {
@@ -2202,24 +2244,10 @@ static inline unsigned long ulong_sqrt(unsigned long in)
   return out - 1;
 }
 
-#ifdef OPENEVSE_2
-// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
-#define VOLTMETER_POLL_INTERVAL (35)
-// This is just a wild guess
-#define VOLTMETER_SCALE_FACTOR (450)
-unsigned long J1772EVSEController::readVoltmeter()
-{
-  unsigned int peak = 0;
-  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
-    unsigned int val = analogRead(VOLTMETER_PIN);
-    if (val > peak) peak = val;
-  }
-  return peak * VOLTMETER_SCALE_FACTOR;
-}
-#endif
-
 void J1772EVSEController::readAmmeter()
 {
+  WDT_RESET();
+
   unsigned long sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
@@ -2258,6 +2286,8 @@ void J1772EVSEController::readAmmeter()
   }
   // ran out of time. Assume that it's simply not oscillating any. 
   m_AmmeterReading = 0;
+
+  WDT_RESET();
 }
 
 #define MA_PTS 32 // # points in moving average MUST BE power of 2
@@ -2775,6 +2805,44 @@ Menu *GndChkMenu::Select()
 
   return &g_SetupMenu;
 }
+RlyChkMenu::RlyChkMenu()
+{
+  m_Title = g_psRlyChk;
+}
+
+void RlyChkMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.StuckRelayChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void RlyChkMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.StuckRelayChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint("+");
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *RlyChkMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableStuckRelayChk((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
 #endif // ADVPWR
 
 ResetMenu::ResetMenu()
@@ -3266,7 +3334,7 @@ Menu *ResetMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
-    WatchDogReset();
+    WatchDogResetEvse();
     while (1);
   }
   return NULL;
@@ -3519,19 +3587,13 @@ void setup()
 
   EvseReset();
 
-#ifdef WATCHDOG
-  // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
-  // AN INFINITE RESET LOOP
-  wdt_enable(WDTO_1S);   // enable watchdog timer
-#endif // WATCHDOG
+  WDT_ENABLE();
 } 
 
 
 void loop()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef SERIALCLI
   g_CLI.getInput();
