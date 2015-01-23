@@ -238,6 +238,11 @@
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
 #endif // AMMETER
 
+#define EOFS_GFI_TRIP_CNT      13 // 1 byte
+#define EOFS_NOGND_TRIP_CNT    14 // 1 byte
+#define EOFS_STUCK_RELAY_TRIP_CNT 15 // 1 byte
+#define EOFS_WATCHDOG_TRIP_CNT 16 // 1 byte
+
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
 // must transition to state A from contacts closed in < 100ms according to spec
@@ -264,8 +269,9 @@
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
 #define GFI_RETRY_COUNT  255
 #else // !GFI_TESTING
-#define GFI_TIMEOUT ((unsigned long)(15*60000)) // 15*60*1000 doesn't work. go figure
-#define GFI_RETRY_COUNT  3
+#define GFI_TIMEOUT ((unsigned long)(1*60000)) // 15*60*1000 doesn't work. go figure
+// number of times to retry tests before giving up. 255 = retry indefinitely
+#define GFI_RETRY_COUNT  15
 #endif // GFI_TESTING
 #endif // GFI
 
@@ -600,6 +606,7 @@ typedef struct calibdata {
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
+  uint8_t m_WatchDogTripCnt;
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiTimeout;
@@ -611,7 +618,7 @@ class J1772EVSEController {
   unsigned long m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt;
   unsigned long m_StuckRelayStartTimeMS;
-  uint8_t StuckRelayTripCnt;
+  uint8_t m_StuckRelayTripCnt;
 #endif // ADVPWR
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
