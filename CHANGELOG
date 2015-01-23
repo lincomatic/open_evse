@@ -1,5 +1,9 @@
 Change Log
 
+vD3.3.7 SCL 20150122
+- merged NSayer pull requests #19,#20
+  - OpenEVSE II changes + added relay check menu item
+	
 vD3.3.6 SCL 20150120
 - enable WATCHDOG by default
 - minor refactoring of watchdog code
