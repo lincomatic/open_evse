@@ -2228,7 +2228,8 @@ static inline unsigned long ulong_sqrt(unsigned long in)
 // 35 ms is just a bit longer than 1.5 cycles at 50 Hz
 #define VOLTMETER_POLL_INTERVAL (35)
 // This is just a wild guess
-#define VOLTMETER_SCALE_FACTOR (450)
+#define VOLTMETER_SCALE_FACTOR (266)
+#define VOLTMETER_OFFSET_FACTOR (40000)
 unsigned long J1772EVSEController::readVoltmeter()
 {
   unsigned int peak = 0;
@@ -2236,7 +2237,7 @@ unsigned long J1772EVSEController::readVoltmeter()
     unsigned int val = analogRead(VOLTMETER_PIN);
     if (val > peak) peak = val;
   }
-  return peak * VOLTMETER_SCALE_FACTOR;
+  return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
 }
 #endif
 
