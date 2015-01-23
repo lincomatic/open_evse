@@ -877,6 +877,13 @@ public:
   Menu *Select();
 };
 
+class RlyChkMenu : public Menu {
+public:
+  RlyChkMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
 
 #endif // ADVPWR
 class ResetMenu : public Menu {
