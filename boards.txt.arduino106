@@ -2,13 +2,14 @@
 #############################################################
 evse.name=OpenEVSE
 evse.upload.using=USBasp
-evse.upload.maximum_size=32768
-evse.upload.speed=115200
+evse.upload.maximum_size=32512
+evse.bootloader.low_fuses=0xff
+evse.bootloader.high_fuses=0xde
+evse.bootloader.extended_fuses=0x05
 evse.build.mcu=atmega328p
 evse.build.f_cpu=16000000L
 evse.build.core=arduino
 evse.build.variant=standard
-
 
 ##############################################################
 
