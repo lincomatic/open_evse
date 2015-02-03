@@ -159,7 +159,7 @@ int EvseRapiProcessor::tokenize()
 int EvseRapiProcessor::processCmd()
 {
   int rc = -1;
-  unsigned u1,u2;
+  unsigned u1,u2,u3;
   int i,i2;
   uint8 x,y;
 
@@ -366,6 +366,14 @@ int EvseRapiProcessor::processCmd()
       u1 = g_EvseController.GetCurrentCapacity();
       u2 = g_EvseController.GetFlags();
       sprintf(buffer,"%d %04x",u1,u2);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+    case 'F': // get fault counters
+      u1 = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
+      u2 = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
+      u3 = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
+      sprintf(buffer,"%x %x %x",u1,u2,u3);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

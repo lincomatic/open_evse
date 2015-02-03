@@ -55,6 +55,8 @@ void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 char *g_BlankLine = "                ";
 #endif // LCD16X2
 
+char g_sPlus[] = "+";
+
 #ifdef GFI_SELFTEST
 prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif
@@ -1754,15 +1756,29 @@ void J1772EVSEController::Init()
 #endif
 
   m_bVFlags = ECVF_DEFAULT;
-
+  m_WatchDogTripCnt = eeprom_read_byte((uint8_t*)EOFS_WATCHDOG_TRIP_CNT);
+  if (m_WatchDogTripCnt == 255) {
+    m_WatchDogTripCnt = 0;
+  }
 #ifdef GFI
   m_GfiRetryCnt = 0;
-  m_GfiTripCnt = 0;
+  m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
+  if (m_GfiTripCnt == 255) {
+    m_GfiTripCnt = 0;
+  }
 #endif // GFI
 #ifdef ADVPWR
   m_NoGndRetryCnt = 0;
-  m_NoGndTripCnt = 0;
-  StuckRelayTripCnt = 0;
+  m_NoGndTripCnt = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
+  if (m_NoGndTripCnt != 255) {
+    m_NoGndTripCnt = 0;
+  }
+
+  m_StuckRelayStartTimeMS = 0;
+  m_StuckRelayTripCnt = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
+  if (m_StuckRelayTripCnt != 255) {
+    m_StuckRelayTripCnt = 0;
+  }
 #endif // ADVPWR
 
   m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1889,9 +1905,11 @@ void J1772EVSEController::Update()
 	
 	chargingOff(); // open the relay
 
-	if (m_NoGndTripCnt < 255) {
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
 	  m_NoGndTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
+
 	m_NoGndTimeout = curms + GFI_TIMEOUT;
 
 	nofault = 0;
@@ -1899,25 +1917,29 @@ void J1772EVSEController::Update()
  }
  if (StuckRelayChkEnabled()) {
    if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
-        if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
-            m_StuckRelayStartTimeMS = curms; // mark start state
-            StuckRelayTripCnt++;
-         }   
-        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
-        	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
-	// stuck relay
-	tmpevsestate = EVSE_STATE_STUCK_RELAY;
-	m_EvseState = EVSE_STATE_STUCK_RELAY;
-	nofault = 0;
+     if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+       m_StuckRelayStartTimeMS = curms; // mark start state
+       if (m_StuckRelayTripCnt < 254) {
+	 m_StuckRelayTripCnt++;
+	 eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+       }
+     }   
+     if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+	    ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+	  (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+       // stuck relay
+       tmpevsestate = EVSE_STATE_STUCK_RELAY;
+       m_EvseState = EVSE_STATE_STUCK_RELAY;
+       nofault = 0;
+     }
    }
- }
+   else m_StuckRelayStartTimeMS = 0; // not stuck - reset
  }
 #else
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
   
- if (chargingIsOn()) { // ground check - can only test when relay closed
+  if (chargingIsOn()) { // ground check - can only test when relay closed
     if (GndChkEnabled()) {
       if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
@@ -1926,19 +1948,20 @@ void J1772EVSEController::Update()
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
 	chargingOff(); // open the relay
-
-	if (m_NoGndTripCnt < 255) {
+	
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
 	  m_NoGndTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
 	m_NoGndTimeout = curms + GFI_TIMEOUT;
-
+	
 	nofault = 0;
       }
     }
   }
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
-      if ((m_NoGndRetryCnt < GFI_RETRY_COUNT) &&
+      if (((m_NoGndRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) &&
 	  (curms >= m_NoGndTimeout)) {
 	m_NoGndRetryCnt++;
       }
@@ -1951,21 +1974,24 @@ void J1772EVSEController::Update()
     }
     else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
       if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
-         if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
-            m_StuckRelayStartTimeMS = curms; // mark start state
-            StuckRelayTripCnt++;
-         }   
+	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+	  m_StuckRelayStartTimeMS = curms; // mark start state
+	  if (m_StuckRelayTripCnt < 254) {
+	    m_StuckRelayTripCnt++;
+	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+	  }   
+	}
         if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
                ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
-        	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
-	// stuck relay
-	tmpevsestate = EVSE_STATE_STUCK_RELAY;
-	m_EvseState = EVSE_STATE_STUCK_RELAY;
-	nofault = 0;
-      }
+	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+	  // stuck relay
+	  tmpevsestate = EVSE_STATE_STUCK_RELAY;
+	  m_EvseState = EVSE_STATE_STUCK_RELAY;
+	  nofault = 0;
+	}
       } // end of stuck relay reading
-      else StuckRelayTripCnt = 0; // not stuck - reset count
-     } // end of StuckRelayChkEnabled
+      else m_StuckRelayStartTimeMS = 0; // not stuck - reset
+    } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
 #endif //!OPENEVSE_2
 #endif // ADVPWR
@@ -1975,10 +2001,11 @@ void J1772EVSEController::Update()
     tmpevsestate = EVSE_STATE_GFCI_FAULT;
     m_EvseState = EVSE_STATE_GFCI_FAULT;
 
-    if (m_GfiRetryCnt < GFI_RETRY_COUNT) {
+    if ((m_GfiRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) {
       if (prevevsestate != EVSE_STATE_GFCI_FAULT) {
-	if (m_GfiTripCnt < 255) {
+	if (m_GfiTripCnt < 254) {
 	  m_GfiTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
 	}
  	m_GfiRetryCnt = 0;
 	m_GfiTimeout = curms + GFI_TIMEOUT;
@@ -2507,13 +2534,13 @@ void BklTypeMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(g_sPlus);
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 }
 
 Menu *BklTypeMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 
   g_EvseController.SetBacklightType((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO,0);
@@ -2549,7 +2576,7 @@ void SvcLevelMenu::Init()
   //sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
   //g_OBD.LcdPrint(1,g_sTmp);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
@@ -2561,7 +2588,7 @@ void SvcLevelMenu::Next()
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
   if (g_EvseController.GetCurSvcLevel() == (m_CurIdx+1)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
@@ -2579,7 +2606,7 @@ Menu *SvcLevelMenu::Select()
 #else
   g_EvseController.SetSvcLevel(m_CurIdx+1);
 #endif // ADVPWR
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
   SaveEvseFlags();
@@ -2629,7 +2656,7 @@ void MaxCurrentMenu::Next()
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
   if (g_EvseController.GetCurrentCapacity() == m_MaxAmpsList[m_CurIdx]) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
@@ -2637,7 +2664,7 @@ void MaxCurrentMenu::Next()
 
 Menu *MaxCurrentMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
   delay(500);
@@ -2669,14 +2696,14 @@ void DiodeChkMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.DiodeCheckEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *DiodeChkMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
@@ -2709,14 +2736,14 @@ void GfiTestMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.GfiSelfTestEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *GfiTestMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGfiSelfTest((m_CurIdx == 0) ? 1 : 0);
@@ -2749,14 +2776,14 @@ void VentReqMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.VentReqEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *VentReqMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
@@ -2789,14 +2816,14 @@ void GndChkMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.GndChkEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *GndChkMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
@@ -2827,14 +2854,14 @@ void RlyChkMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.StuckRelayChkEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *RlyChkMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableStuckRelayChk((m_CurIdx == 0) ? 1 : 0);
@@ -2897,7 +2924,7 @@ void RTCMenu::Next()
 }
 Menu *RTCMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -2972,7 +2999,7 @@ void RTCMenuDay::Next()
 Menu *RTCMenuDay::Select()
 {
   g_day = m_CurIdx;
-  //g_OBD.LcdPrint(0,1,"+");
+  //g_OBD.LcdPrint(0,1,g_sPlus);
   sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
   g_OBD.LcdPrint(1,g_sTmp);
   delay(500);
@@ -3103,7 +3130,7 @@ void DelayMenu::Next()
 }
 Menu *DelayMenu::Select()
 {
-  //g_OBD.LcdPrint(0,1,"+");
+  //g_OBD.LcdPrint(0,1,g_sPlus);
   //g_OBD.LcdPrint(g_DelayMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -3123,7 +3150,7 @@ void DelayMenuEnableDisable::Init()
   m_CurIdx = !g_DelayTimer.IsTimerEnabled();
   g_OBD.LcdPrint_P(0,g_psDelayTimer);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 void DelayMenuEnableDisable::Next()
@@ -3133,7 +3160,7 @@ void DelayMenuEnableDisable::Next()
   }
   g_OBD.LcdClearLine(1);
   if (m_CurIdx == !g_DelayTimer.IsTimerEnabled()){
-    g_OBD.LcdPrint(0,1,"+");
+    g_OBD.LcdPrint(0,1,g_sPlus);
     g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   } else {
     g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
@@ -3141,7 +3168,7 @@ void DelayMenuEnableDisable::Next()
 }
 Menu *DelayMenuEnableDisable::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -3312,14 +3339,14 @@ void AutoStartMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.AutoStartEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   
 }
 Menu *AutoStartMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
   SaveEvseFlags();
@@ -3330,7 +3357,7 @@ Menu *AutoStartMenu::Select()
 
 Menu *ResetMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
