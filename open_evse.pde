@@ -1641,6 +1641,7 @@ uint8_t J1772EVSEController::doPost()
 	  ((digitalRead(ACLINE1_PIN) == LOW) || (digitalRead(ACLINE1_PIN) == LOW))
 #endif // OPENEVSE_2
 	  ) {
+	svcState = SR;
 #ifdef LCD16X2
 	g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
 	delay(500);
@@ -1935,7 +1936,7 @@ void J1772EVSEController::Update()
    }
    else m_StuckRelayStartTimeMS = 0; // not stuck - reset
  }
-#else
+#else // !OPENEVSE_2
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
   
