@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.4.1"
+#define VERSION "D3.4.2"
 
 //-- begin features
 
@@ -134,6 +134,10 @@
 
 #endif // RTC
 
+// if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
+//#define SLEEP_STATUS_PIN 6
+
+
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
 
@@ -203,7 +207,7 @@
 #define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
 #define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
 #define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
-#else
+#else // !OPENEVSE_2
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin

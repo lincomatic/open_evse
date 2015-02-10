@@ -1,5 +1,8 @@
 Change Log
 
+vD3.4.2 SCL 20150210
+- added SLEEP_STATUS_PIN
+	
 vD3.4.1 SCL 20150205
 - forgot to set svcState to SR when stuck relay test fails in doPost() and
 	not AutoSvcLevel()

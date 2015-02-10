@@ -1395,6 +1395,12 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 #endif // RGBLCD
 void J1772EVSEController::Enable()
 {
+#ifdef SLEEP_STATUS_PIN
+  if (m_EvseState == EVSE_STATE_SLEEPING) {
+    digitalWrite(SLEEP_STATUS_PIN,LOW);
+  }
+#endif // SLEEP_STATUS_PIN
+
   m_PrevEvseState = EVSE_STATE_DISABLED;
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_Pilot.SetState(PILOT_STATE_P12);
@@ -1424,6 +1430,10 @@ void J1772EVSEController::Sleep()
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
+#ifdef SLEEP_STATUS_PIN
+    digitalWrite(SLEEP_STATUS_PIN,HIGH);
+#endif // SLEEP_STATUS_PIN
+
     g_OBD.Update();
 #ifdef RAPI
     if (StateTransition()) {
@@ -1697,6 +1707,9 @@ void J1772EVSEController::Init()
     }
 #endif // RGBLCD
 
+#ifdef SLEEP_STATUS_PIN
+    pinMode(SLEEP_STATUS_PIN,OUTPUT);
+#endif // SLEEP_STATUS_PIN
 
   pinMode(CHARGING_PIN,OUTPUT);
 #ifdef CHARGING_PIN2
