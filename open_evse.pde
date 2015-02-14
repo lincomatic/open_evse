@@ -994,11 +994,7 @@ void OnboardDisplay::Update(int8_t force)
   }
   // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
 #ifdef DELAYTIMER
-  else if (curstate == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	   && !g_BtnHandler.InMenu()
-#endif //#ifdef BTN_MENU
-	   ) {
+  else if (curstate == EVSE_STATE_SLEEPING) {
     if (memcmp(&curtime,&g_CurrTime,sizeof(curtime))) {
       LcdSetCursor(0,0);
       g_DelayTimer.PrintTimerIcon();
@@ -1544,23 +1540,25 @@ uint8_t J1772EVSEController::doPost()
     if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
     if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
 #endif //LCD16x2
+
 #else //!OPENEVSE_2
+
     delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
-  if (SerDbgEnabled()) {
-    g_CLI.printlnn();
-    g_CLI.print_P(PSTR("Pilot: "));Serial.println((int)reading);
-	}
+    if (SerDbgEnabled()) {
+      g_CLI.printlnn();
+      g_CLI.print_P(PSTR("Pilot: "));Serial.println((int)reading);
+    }
 #endif //#ifdef SERIALCLI
 
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
 
-// save state with both relays off - for stuck relay state
+      // save state with both relays off - for stuck relay state
       RelayOff = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
           
-// save state with Relay 1 on 
+      // save state with Relay 1 on 
       digitalWrite(CHARGING_PIN, HIGH);
 #ifdef CHARGING_PINAC
       digitalWrite(CHARGING_PINAC, HIGH);
@@ -1573,76 +1571,82 @@ uint8_t J1772EVSEController::doPost()
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
-// save state for Relay 2 on
+      // save state for Relay 2 on
 #ifdef CHARGING_PIN2
-       digitalWrite(CHARGING_PIN2, HIGH); 
+      digitalWrite(CHARGING_PIN2, HIGH); 
 #endif
       delay(RelaySettlingTime);
       Relay2 = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
 #ifdef CHARGING_PIN2
-           digitalWrite(CHARGING_PIN2, LOW);
+      digitalWrite(CHARGING_PIN2, LOW);
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
-// decide input power state based on the status read  on L1 and L2
-// either 2 SPST or 1 DPST relays can be configured 
-// valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off 
-//  
-	if (RelayOff == none) { // relay not stuck on when off
+      // decide input power state based on the status read  on L1 and L2
+      // either 2 SPST or 1 DPST relays can be configured 
+      // valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off 
+      //  
+      if (RelayOff == none) { // relay not stuck on when off
 	switch ( Relay1 ) {
-		case ( both ): //
-			if ( Relay2 == none ) svcState = L2;
-			if (StuckRelayChkEnabled()) {
-			  if ( Relay2 != none ) svcState = SR;
-			}
-			break;
-		case ( none ): //
-		  if (GndChkEnabled()) {
-			if ( Relay2 == none ) svcState = OG;
-		  }
-			if ( Relay2 == both ) svcState = L2;
-			if ( Relay2 == L1 || Relay2 == L2 ) svcState = L1;
-			break;
-		case ( L1on ): // L1 or L2
-		case ( L2on ):
-			if (StuckRelayChkEnabled()) {
-			  if ( Relay2 != none ) svcState = SR;
-			}
-			if ( Relay2 == none ) svcState = L1;
-			if ( (Relay1 == L1on) && (Relay2 == L2on)) svcState = L2;
-			if ( (Relay1 == L2on) && (Relay2 == L1on)) svcState = L2;
-			break;
-			} // end switch
-          }
-		else { // Relay stuck on
-		  if (StuckRelayChkEnabled()) {
-		    svcState = SR;
-		  }
-		}
-          #ifdef SERIALCLI
-            if (SerDbgEnabled()) {
-              g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
-              g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
-              g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
-              g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
- }  
-          #endif //#ifdef SERIALCLI
+	case ( both ): //
+	  if ( Relay2 == none ) svcState = L2;
+	  if (StuckRelayChkEnabled()) {
+	    if ( Relay2 != none ) svcState = SR;
+	  }
+	  break;
+	case ( none ): //
+	  if (GndChkEnabled()) {
+	    if ( Relay2 == none ) svcState = OG;
+	  }
+	  if ( Relay2 == both ) svcState = L2;
+	  if ( Relay2 == L1 || Relay2 == L2 ) svcState = L1;
+	  break;
+	case ( L1on ): // L1 or L2
+	case ( L2on ):
+	  if (StuckRelayChkEnabled()) {
+	    if ( Relay2 != none ) svcState = SR;
+	  }
+	  if ( Relay2 == none ) svcState = L1;
+	  if ( (Relay1 == L1on) && (Relay2 == L2on)) svcState = L2;
+	  if ( (Relay1 == L2on) && (Relay2 == L1on)) svcState = L2;
+	  break;
+	} // end switch
+      }
+      else { // Relay stuck on
+	if (StuckRelayChkEnabled()) {
+	  svcState = SR;
+	}
+      }
+#ifdef SERIALCLI
+      if (SerDbgEnabled()) {
+	g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
+	g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
+	g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
+	g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+      }  
+#endif //#ifdef SERIALCLI
 
-// update LCD
+      // update LCD
 #ifdef LCD16X2
-	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
-	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
-	  if ((svcState == OG) || (svcState == SR))  {
-            g_OBD.LcdSetBacklightColor(RED);
-          }
-	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+      if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
+      if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+      if ((svcState == OG) || (svcState == SR))  {
+	g_OBD.LcdSetBacklightColor(RED);
+      }
+      if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
+      if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
 #endif // LCD16X2
-	  delay(500);
-	} // endif test, no EV is plugged in
+    } // endif test, no EV is plugged in
+    else {
+      // since we can't auto detect, for safety's sake, we must set to L1
+      svcState = L1;
+      // EV connected.. do stuck relay check
+      goto stuckrelaychk;
+    }
 #endif //#else OPENEVSE_2
   }
   else { // ! AutoSvcLevelEnabled
+  stuckrelaychk:
     if (StuckRelayChkEnabled()) {
       if (
 #ifdef OPENEVSE_2
@@ -1654,21 +1658,21 @@ uint8_t J1772EVSEController::doPost()
 	svcState = SR;
 #ifdef LCD16X2
 	g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
-	delay(500);
 #endif // LCD16X2
       }
     }
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
-  if (GfiSelfTestEnabled()) {
+  // only run GFI test if no fault detected above
+  if (((svcState == UD)||(svcState == L1)||(svcState == L2)) &&
+      GfiSelfTestEnabled()) {
     m_Gfi.SelfTest();
     if (!m_Gfi.SelfTestSuccess()) {
 #ifdef LCD16X2
       g_OBD.LcdSetBacklightColor(RED);
       g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
 #endif // LCD16X2
-      delay(500);
       svcState = FG;
     }
   }
@@ -1822,7 +1826,9 @@ void J1772EVSEController::Init()
 	g_CLI.getInput();
 #endif // SERIALCLI
 #ifdef BTN_MENU
-	g_BtnHandler.ChkBtn(1);
+	do {
+	  g_BtnHandler.ChkBtn(1);
+	} while (g_BtnHandler.InMenu());
 #endif
       }
     }
@@ -3388,6 +3394,8 @@ BtnHandler::BtnHandler()
 
 void BtnHandler::ChkBtn(int8_t notoggle)
 {
+  WDT_RESET();
+
   m_Btn.read();
   if (m_Btn.shortPress()) {
     if (m_CurMenu) {
@@ -3523,11 +3531,7 @@ void DelayTimer::CheckTime()
 	if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
              ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
 	  // Within time interval
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	      && !g_BtnHandler.InMenu()
-#endif
-	      ){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
 	  }           
 	}
@@ -3542,11 +3546,7 @@ void DelayTimer::CheckTime()
       else { // not crossing midnite
 	if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
 	  // Within time interval
-	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	      && !g_BtnHandler.InMenu()
-#endif
-	      ){
+	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
 	  }          
 	}
@@ -3649,7 +3649,9 @@ void loop()
   g_OBD.Update();
   
 #ifdef BTN_MENU
-  g_BtnHandler.ChkBtn();
+  do {
+    g_BtnHandler.ChkBtn();
+  } while (g_BtnHandler.InMenu());
 
   //  debugging code
    /*   g_Btn.read();

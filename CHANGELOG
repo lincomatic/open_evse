@@ -1,5 +1,12 @@
 Change Log
 
+vD3.4.3 SCL 20150213
+- don't do GFI self test in doPost() if other fault already found
+- when in menus, lock out all other functions until exit 
+- do stuck relay chk in POST even if EV is plugged in
+- for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
+  because we can't auto detect level.
+
 vD3.4.2 SCL 20150210
 - added SLEEP_STATUS_PIN
 	

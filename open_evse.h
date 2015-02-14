@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.4.2"
+#define VERSION "D3.4.3"
 
 //-- begin features
 
@@ -135,7 +135,7 @@
 #endif // RTC
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
-//#define SLEEP_STATUS_PIN 6
+//#define SLEEP_STATUS_PIN 12
 
 
 // for stability testing - shorter timeout/higher retry count
@@ -357,7 +357,7 @@
 //-- begin class definitions
 
 #ifdef WATCHDOG
-#define WDT_RESET() wdt_reset()
+#define WDT_RESET() wdt_reset() // pat the dog
 #define WDT_ENABLE() wdt_enable(WATCHDOG_TIMEOUT)
 #else
 #define WDT_RESET()
