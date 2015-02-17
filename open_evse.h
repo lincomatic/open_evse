@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.4.3"
+#define VERSION "D3.5.0"
 
 //-- begin features
 
@@ -64,6 +64,13 @@
 
 // GFI support
 #define GFI
+
+// behavior specified by UL
+// 1) if enabled, POST failure will cause a hard fault until power cycled.
+//    disabled, will retry POST continuously until it passes
+// 2) if enabled, any a fault occurs immediately after charge is initiated, 
+//    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
+#define UL_COMPLIANT
 
 // If you loop a wire from the third GFI pin through the CT a few times and then to ground,
 // enable this. ADVPWR must also be defined.
@@ -508,7 +515,7 @@ public:
   int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
 #endif // AMMETER
 
-  void Update(int8_t force=0);
+  void Update(int8_t force=0,uint8_t hardfault=0);
 };
 
 #ifdef GFI
@@ -602,6 +609,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
@@ -650,6 +658,7 @@ class J1772EVSEController {
 
   uint8_t doPost();
 #endif // ADVPWR
+  void processInputs();
   void chargingOn();
   void chargingOff();
   uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
@@ -737,6 +746,13 @@ public:
   void EnableAutoSvcLevel(uint8_t tf);
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
+
+  void SetAutoSvcLvlSkipped(uint8_t tf) {
+    if (tf) m_bVFlags |= ECVF_AUTOSVCLVL_SKIPPED;
+    else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
+  }
+  uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();

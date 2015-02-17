@@ -212,17 +212,15 @@ prog_char g_psSelfTest[] PROGMEM = "Self Test";
 prog_char g_psAutoDetect[] PROGMEM = "Auto Detect";
 prog_char g_psLevel1[] PROGMEM = "Svc Level: L1";
 prog_char g_psLevel2[] PROGMEM = "Svc Level: L2";
-prog_char g_psStuckRelay[] PROGMEM = "--Stuck Relay--";
-prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
-//prog_char g_psTestPassed[] PROGMEM = "Test Passed";
 prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
 #endif // ADVPWR
 prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
+prog_char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 prog_char g_psNoGround[] PROGMEM = "NO GROUND";
-prog_char g_psEStuckRelay[] PROGMEM = "STUCK RELAY";
+prog_char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
 prog_char g_psStopped[] PROGMEM =  "Stopped";
 prog_char g_psWaiting[] PROGMEM =  "Waiting";
 prog_char g_psSleeping[] PROGMEM = "Sleeping";
@@ -797,7 +795,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 char g_sRdyLAstr[] = "L%d:%dA";
 prog_char g_psReady[] PROGMEM = "Ready";
 prog_char g_psCharging[] PROGMEM = "Charging";
-void OnboardDisplay::Update(int8_t force)
+void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 {
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
@@ -880,7 +878,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psGfciFault);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psGfciFault);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -889,7 +887,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psNoGround);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psNoGround);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -898,7 +896,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psEStuckRelay);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -932,7 +930,7 @@ void OnboardDisplay::Update(int8_t force)
   }
 
 #if defined(AMMETER) && defined(LCD16X2)
-    if (force || (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty())) {
+    if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
       SetAmmeterDirty(0);
 
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -1537,8 +1535,7 @@ uint8_t J1772EVSEController::doPost()
     }  
 #endif //#ifdef SERIALCLI
 #ifdef LCD16X2
-    if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
-    if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
+     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
 #endif //LCD16x2
 
 #else //!OPENEVSE_2
@@ -1633,13 +1630,14 @@ uint8_t J1772EVSEController::doPost()
       if ((svcState == OG) || (svcState == SR))  {
 	g_OBD.LcdSetBacklightColor(RED);
       }
-      if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-      if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+      if (svcState == OG) g_OBD.LcdMsg_P(g_psTestFailed,g_psNoGround);
+      if (svcState == SR) g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
 #endif // LCD16X2
     } // endif test, no EV is plugged in
     else {
       // since we can't auto detect, for safety's sake, we must set to L1
       svcState = L1;
+      SetAutoSvcLvlSkipped(1);
       // EV connected.. do stuck relay check
       goto stuckrelaychk;
     }
@@ -1657,7 +1655,7 @@ uint8_t J1772EVSEController::doPost()
 	  ) {
 	svcState = SR;
 #ifdef LCD16X2
-	g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
 #endif // LCD16X2
       }
     }
@@ -1671,7 +1669,7 @@ uint8_t J1772EVSEController::doPost()
     if (!m_Gfi.SelfTestSuccess()) {
 #ifdef LCD16X2
       g_OBD.LcdSetBacklightColor(RED);
-      g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
+      g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
 #endif // LCD16X2
       svcState = FG;
     }
@@ -1699,6 +1697,21 @@ uint8_t J1772EVSEController::doPost()
   return int(svcState);
 }
 #endif // ADVPWR
+
+void J1772EVSEController::processInputs()
+{
+#ifdef RAPI
+  g_ERP.doCmd(0);
+#endif
+#ifdef SERIALCLI
+  g_CLI.getInput();
+#endif // SERIALCLI
+#ifdef BTN_MENU
+  do {
+    g_BtnHandler.ChkBtn(1);
+  } while (g_BtnHandler.InMenu());
+#endif
+}
 
 void J1772EVSEController::Init()
 {
@@ -1817,20 +1830,18 @@ void J1772EVSEController::Init()
     if ((GfiSelfTestEnabled()) && (psvclvl == FG)) { m_EvseState = EVSE_STATE_GFI_TEST_FAILED; fault = 1; } // set GFI test fail error
 #endif
     if (fault) {
+#ifdef UL_COMPLIANT
+      // UL wants EVSE to hard fault until power cycle if POST fails
+      while (1) { // spin forever
+#endif
       long faultms = millis();
+	// wait for GFI_TIMEOUT before retrying POST
       while ((millis()-faultms) < GFI_TIMEOUT) {
-#ifdef RAPI
-	g_ERP.doCmd(0);
-#endif
-#ifdef SERIALCLI
-	g_CLI.getInput();
-#endif // SERIALCLI
-#ifdef BTN_MENU
-	do {
-	  g_BtnHandler.ChkBtn(1);
-	} while (g_BtnHandler.InMenu());
-#endif
+	  processInputs();
+	}
+#ifdef UL_COMPLIANT
       }
+#endif
     }
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
@@ -1959,11 +1970,11 @@ void J1772EVSEController::Update()
   int PS1state = digitalRead(ACLINE1_PIN);
   int PS2state = digitalRead(ACLINE2_PIN);
   
-  if (chargingIsOn()) { // ground check - can only test when relay closed
-    if (GndChkEnabled()) {
-      if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
+  if (chargingIsOn()) { // relay closed
+    if ((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) {
+      // ground check - can only test when relay closed
+      if (GndChkEnabled() && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
-	
 	tmpevsestate = EVSE_STATE_NO_GROUND;
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
@@ -1976,6 +1987,16 @@ void J1772EVSEController::Update()
 	m_NoGndTimeout = curms + GFI_TIMEOUT;
 	
 	nofault = 0;
+      }
+
+      // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
+      // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
+      if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
+	if ((PS1state == LOW) && (PS2state == LOW)) {
+	  // set to L2
+	  SetSvcLevel(2,1);
+	}
+	SetAutoSvcLvlSkipped(0);
       }
     }
   }
@@ -2088,7 +2109,7 @@ void J1772EVSEController::Update()
         m_EvseState = tmpevsestate;
       }
     }
-  }
+  } // nofault
 
   m_TmpEvseState = tmpevsestate;
   
@@ -2150,6 +2171,16 @@ void J1772EVSEController::Update()
     }
 #endif //#ifdef SERIALCLI
   }
+
+#ifdef UL_COMPLIANT
+  if (!nofault && (prevevsestate == EVSE_STATE_C)) {
+    // if fault happens immediately (within 2 sec) after charging starts, hard fault
+    if ((curms - m_ChargeStartTimeMS) <= 2000) {
+      g_OBD.Update(1,1);
+      while (1) processInputs(); // spin forever
+    }
+  }
+#endif // UL_COMPLIANT
 
   m_PrevEvseState = prevevsestate;
 

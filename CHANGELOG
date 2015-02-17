@@ -1,9 +1,18 @@
 Change Log
 
+vD3.5.0 SCL 20150216
+- added UL_COMPLIANT: UL wants EVSE to hard fault (cease operation until manual intervention)
+  1) if POST fails
+  2) if fault happens immediately after charge starts
+- consolidated some redundant fault strings
+- if AutoSvcLevel couldn't be detected due to car being plugged in during POST,
+  and L1 was set because of this, upon first charge session, we will detect the
+  actual svc level, and switch to L2 if detected
+
 vD3.4.3 SCL 20150213
 - don't do GFI self test in doPost() if other fault already found
 - when in menus, lock out all other functions until exit 
-- do stuck relay chk in POST even if EV is plugged in
+- do stuck relay chk in POST even if EV is plugged in and AutoSvcLevel()
 - for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
   because we can't auto detect level.
 
