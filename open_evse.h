@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.5.0"
+#define VERSION "D3.5.1"
 
 //-- begin features
 
@@ -183,6 +183,29 @@
 #if defined(OPENEVSE_2) && !defined(ADVPWR)
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
+
+//
+// begin functional tests
+//
+//
+// DO NOT USE FT_xxx. FOR FUNCTIONAL TESTING ONLY
+//
+// Test for GFI fault lockout
+// immediately GFI fault when entering STATE C -> should hard fault
+// there will be a delay of a few seconds before the fault because we
+// need to loop to cause the GFI fault
+// right after GFI fault generated, will flash Closing/Relay on LCD
+// -> should hard GFCI fault instantly when relay closes
+//#define FT_GFI_LOCKOUT
+
+// Test for auto reclose after GFI fault. Attach EVSIM in STATE C
+// 10 sec after charging starts will Induce/Fault. 1 minute after fault
+// induced, should clear the fault and resume normal operation
+//#define FT_GFI_RETRY
+
+//
+// end functional tests
+//
 
 //-- begin configuration
 

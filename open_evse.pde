@@ -2017,15 +2017,15 @@ void J1772EVSEController::Update()
       if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
 	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
 	  m_StuckRelayStartTimeMS = curms; // mark start state
-	  if (m_StuckRelayTripCnt < 254) {
-	    m_StuckRelayTripCnt++;
-	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
-	  }   
 	}
         if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
                ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
 	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	  // stuck relay
+	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 254)) {
+	    m_StuckRelayTripCnt++;
+	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+	  }   
 	  tmpevsestate = EVSE_STATE_STUCK_RELAY;
 	  m_EvseState = EVSE_STATE_STUCK_RELAY;
 	  nofault = 0;
@@ -2052,6 +2052,10 @@ void J1772EVSEController::Update()
 	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
       else if (curms >= m_GfiTimeout) {
+#ifdef FT_GFI_RETRY
+	g_OBD.LcdMsg("Reset","GFI");
+	delay(250);
+#endif // FT_GFI_RETRY
 	m_Gfi.Reset();
 	m_GfiRetryCnt++;
 	m_GfiTimeout = curms + GFI_TIMEOUT;
@@ -2066,7 +2070,7 @@ void J1772EVSEController::Update()
     if ((prevevsestate == EVSE_STATE_GFCI_FAULT) ||
         (prevevsestate == EVSE_STATE_NO_GROUND) ||
 	(prevevsestate == EVSE_STATE_STUCK_RELAY)) {
-      // just got out of GFCI fault state - pilot back on
+      // just got out of fault state - pilot back on
       m_Pilot.SetState(PILOT_STATE_P12);
       prevevsestate = EVSE_STATE_UNKNOWN;
       m_EvseState = EVSE_STATE_UNKNOWN;
@@ -2112,6 +2116,21 @@ void J1772EVSEController::Update()
   } // nofault
 
   m_TmpEvseState = tmpevsestate;
+
+#ifdef FT_GFI_RETRY
+  if (nofault && (prevevsestate == EVSE_STATE_C) && 
+      ((curms-m_ChargeStartTimeMS) > 10000)) {
+      g_OBD.LcdMsg("Induce","Fault");
+      pinMode(GFI_TEST_PIN, OUTPUT);
+      for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+	digitalWrite(GFI_TEST_PIN, HIGH);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	digitalWrite(GFI_TEST_PIN, LOW);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+      }
+  }
+#endif // FT_GFI_RETRY
+
   
   // state transition
   if (m_EvseState != prevevsestate) {
@@ -2125,6 +2144,17 @@ void J1772EVSEController::Update()
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
+#ifdef FT_GFI_LOCKOUT
+      pinMode(GFI_TEST_PIN, OUTPUT);
+      for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+	digitalWrite(GFI_TEST_PIN, HIGH);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	digitalWrite(GFI_TEST_PIN, LOW);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+      }
+      g_OBD.LcdMsg("Closing","Relay");
+      delay(150);
+#endif // FT_GFI_LOCKOUT
       chargingOn(); // turn on charging current
     }
     else if (m_EvseState == EVSE_STATE_D) {
@@ -2153,6 +2183,12 @@ void J1772EVSEController::Update()
       // Stuck relay detected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_N12);
+#ifdef UL_COMPLIANT
+      // per discussion w/ UL Fred Reyes 20150217
+      // always hard fault stuck relay
+      g_OBD.Update(1,1);
+      while (1) processInputs(); // spin forever
+#endif // UL_COMPLIANT
     }
     else {
       m_Pilot.SetState(PILOT_STATE_P12);
