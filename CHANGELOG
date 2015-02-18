@@ -1,9 +1,10 @@
 Change Log
 
 
-vD3.5.1 SCL 20150217
+vD3.5.1 SCL 20150218
 - added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
 - per UL Fred Reyes, stuck relay always results in hard fault (lockout)
+- GFI_RETRY_COUNT to 255 (infinite) instead of 15
 
 vD3.5.0 SCL 20150216
 - added UL_COMPLIANT: UL wants EVSE to hard fault (cease operation until manual intervention)

@@ -305,7 +305,7 @@
 #else // !GFI_TESTING
 #define GFI_TIMEOUT ((unsigned long)(1*60000)) // 15*60*1000 doesn't work. go figure
 // number of times to retry tests before giving up. 255 = retry indefinitely
-#define GFI_RETRY_COUNT  15
+#define GFI_RETRY_COUNT  255
 #endif // GFI_TESTING
 #endif // GFI
 
