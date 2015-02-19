@@ -55,6 +55,8 @@ void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 char *g_BlankLine = "                ";
 #endif // LCD16X2
 
+char g_sPlus[] = "+";
+
 #ifdef GFI_SELFTEST
 prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif
@@ -70,6 +72,7 @@ prog_char g_psBklType[] PROGMEM = "Backlight Type";
 #endif
 #ifdef ADVPWR
 prog_char g_psGndChk[] PROGMEM = "Ground Check";
+prog_char g_psRlyChk[] PROGMEM = "Relay Check";
 #endif // ADVPWR
 prog_char g_psReset[] PROGMEM = "Restart";
 prog_char g_psExit[] PROGMEM = "Exit";
@@ -105,6 +108,7 @@ GfiTestMenu g_GfiTestMenu;
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
+RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
@@ -137,6 +141,7 @@ Menu *g_MenuList[] =
   &g_VentReqMenu,
 #ifdef ADVPWR
   &g_GndChkMenu,
+  &g_RlyChkMenu,
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
@@ -207,17 +212,15 @@ prog_char g_psSelfTest[] PROGMEM = "Self Test";
 prog_char g_psAutoDetect[] PROGMEM = "Auto Detect";
 prog_char g_psLevel1[] PROGMEM = "Svc Level: L1";
 prog_char g_psLevel2[] PROGMEM = "Svc Level: L2";
-prog_char g_psStuckRelay[] PROGMEM = "--Stuck Relay--";
-prog_char g_psEarthGround[] PROGMEM = "--Earth Ground--";
-//prog_char g_psTestPassed[] PROGMEM = "Test Passed";
 prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
 #endif // ADVPWR
 prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
+prog_char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 prog_char g_psNoGround[] PROGMEM = "NO GROUND";
-prog_char g_psEStuckRelay[] PROGMEM = "STUCK RELAY";
+prog_char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
 prog_char g_psStopped[] PROGMEM =  "Stopped";
 prog_char g_psWaiting[] PROGMEM =  "Waiting";
 prog_char g_psSleeping[] PROGMEM = "Sleeping";
@@ -240,13 +243,15 @@ void wdt_init(void)
     return;
 }
 
-void WatchDogReset()
+// use watchdog to perform a reset
+void WatchDogResetEvse()
 {
 #ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR("Restarting..."));
+  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
 #endif
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
+  delay(1500);
 }
 
 void SaveEvseFlags()
@@ -678,17 +683,21 @@ OnboardDisplay::OnboardDisplay()
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
+  WDT_RESET();
+
 #ifdef RGBLCD
   m_bFlags = 0;
 #else
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
+#ifndef OPENEVSE_2
   pinMode (GREEN_LED_PIN, OUTPUT);
   pinMode (RED_LED_PIN, OUTPUT);
 
   SetGreenLed(LOW);
   SetRedLed(LOW);
+#endif //!OPENEVSE_2
   
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
@@ -709,6 +718,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
   delay(800);
+  WDT_RESET();
 #endif //#ifdef LCD16X2
 }
 
@@ -720,7 +730,9 @@ void OnboardDisplay::SetGreenLed(uint8_t state)
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
+#ifndef OPENEVSE_2
   digitalWrite(RED_LED_PIN,state);
+#endif //!OPENEVSE_2
 }
 
 #ifdef LCD16X2
@@ -783,7 +795,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 char g_sRdyLAstr[] = "L%d:%dA";
 prog_char g_psReady[] PROGMEM = "Ready";
 prog_char g_psCharging[] PROGMEM = "Charging";
-void OnboardDisplay::Update(int8_t force)
+void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 {
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
@@ -866,7 +878,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psGfciFault);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psGfciFault);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -875,7 +887,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psNoGround);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psNoGround);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -884,7 +896,7 @@ void OnboardDisplay::Update(int8_t force)
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(g_psEvseError,g_psEStuckRelay);
+      LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -918,7 +930,7 @@ void OnboardDisplay::Update(int8_t force)
   }
 
 #if defined(AMMETER) && defined(LCD16X2)
-    if (force || (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty())) {
+    if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
       SetAmmeterDirty(0);
 
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -980,11 +992,7 @@ void OnboardDisplay::Update(int8_t force)
   }
   // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
 #ifdef DELAYTIMER
-  else if (curstate == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	   && !g_BtnHandler.InMenu()
-#endif //#ifdef BTN_MENU
-	   ) {
+  else if (curstate == EVSE_STATE_SLEEPING) {
     if (memcmp(&curtime,&g_CurrTime,sizeof(curtime))) {
       LcdSetCursor(0,0);
       g_DelayTimer.PrintTimerIcon();
@@ -1035,9 +1043,7 @@ void Gfi::Init()
 //RESET GFI LOGIC
 void Gfi::Reset()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef GFI_SELFTEST
   testInProgress = false;
@@ -1383,6 +1389,12 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 #endif // RGBLCD
 void J1772EVSEController::Enable()
 {
+#ifdef SLEEP_STATUS_PIN
+  if (m_EvseState == EVSE_STATE_SLEEPING) {
+    digitalWrite(SLEEP_STATUS_PIN,LOW);
+  }
+#endif // SLEEP_STATUS_PIN
+
   m_PrevEvseState = EVSE_STATE_DISABLED;
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_Pilot.SetState(PILOT_STATE_P12);
@@ -1412,6 +1424,10 @@ void J1772EVSEController::Sleep()
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
+#ifdef SLEEP_STATUS_PIN
+    digitalWrite(SLEEP_STATUS_PIN,HIGH);
+#endif // SLEEP_STATUS_PIN
+
     g_OBD.Update();
 #ifdef RAPI
     if (StateTransition()) {
@@ -1486,6 +1502,8 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #ifdef ADVPWR
 uint8_t J1772EVSEController::doPost()
 {
+  WDT_RESET();
+
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
     g_CLI.print_P(PSTR("POST start..."));
@@ -1503,6 +1521,25 @@ uint8_t J1772EVSEController::doPost()
 #endif //Adafruit RGB LCD 
 
   if (AutoSvcLevelEnabled()) {
+#ifdef OPENEVSE_2
+    unsigned long ac_volts = readVoltmeter();
+    if (ac_volts > L2_VOLTAGE_THRESHOLD) {
+      svcState = L2;
+    } else {
+      svcState = L1;
+    }
+#ifdef SERIALCLI
+    if (SerDbgEnabled()) {
+      g_CLI.print_P(PSTR("AC millivolts: "));Serial.println(ac_volts);
+      g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+    }  
+#endif //#ifdef SERIALCLI
+#ifdef LCD16X2
+     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
+#endif //LCD16x2
+
+#else //!OPENEVSE_2
+
     delay(150); // delay reading for stable pilot before reading
     int reading = analogRead(VOLT_PIN); //read pilot
 #ifdef SERIALCLI
@@ -1515,10 +1552,10 @@ uint8_t J1772EVSEController::doPost()
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
 
-// save state with both relays off - for stuck relay state
+      // save state with both relays off - for stuck relay state
       RelayOff = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
           
-// save state with Relay 1 on 
+      // save state with Relay 1 on 
       digitalWrite(CHARGING_PIN, HIGH);
 #ifdef CHARGING_PINAC
       digitalWrite(CHARGING_PINAC, HIGH);
@@ -1531,7 +1568,7 @@ uint8_t J1772EVSEController::doPost()
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
-// save state for Relay 2 on
+      // save state for Relay 2 on
 #ifdef CHARGING_PIN2
        digitalWrite(CHARGING_PIN2, HIGH); 
 #endif
@@ -1542,10 +1579,10 @@ uint8_t J1772EVSEController::doPost()
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
-// decide input power state based on the status read  on L1 and L2
-// either 2 SPST or 1 DPST relays can be configured 
-// valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off 
-//  
+      // decide input power state based on the status read  on L1 and L2
+      // either 2 SPST or 1 DPST relays can be configured 
+      // valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off 
+      //  
 	if (RelayOff == none) { // relay not stuck on when off
 	switch ( Relay1 ) {
 		case ( both ): //
@@ -1577,38 +1614,63 @@ uint8_t J1772EVSEController::doPost()
 		    svcState = SR;
 		  }
 		}
-          #ifdef SERIALCLI
+#ifdef SERIALCLI
             if (SerDbgEnabled()) {
               g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
               g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
               g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
               g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
  }  
-          #endif //#ifdef SERIALCLI
+#endif //#ifdef SERIALCLI
 
-// update LCD
+      // update LCD
 #ifdef LCD16X2
 	  if (svcState == L1) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel1);
 	  if (svcState == L2) g_OBD.LcdMsg_P(g_psAutoDetect,g_psLevel2);
 	  if ((svcState == OG) || (svcState == SR))  {
             g_OBD.LcdSetBacklightColor(RED);
           }
-	  if (svcState == OG) g_OBD.LcdMsg_P(g_psEarthGround,g_psTestFailed);
-	  if (svcState == SR) g_OBD.LcdMsg_P(g_psStuckRelay,g_psTestFailed);
+      if (svcState == OG) g_OBD.LcdMsg_P(g_psTestFailed,g_psNoGround);
+      if (svcState == SR) g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
 #endif // LCD16X2
-	  delay(500);
 	} // endif test, no EV is plugged in
+    else {
+      // since we can't auto detect, for safety's sake, we must set to L1
+      svcState = L1;
+      SetAutoSvcLvlSkipped(1);
+      // EV connected.. do stuck relay check
+      goto stuckrelaychk;
+    }
+#endif //#else OPENEVSE_2
+  }
+  else { // ! AutoSvcLevelEnabled
+  stuckrelaychk:
+    if (StuckRelayChkEnabled()) {
+      if (
+#ifdef OPENEVSE_2
+	  (digitalRead(RELAY_TEST_PIN) == HIGH)
+#else // !OPENEVSE_2
+	  ((digitalRead(ACLINE1_PIN) == LOW) || (digitalRead(ACLINE1_PIN) == LOW))
+#endif // OPENEVSE_2
+	  ) {
+	svcState = SR;
+#ifdef LCD16X2
+	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
+#endif // LCD16X2
+      }
+    }
   } // endif AutoSvcLevelEnabled
   
 #ifdef GFI_SELFTEST
-  if (GfiSelfTestEnabled()) {
+  // only run GFI test if no fault detected above
+  if (((svcState == UD)||(svcState == L1)||(svcState == L2)) &&
+      GfiSelfTestEnabled()) {
     m_Gfi.SelfTest();
     if (!m_Gfi.SelfTestSuccess()) {
 #ifdef LCD16X2
       g_OBD.LcdSetBacklightColor(RED);
-      g_OBD.LcdMsg_P(g_psGfiTest,g_psTestFailed);
+      g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
 #endif // LCD16X2
-      delay(500);
       svcState = FG;
     }
   }
@@ -1630,9 +1692,26 @@ uint8_t J1772EVSEController::doPost()
   }
 #endif //#ifdef SERIALCLI
 
+  WDT_RESET();
+
   return int(svcState);
 }
 #endif // ADVPWR
+
+void J1772EVSEController::processInputs()
+{
+#ifdef RAPI
+  g_ERP.doCmd(0);
+#endif
+#ifdef SERIALCLI
+  g_CLI.getInput();
+#endif // SERIALCLI
+#ifdef BTN_MENU
+  do {
+    g_BtnHandler.ChkBtn(1);
+  } while (g_BtnHandler.InMenu());
+#endif
+}
 
 void J1772EVSEController::Init()
 {
@@ -1645,6 +1724,9 @@ void J1772EVSEController::Init()
     }
 #endif // RGBLCD
 
+#ifdef SLEEP_STATUS_PIN
+    pinMode(SLEEP_STATUS_PIN,OUTPUT);
+#endif // SLEEP_STATUS_PIN
 
   pinMode(CHARGING_PIN,OUTPUT);
 #ifdef CHARGING_PIN2
@@ -1655,10 +1737,13 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef ADVPWR
+#ifdef OPENEVSE_2
+#else //!OPENEVSE_2
   pinMode(ACLINE1_PIN, INPUT);
   pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
   digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
+#endif
 #endif // ADVPWR
 
   chargingOff();
@@ -1702,15 +1787,29 @@ void J1772EVSEController::Init()
 #endif
 
   m_bVFlags = ECVF_DEFAULT;
-
+  m_WatchDogTripCnt = eeprom_read_byte((uint8_t*)EOFS_WATCHDOG_TRIP_CNT);
+  if (m_WatchDogTripCnt == 255) {
+    m_WatchDogTripCnt = 0;
+  }
 #ifdef GFI
   m_GfiRetryCnt = 0;
+  m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
+  if (m_GfiTripCnt == 255) {
   m_GfiTripCnt = 0;
+  }
 #endif // GFI
 #ifdef ADVPWR
   m_NoGndRetryCnt = 0;
+  m_NoGndTripCnt = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
+  if (m_NoGndTripCnt != 255) {
   m_NoGndTripCnt = 0;
-  StuckRelayTripCnt = 0;
+  }
+
+  m_StuckRelayStartTimeMS = 0;
+  m_StuckRelayTripCnt = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
+  if (m_StuckRelayTripCnt != 255) {
+    m_StuckRelayTripCnt = 0;
+  }
 #endif // ADVPWR
 
   m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1731,18 +1830,18 @@ void J1772EVSEController::Init()
     if ((GfiSelfTestEnabled()) && (psvclvl == FG)) { m_EvseState = EVSE_STATE_GFI_TEST_FAILED; fault = 1; } // set GFI test fail error
 #endif
     if (fault) {
+#ifdef UL_COMPLIANT
+      // UL wants EVSE to hard fault until power cycle if POST fails
+      while (1) { // spin forever
+#endif
       long faultms = millis();
+	// wait for GFI_TIMEOUT before retrying POST
       while ((millis()-faultms) < GFI_TIMEOUT) {
-#ifdef RAPI
-	g_ERP.doCmd(0);
-#endif
-#ifdef SERIALCLI
-	g_CLI.getInput();
-#endif // SERIALCLI
-#ifdef BTN_MENU
-	g_BtnHandler.ChkBtn(1);
-#endif
+	  processInputs();
       }
+#ifdef UL_COMPLIANT
+      }
+#endif
     }
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
@@ -1828,31 +1927,82 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
-  int PS1state = digitalRead(ACLINE1_PIN);
-  int PS2state = digitalRead(ACLINE2_PIN);
-
- if (chargingIsOn()) { // ground check - can only test when relay closed
-    if (GndChkEnabled()) {
-      if (((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) && (PS1state == HIGH) && (PS2state == HIGH)) {
-	// bad ground
-	
+#ifdef OPENEVSE_2
+ if (GndChkEnabled()) {
+   if (digitalRead(GROUND_TEST_PIN) != HIGH) {
+     	
 	tmpevsestate = EVSE_STATE_NO_GROUND;
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
 	chargingOff(); // open the relay
 
-	if (m_NoGndTripCnt < 255) {
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
 	  m_NoGndTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
+	}
+
+	m_NoGndTimeout = curms + GFI_TIMEOUT;
+
+	nofault = 0;
+   }
+ }
+ if (StuckRelayChkEnabled()) {
+   if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
+     if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+       m_StuckRelayStartTimeMS = curms; // mark start state
+       if (m_StuckRelayTripCnt < 254) {
+	 m_StuckRelayTripCnt++;
+	 eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+       }
+     }   
+     if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+	    ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+	  (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+       // stuck relay
+       tmpevsestate = EVSE_STATE_STUCK_RELAY;
+       m_EvseState = EVSE_STATE_STUCK_RELAY;
+       nofault = 0;
+     }
+   }
+   else m_StuckRelayStartTimeMS = 0; // not stuck - reset
+ }
+#else // !OPENEVSE_2
+  int PS1state = digitalRead(ACLINE1_PIN);
+  int PS2state = digitalRead(ACLINE2_PIN);
+
+  if (chargingIsOn()) { // relay closed
+    if ((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) {
+      // ground check - can only test when relay closed
+      if (GndChkEnabled() && (PS1state == HIGH) && (PS2state == HIGH)) {
+	// bad ground
+	tmpevsestate = EVSE_STATE_NO_GROUND;
+	m_EvseState = EVSE_STATE_NO_GROUND;
+	
+	chargingOff(); // open the relay
+
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
+	  m_NoGndTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
 	m_NoGndTimeout = curms + GFI_TIMEOUT;
 
 	nofault = 0;
       }
+
+      // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
+      // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
+      if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
+	if ((PS1state == LOW) && (PS2state == LOW)) {
+	  // set to L2
+	  SetSvcLevel(2,1);
+	}
+	SetAutoSvcLvlSkipped(0);
+      }
     }
   }
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
-      if ((m_NoGndRetryCnt < GFI_RETRY_COUNT) &&
+      if (((m_NoGndRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) &&
 	  (curms >= m_NoGndTimeout)) {
 	m_NoGndRetryCnt++;
       }
@@ -1865,23 +2015,26 @@ void J1772EVSEController::Update()
     }
     else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
       if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
-         if ( (prevevsestate != EVSE_STATE_STUCK_RELAY) && (StuckRelayTripCnt == 0) ) { //check for first occurance
+	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
             m_StuckRelayStartTimeMS = curms; // mark start state
-            StuckRelayTripCnt++;
          }   
         if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
                ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
         	(prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	// stuck relay
+	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 254)) {
+	    m_StuckRelayTripCnt++;
+	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+	  }   
 	tmpevsestate = EVSE_STATE_STUCK_RELAY;
 	m_EvseState = EVSE_STATE_STUCK_RELAY;
 	nofault = 0;
       }
       } // end of stuck relay reading
-      else StuckRelayTripCnt = 0; // not stuck - reset count
+      else m_StuckRelayStartTimeMS = 0; // not stuck - reset
      } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
-  
+#endif //!OPENEVSE_2
 #endif // ADVPWR
    
 #ifdef GFI
@@ -1889,15 +2042,20 @@ void J1772EVSEController::Update()
     tmpevsestate = EVSE_STATE_GFCI_FAULT;
     m_EvseState = EVSE_STATE_GFCI_FAULT;
 
-    if (m_GfiRetryCnt < GFI_RETRY_COUNT) {
+    if ((m_GfiRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) {
       if (prevevsestate != EVSE_STATE_GFCI_FAULT) {
-	if (m_GfiTripCnt < 255) {
+	if (m_GfiTripCnt < 254) {
 	  m_GfiTripCnt++;
+	  eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
 	}
  	m_GfiRetryCnt = 0;
 	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
       else if (curms >= m_GfiTimeout) {
+#ifdef FT_GFI_RETRY
+	g_OBD.LcdMsg("Reset","GFI");
+	delay(250);
+#endif // FT_GFI_RETRY
 	m_Gfi.Reset();
 	m_GfiRetryCnt++;
 	m_GfiTimeout = curms + GFI_TIMEOUT;
@@ -1912,7 +2070,7 @@ void J1772EVSEController::Update()
     if ((prevevsestate == EVSE_STATE_GFCI_FAULT) ||
         (prevevsestate == EVSE_STATE_NO_GROUND) ||
 	(prevevsestate == EVSE_STATE_STUCK_RELAY)) {
-      // just got out of GFCI fault state - pilot back on
+      // just got out of fault state - pilot back on
       m_Pilot.SetState(PILOT_STATE_P12);
       prevevsestate = EVSE_STATE_UNKNOWN;
       m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1955,9 +2113,24 @@ void J1772EVSEController::Update()
         m_EvseState = tmpevsestate;
       }
     }
-  }
+  } // nofault
 
   m_TmpEvseState = tmpevsestate;
+  
+#ifdef FT_GFI_RETRY
+  if (nofault && (prevevsestate == EVSE_STATE_C) && 
+      ((curms-m_ChargeStartTimeMS) > 10000)) {
+      g_OBD.LcdMsg("Induce","Fault");
+      pinMode(GFI_TEST_PIN, OUTPUT);
+      for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+	digitalWrite(GFI_TEST_PIN, HIGH);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	digitalWrite(GFI_TEST_PIN, LOW);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+      }
+  }
+#endif // FT_GFI_RETRY
+
   
   // state transition
   if (m_EvseState != prevevsestate) {
@@ -1971,6 +2144,17 @@ void J1772EVSEController::Update()
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
+#ifdef FT_GFI_LOCKOUT
+      pinMode(GFI_TEST_PIN, OUTPUT);
+      for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+	digitalWrite(GFI_TEST_PIN, HIGH);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	digitalWrite(GFI_TEST_PIN, LOW);
+	delayMicroseconds(GFI_PULSE_DURATION_MS);
+      }
+      g_OBD.LcdMsg("Closing","Relay");
+      delay(150);
+#endif // FT_GFI_LOCKOUT
       chargingOn(); // turn on charging current
     }
     else if (m_EvseState == EVSE_STATE_D) {
@@ -1999,6 +2183,12 @@ void J1772EVSEController::Update()
       // Stuck relay detected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_N12);
+#ifdef UL_COMPLIANT
+      // per discussion w/ UL Fred Reyes 20150217
+      // always hard fault stuck relay
+      g_OBD.Update(1,1);
+      while (1) processInputs(); // spin forever
+#endif // UL_COMPLIANT
     }
     else {
       m_Pilot.SetState(PILOT_STATE_P12);
@@ -2017,6 +2207,16 @@ void J1772EVSEController::Update()
     }
 #endif //#ifdef SERIALCLI
   }
+
+#ifdef UL_COMPLIANT
+  if (!nofault && (prevevsestate == EVSE_STATE_C)) {
+    // if fault happens immediately (within 2 sec) after charging starts, hard fault
+    if ((curms - m_ChargeStartTimeMS) <= 2000) {
+      g_OBD.Update(1,1);
+      while (1) processInputs(); // spin forever
+    }
+  }
+#endif // UL_COMPLIANT
 
   m_PrevEvseState = prevevsestate;
 
@@ -2130,6 +2330,23 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
   return rc;
 }
 
+#ifdef OPENEVSE_2
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+// This is just a wild guess
+#define VOLTMETER_SCALE_FACTOR (266)
+#define VOLTMETER_OFFSET_FACTOR (40000)
+unsigned long J1772EVSEController::readVoltmeter()
+{
+  unsigned int peak = 0;
+  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
+    unsigned int val = analogRead(VOLTMETER_PIN);
+    if (val > peak) peak = val;
+  }
+  return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
+}
+#endif
+
 #ifdef AMMETER
 static inline unsigned long ulong_sqrt(unsigned long in)
 {
@@ -2143,6 +2360,8 @@ static inline unsigned long ulong_sqrt(unsigned long in)
 
 void J1772EVSEController::readAmmeter()
 {
+  WDT_RESET();
+
   unsigned long sum = 0;
   unsigned int zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
@@ -2181,6 +2400,8 @@ void J1772EVSEController::readAmmeter()
   }
   // ran out of time. Assume that it's simply not oscillating any. 
   m_AmmeterReading = 0;
+
+  WDT_RESET();
 }
 
 #define MA_PTS 32 // # points in moving average MUST BE power of 2
@@ -2400,13 +2621,13 @@ void BklTypeMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
-  g_OBD.LcdPrint("+");
+  g_OBD.LcdPrint(g_sPlus);
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 }
 
 Menu *BklTypeMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 
   g_EvseController.SetBacklightType((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO,0);
@@ -2442,7 +2663,7 @@ void SvcLevelMenu::Init()
   //sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
   //g_OBD.LcdPrint(1,g_sTmp);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
@@ -2454,7 +2675,7 @@ void SvcLevelMenu::Next()
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
   if (g_EvseController.GetCurSvcLevel() == (m_CurIdx+1)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
@@ -2472,7 +2693,7 @@ Menu *SvcLevelMenu::Select()
 #else
   g_EvseController.SetSvcLevel(m_CurIdx+1);
 #endif // ADVPWR
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 
   SaveEvseFlags();
@@ -2522,7 +2743,7 @@ void MaxCurrentMenu::Next()
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
   if (g_EvseController.GetCurrentCapacity() == m_MaxAmpsList[m_CurIdx]) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
@@ -2530,7 +2751,7 @@ void MaxCurrentMenu::Next()
 
 Menu *MaxCurrentMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
   g_OBD.LcdPrint("A");
   delay(500);
@@ -2562,14 +2783,14 @@ void DiodeChkMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.DiodeCheckEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *DiodeChkMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableDiodeCheck((m_CurIdx == 0) ? 1 : 0);
@@ -2602,14 +2823,14 @@ void GfiTestMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.GfiSelfTestEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *GfiTestMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGfiSelfTest((m_CurIdx == 0) ? 1 : 0);
@@ -2642,14 +2863,14 @@ void VentReqMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.VentReqEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *VentReqMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableVentReq((m_CurIdx == 0) ? 1 : 0);
@@ -2682,17 +2903,55 @@ void GndChkMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.GndChkEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 
 Menu *GndChkMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 
   g_EvseController.EnableGndChk((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+RlyChkMenu::RlyChkMenu()
+{
+  m_Title = g_psRlyChk;
+}
+
+void RlyChkMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.StuckRelayChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void RlyChkMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.StuckRelayChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *RlyChkMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableStuckRelayChk((m_CurIdx == 0) ? 1 : 0);
 
   delay(500);
 
@@ -2752,7 +3011,7 @@ void RTCMenu::Next()
 }
 Menu *RTCMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -2827,7 +3086,7 @@ void RTCMenuDay::Next()
 Menu *RTCMenuDay::Select()
 {
   g_day = m_CurIdx;
-  //g_OBD.LcdPrint(0,1,"+");
+  //g_OBD.LcdPrint(0,1,g_sPlus);
   sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
   g_OBD.LcdPrint(1,g_sTmp);
   delay(500);
@@ -2958,7 +3217,7 @@ void DelayMenu::Next()
 }
 Menu *DelayMenu::Select()
 {
-  //g_OBD.LcdPrint(0,1,"+");
+  //g_OBD.LcdPrint(0,1,g_sPlus);
   //g_OBD.LcdPrint(g_DelayMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -2978,7 +3237,7 @@ void DelayMenuEnableDisable::Init()
   m_CurIdx = !g_DelayTimer.IsTimerEnabled();
   g_OBD.LcdPrint_P(0,g_psDelayTimer);
   g_OBD.LcdClearLine(1);
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
 }
 void DelayMenuEnableDisable::Next()
@@ -2988,7 +3247,7 @@ void DelayMenuEnableDisable::Next()
   }
   g_OBD.LcdClearLine(1);
   if (m_CurIdx == !g_DelayTimer.IsTimerEnabled()){
-    g_OBD.LcdPrint(0,1,"+");
+    g_OBD.LcdPrint(0,1,g_sPlus);
     g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   } else {
     g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
@@ -2996,7 +3255,7 @@ void DelayMenuEnableDisable::Next()
 }
 Menu *DelayMenuEnableDisable::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
@@ -3167,14 +3426,14 @@ void AutoStartMenu::Next()
   g_OBD.LcdSetCursor(0,1);
   uint8_t dce = g_EvseController.AutoStartEnabled();
   if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint("+");
+    g_OBD.LcdPrint(g_sPlus);
   }
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   
 }
 Menu *AutoStartMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
   SaveEvseFlags();
@@ -3185,11 +3444,11 @@ Menu *AutoStartMenu::Select()
 
 Menu *ResetMenu::Select()
 {
-  g_OBD.LcdPrint(0,1,"+");
+  g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
-    WatchDogReset();
+    WatchDogResetEvse();
     while (1);
   }
   return NULL;
@@ -3202,6 +3461,8 @@ BtnHandler::BtnHandler()
 
 void BtnHandler::ChkBtn(int8_t notoggle)
 {
+  WDT_RESET();
+
   m_Btn.read();
   if (m_Btn.shortPress()) {
     if (m_CurMenu) {
@@ -3337,11 +3598,7 @@ void DelayTimer::CheckTime()
 	if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
              ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
 	  // Within time interval
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	      && !g_BtnHandler.InMenu()
-#endif
-	      ){
+          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
 	  }           
 	}
@@ -3356,11 +3613,7 @@ void DelayTimer::CheckTime()
       else { // not crossing midnite
 	if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
 	  // Within time interval
-	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING
-#ifdef BTN_MENU
-	      && !g_BtnHandler.InMenu()
-#endif
-	      ){
+	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
 	  }          
 	}
@@ -3442,19 +3695,13 @@ void setup()
 
   EvseReset();
 
-#ifdef WATCHDOG
-  // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
-  // AN INFINITE RESET LOOP
-  wdt_enable(WDTO_1S);   // enable watchdog timer
-#endif // WATCHDOG
+  WDT_ENABLE();
 } 
 
 
 void loop()
 {
-#ifdef WATCHDOG
-  wdt_reset(); // pat the dog
-#endif // WATCHDOG
+  WDT_RESET();
 
 #ifdef SERIALCLI
   g_CLI.getInput();
@@ -3469,7 +3716,9 @@ void loop()
   g_OBD.Update();
   
 #ifdef BTN_MENU
+  do {
   g_BtnHandler.ChkBtn();
+  } while (g_BtnHandler.InMenu());
 
   //  debugging code
    /*   g_Btn.read();

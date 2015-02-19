@@ -1,5 +1,53 @@
 Change Log
 
+v3.5.1 SCL 20150218
+- added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
+- per UL Fred Reyes, stuck relay always results in hard fault (lockout)
+- GFI_RETRY_COUNT to 255 (infinite) instead of 15
+
+vD3.5.0 SCL 20150216
+- added UL_COMPLIANT: UL wants EVSE to hard fault (cease operation until manual intervention)
+  1) if POST fails
+  2) if fault happens immediately after charge starts
+- consolidated some redundant fault strings
+- if AutoSvcLevel couldn't be detected due to car being plugged in during POST,
+  and L1 was set because of this, upon first charge session, we will detect the
+  actual svc level, and switch to L2 if detected
+
+vD3.4.3 SCL 20150213
+- don't do GFI self test in doPost() if other fault already found
+- when in menus, lock out all other functions until exit 
+- do stuck relay chk in POST even if EV is plugged in and AutoSvcLevel()
+- for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
+  because we can't auto detect level.
+
+vD3.4.2 SCL 20150210
+- added SLEEP_STATUS_PIN
+	
+vD3.4.1 SCL 20150205
+- forgot to set svcState to SR when stuck relay test fails in doPost() and
+	not AutoSvcLevel()
+	
+vD3.4.0 SCL 20150123
+- added writing of safety check trip counters to EEPROM
+- added RAPI $GF
+- setting GFI_RETRY_COUNT to 255 will make it retry indefinitely
+- changed GFI_RETRY_COUNT from 3 to 15, GFI_TIMEOUT from 15min to 1min
+  -> now, tests will retry 15 times at one minute intervals
+     instead of 3 retries at 15 min intervals
+	
+vD3.3.7 SCL 20150122
+- merged NSayer pull requests #19,#20
+  - OpenEVSE II changes + added relay check menu item
+	
+vD3.3.6 SCL 20150120
+- enable WATCHDOG by default
+- minor refactoring of watchdog code
+- perform relay stuck check in doPost() even if not auto svc level
+	
+vD3.3.5 SCL 20150113
+- merge NSAYER pull request for OpenEVSE II code
+
 v3.3.4 SCL 20150102
 - switch from EEPROM.h to avr/eeprom.h functions
 	

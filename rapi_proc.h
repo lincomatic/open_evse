@@ -112,8 +112,11 @@ GC - get current capacity range in amps
  response: OK minamps maxamps
  $GC*AE
 GE - get current settings
- response: OK amps flags
+ response: OK amps(decimal) flags(hex)
  $GE*B0
+GF - get fault counters
+ response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
+ $GF*B1
 GG - get charging current
  response: OK amps
  $GG*B2
@@ -141,7 +144,7 @@ typedef unsigned char uint8;
 
 #ifdef RAPI
 
-#define RAPIVER "1.0.1"
+#define RAPIVER "1.0.2"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

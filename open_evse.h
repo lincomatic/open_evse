@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.3.4"
+#define VERSION "D3.5.1"
 
 //-- begin features
 
@@ -51,10 +51,26 @@
 //#define SERIALCLI
 
 // enable watchdog timer
-//#define WATCHDOG
+#define WATCHDOG
+
+
+// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
+//#define OPENEVSE_2
+
+#ifdef OPENEVSE_2
+// If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
+#define L2_VOLTAGE_THRESHOLD (150000)
+#endif
 
 // GFI support
 #define GFI
+
+// behavior specified by UL
+// 1) if enabled, POST failure will cause a hard fault until power cycled.
+//    disabled, will retry POST continuously until it passes
+// 2) if enabled, any a fault occurs immediately after charge is initiated, 
+//    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
+#define UL_COMPLIANT
 
 // If you loop a wire from the third GFI pin through the CT a few times and then to ground,
 // enable this. ADVPWR must also be defined.
@@ -125,6 +141,10 @@
 
 #endif // RTC
 
+// if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
+//#define SLEEP_STATUS_PIN 12
+
+
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
 
@@ -160,7 +180,38 @@
 #error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
 #endif
 
+#if defined(OPENEVSE_2) && !defined(ADVPWR)
+#error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
+#endif
+
+//
+// begin functional tests
+//
+//
+// DO NOT USE FT_xxx. FOR FUNCTIONAL TESTING ONLY
+//
+// Test for GFI fault lockout
+// immediately GFI fault when entering STATE C -> should hard fault
+// there will be a delay of a few seconds before the fault because we
+// need to loop to cause the GFI fault
+// right after GFI fault generated, will flash Closing/Relay on LCD
+// -> should hard GFCI fault instantly when relay closes
+//#define FT_GFI_LOCKOUT
+
+// Test for auto reclose after GFI fault. Attach EVSIM in STATE C
+// 10 sec after charging starts will Induce/Fault. 1 minute after fault
+// induced, should clear the fault and resume normal operation
+//#define FT_GFI_RETRY
+
+//
+// end functional tests
+//
+
 //-- begin configuration
+
+// WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
+// AN INFINITE RESET LOOP
+#define WATCHDOG_TIMEOUT WDTO_2S
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
@@ -181,12 +232,19 @@
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin A0
 #define VOLT_PIN 1 // analog pilot voltage reading pin A1
+#ifdef OPENEVSE_2
+#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
+#define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
+#define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
+#define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
+#else // !OPENEVSE_2
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
+#endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
@@ -214,6 +272,11 @@
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
 #endif // AMMETER
 
+#define EOFS_GFI_TRIP_CNT      13 // 1 byte
+#define EOFS_NOGND_TRIP_CNT    14 // 1 byte
+#define EOFS_STUCK_RELAY_TRIP_CNT 15 // 1 byte
+#define EOFS_WATCHDOG_TRIP_CNT 16 // 1 byte
+
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
 // must transition to state A from contacts closed in < 100ms according to spec
@@ -240,8 +303,9 @@
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
 #define GFI_RETRY_COUNT  255
 #else // !GFI_TESTING
-#define GFI_TIMEOUT ((unsigned long)(15*60000)) // 15*60*1000 doesn't work. go figure
-#define GFI_RETRY_COUNT  3
+#define GFI_TIMEOUT ((unsigned long)(1*60000)) // 15*60*1000 doesn't work. go figure
+// number of times to retry tests before giving up. 255 = retry indefinitely
+#define GFI_RETRY_COUNT  255
 #endif // GFI_TESTING
 #endif // GFI
 
@@ -321,6 +385,14 @@
 //-- end configuration
 
 //-- begin class definitions
+
+#ifdef WATCHDOG
+#define WDT_RESET() wdt_reset() // pat the dog
+#define WDT_ENABLE() wdt_enable(WATCHDOG_TIMEOUT)
+#else
+#define WDT_RESET()
+#define WDT_ENABLE()
+#endif // WATCHDOG
 
 #ifdef SERIALCLI
 #define CLI_BUFLEN 20
@@ -466,7 +538,7 @@ public:
   int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
 #endif // AMMETER
 
-  void Update(int8_t force=0);
+  void Update(int8_t force=0,uint8_t hardfault=0);
 };
 
 #ifdef GFI
@@ -560,6 +632,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
@@ -568,6 +641,7 @@ typedef struct calibdata {
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
+  uint8_t m_WatchDogTripCnt;
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiTimeout;
@@ -579,7 +653,7 @@ class J1772EVSEController {
   unsigned long m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt;
   unsigned long m_StuckRelayStartTimeMS;
-  uint8_t StuckRelayTripCnt;
+  uint8_t m_StuckRelayTripCnt;
 #endif // ADVPWR
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
@@ -607,6 +681,7 @@ class J1772EVSEController {
 
   uint8_t doPost();
 #endif // ADVPWR
+  void processInputs();
   void chargingOn();
   void chargingOff();
   uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
@@ -616,6 +691,10 @@ class J1772EVSEController {
   void clrFlags(uint16_t flags) { 
     m_wFlags &= ~flags; 
   }
+
+#ifdef OPENEVSE_2
+  uint32_t readVoltmeter();
+#endif
 
 #ifdef AMMETER
   //  long m_LastAmmeterReadMs;
@@ -690,6 +769,13 @@ public:
   void EnableAutoSvcLevel(uint8_t tf);
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
+
+  void SetAutoSvcLvlSkipped(uint8_t tf) {
+    if (tf) m_bVFlags |= ECVF_AUTOSVCLVL_SKIPPED;
+    else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
+  }
+  uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
@@ -841,6 +927,13 @@ public:
   Menu *Select();
 };
 
+class RlyChkMenu : public Menu {
+public:
+  RlyChkMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
 
 #endif // ADVPWR
 class ResetMenu : public Menu {
