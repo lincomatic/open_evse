@@ -1897,9 +1897,11 @@ void J1772EVSEController::Update()
 
 #ifdef ADVPWR
 #ifdef OPENEVSE_2
- if (GndChkEnabled()) {
+ if (GndChkEnabled() && digitalRead(CHARGING_PIN) == HIGH) {
    if (digitalRead(GROUND_TEST_PIN) != HIGH) {
-     	
+     	 if (
+	    ((curms-m_ChargeStartTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
+            (prevevsestate == EVSE_STATE_NO_GROUND) ) {
 	tmpevsestate = EVSE_STATE_NO_GROUND;
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
@@ -1913,6 +1915,7 @@ void J1772EVSEController::Update()
 	m_NoGndTimeout = curms + GFI_TIMEOUT;
 
 	nofault = 0;
+            }
    }
  }
  if (StuckRelayChkEnabled()) {
