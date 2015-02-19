@@ -244,7 +244,7 @@
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
-#endif
+#endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
