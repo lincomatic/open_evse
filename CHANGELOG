@@ -1,6 +1,8 @@
 Change Log
 
-
+SCL 20150220
+- merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging
+	
 vD3.5.1 SCL 20150218
 - added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
 - per UL Fred Reyes, stuck relay always results in hard fault (lockout)
