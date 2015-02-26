@@ -7,13 +7,9 @@ See http://code.google.com/p/open-evse/ for project details.
 
 Compilation help: http://code.google.com/p/open-evse/wiki/LoadingFirmware
 
-Required libraries:
-https://github.com/lincomatic/LiquidTWI2
-https://github.com/adafruit/RTClib
-https://github.com/wimleers/flexitimer2
-http://playground.arduino.cc/code/time
-
-NOTE: Working versions of the required libraries are included in the libraries/ folder
+NOTES:
+- Working versions of the required libraries are included in the libraries/ folder
+- It is STRONGLY RECOMMENDED to use Arduino 0022 to compile OpenEVSE. 1.x and later versions not only build larger sketches, but also have been found to have compiler bugs.
 ------------
 
 Open EVSE is free software; you can redistribute it and/or modify
