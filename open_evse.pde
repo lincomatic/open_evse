@@ -1231,8 +1231,8 @@ void J1772EVSEController::chargingOn()
 #endif
   m_bVFlags |= ECVF_CHARGING_ON;
   
-  m_ChargeStartTime = now();
-  m_ChargeStartTimeMS = millis();
+  m_ChargeOnTime = now();
+  m_ChargeOnTimeMS = millis();
 }
 
 void J1772EVSEController::chargingOff()
@@ -1319,7 +1319,7 @@ void J1772EVSEController::EnableGndChk(uint8_t tf)
   }
   else {
     m_NoGndRetryCnt = 0;
-    m_NoGndTimeout = 0;
+    m_NoGndStart = 0;
     m_wFlags |= ECF_GND_CHK_DISABLED;
   }
   SaveEvseFlags();
@@ -1437,10 +1437,10 @@ void J1772EVSEController::Sleep()
     // cancel state transition so g_OBD doesn't keep updating
     m_PrevEvseState = EVSE_STATE_SLEEPING;
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
-    // use the charge start time variable temporarily to count down
+    // use the charge end time variable temporarily to count down
     // when to open the contacts in Update()
     // car has 3 sec to open contacts after we go to State F
-    m_ChargeOffTimeMS = millis() + 3000;
+    m_ChargeOffTimeMS = millis();
   }
 }
 
@@ -1766,6 +1766,10 @@ void J1772EVSEController::Init()
 
   }
 
+#ifdef NOCHECKS
+  m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED;
+#endif
+
 #ifdef AMMETER
   m_AmmeterCurrentOffset = eeprom_read_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET);
   m_CurrentScaleFactor = eeprom_read_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR);
@@ -1810,6 +1814,9 @@ void J1772EVSEController::Init()
   if (m_StuckRelayTripCnt != 255) {
     m_StuckRelayTripCnt = 0;
   }
+
+  m_NoGndRetryCnt = 0;
+  m_NoGndStart = 0;
 #endif // ADVPWR
 
   m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1834,9 +1841,9 @@ void J1772EVSEController::Init()
       // UL wants EVSE to hard fault until power cycle if POST fails
       while (1) { // spin forever
 #endif
-      long faultms = millis();
+	unsigned long faultms = millis();
 	// wait for GFI_TIMEOUT before retrying POST
-      while ((millis()-faultms) < GFI_TIMEOUT) {
+	while ((millis() - faultms) < GFI_TIMEOUT) {
 	  processInputs();
 	}
 #ifdef UL_COMPLIANT
@@ -1899,7 +1906,7 @@ void J1772EVSEController::Update()
   int plow;
   int phigh;
 
-  long curms = millis();
+  unsigned long curms = millis();
 
   if (m_EvseState == EVSE_STATE_DISABLED) {
     // n.b. don't know why, but if we don't have the delay below
@@ -1910,13 +1917,16 @@ void J1772EVSEController::Update()
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
     
-    if (chargingIsOn() && (curms >= m_ChargeOffTimeMS)) {
+    if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
       // wait for car to bring pilot voltage back to state B level or higher
       // (as an indicator that it opened its relay)
       // if it doesn't do it within 3 sec, we'll just open our relay anyway
-      if ((phigh >= m_ThreshData.m_ThreshBC) || (curms-m_ChargeOffTimeMS >= 3000)) {
+      if ((phigh >= m_ThreshData.m_ThreshBC) || ((curms - m_ChargeOffTimeMS) >= 3000)) {
 	chargingOff();
+#ifdef FT_SLEEP_DELAY
+	g_OBD.LcdMsg("SLEEP OPEN",(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+#endif
       }
     }
     return;
@@ -1931,7 +1941,7 @@ void J1772EVSEController::Update()
  if (GndChkEnabled() && digitalRead(CHARGING_PIN) == HIGH) {
    if ((digitalRead(GROUND_TEST_PIN) != HIGH) &&
 
-       (((curms-m_ChargeStartTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
+       (((curms - m_ChargeOnTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
 	(prevevsestate == EVSE_STATE_NO_GROUND))) {
      	
 	tmpevsestate = EVSE_STATE_NO_GROUND;
@@ -1944,7 +1954,7 @@ void J1772EVSEController::Update()
 	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
 
-	m_NoGndTimeout = curms + GFI_TIMEOUT;
+	m_NoGndStart = curms;
 
 	nofault = 0;
    }
@@ -1958,8 +1968,8 @@ void J1772EVSEController::Update()
 	 eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
        }
      }   
-     if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-	    ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+     if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+	    ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
 	  (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
        // stuck relay
        tmpevsestate = EVSE_STATE_STUCK_RELAY;
@@ -1974,7 +1984,7 @@ void J1772EVSEController::Update()
   int PS2state = digitalRead(ACLINE2_PIN);
   
   if (chargingIsOn()) { // relay closed
-    if ((curms-m_ChargeStartTimeMS) > GROUND_CHK_DELAY) {
+    if ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY) {
       // ground check - can only test when relay closed
       if (GndChkEnabled() && (PS1state == HIGH) && (PS2state == HIGH)) {
 	// bad ground
@@ -1987,7 +1997,7 @@ void J1772EVSEController::Update()
 	  m_NoGndTripCnt++;
 	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
-	m_NoGndTimeout = curms + GFI_TIMEOUT;
+	m_NoGndStart = curms;
 	
 	nofault = 0;
       }
@@ -2006,7 +2016,7 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       if (((m_NoGndRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) &&
-	  (curms >= m_NoGndTimeout)) {
+	  ((curms - m_NoGndStart) > GFI_TIMEOUT)) {
 	m_NoGndRetryCnt++;
       }
       else {
@@ -2021,8 +2031,8 @@ void J1772EVSEController::Update()
 	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
 	  m_StuckRelayStartTimeMS = curms; // mark start state
 	}
-        if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-               ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+        if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+               ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
 	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	  // stuck relay
 	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 254)) {
@@ -2112,7 +2122,7 @@ void J1772EVSEController::Update()
       if (tmpevsestate != m_TmpEvseState) {
         m_TmpEvseStateStart = curms;
       }
-      else if ((curms-m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
+      else if ((curms - m_TmpEvseStateStart) >= ((tmpevsestate == EVSE_STATE_A) ? DELAY_STATE_TRANSITION_A : DELAY_STATE_TRANSITION)) {
         m_EvseState = tmpevsestate;
       }
     }
@@ -2122,7 +2132,7 @@ void J1772EVSEController::Update()
 
 #ifdef FT_GFI_RETRY
   if (nofault && (prevevsestate == EVSE_STATE_C) && 
-      ((curms-m_ChargeStartTimeMS) > 10000)) {
+      ((curms - m_ChargeOnTimeMS) > 10000)) {
       g_OBD.LcdMsg("Induce","Fault");
       pinMode(GFI_TEST_PIN, OUTPUT);
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
@@ -2214,7 +2224,7 @@ void J1772EVSEController::Update()
 #ifdef UL_COMPLIANT
   if (!nofault && (prevevsestate == EVSE_STATE_C)) {
     // if fault happens immediately (within 2 sec) after charging starts, hard fault
-    if ((curms - m_ChargeStartTimeMS) <= 2000) {
+    if ((curms - m_ChargeOnTimeMS) <= 2000) {
       g_OBD.Update(1,1);
       while (1) processInputs(); // spin forever
     }
@@ -2225,8 +2235,6 @@ void J1772EVSEController::Update()
 
 #ifdef AMMETER
   if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
-    //    if ((curms - m_LastAmmeterReadMs) > AMMETER_READ_INTERVAL) {
-    //      m_LastAmmeterReadMs = curms;
     
     readAmmeter();
     uint32_t ma = MovingAverage(m_AmmeterReading);
@@ -2246,7 +2254,7 @@ void J1772EVSEController::Update()
 #endif // AMMETER
   if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeStartTime;
+    m_ElapsedChargeTime = now() - m_ChargeOnTime;
   }
 }
 
@@ -2342,7 +2350,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 unsigned long J1772EVSEController::readVoltmeter()
 {
   unsigned int peak = 0;
-  for(unsigned long start_time = millis(); millis() - start_time < VOLTMETER_POLL_INTERVAL; ) {
+  for(unsigned long start_time = millis(); (millis() - start_time) < VOLTMETER_POLL_INTERVAL; ) {
     unsigned int val = analogRead(VOLTMETER_PIN);
     if (val > peak) peak = val;
   }
@@ -2370,7 +2378,7 @@ void J1772EVSEController::readAmmeter()
   unsigned long last_zero_crossing_time = 0, now_ms;
   long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
   unsigned int sample_count = 0;
-  for(unsigned long start = millis(); (now_ms = millis()) - start < CURRENT_SAMPLE_INTERVAL; ) {
+  for(unsigned long start = millis(); ((now_ms = millis()) - start) < CURRENT_SAMPLE_INTERVAL; ) {
     long sample = analogRead(CURRENT_PIN);
     // If this isn't the first sample, and if the sign of the value differs from the
     // sign of the previous value, then count that as a zero crossing.
@@ -2378,7 +2386,7 @@ void J1772EVSEController::readAmmeter()
       // Once we've seen a zero crossing, don't look for one for a little bit.
       // It's possible that a little noise near zero could cause a two-sample
       // inversion.
-      if (now_ms - last_zero_crossing_time > CURRENT_ZERO_DEBOUNCE_INTERVAL) {
+      if ((now_ms - last_zero_crossing_time) > CURRENT_ZERO_DEBOUNCE_INTERVAL) {
         zero_crossings++;
         last_zero_crossing_time = now_ms;
       }
@@ -2468,7 +2476,7 @@ void Btn::init()
 void Btn::read()
 {
   uint8_t sample;
-  long delta;
+  unsigned long delta;
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
@@ -3745,5 +3753,4 @@ void loop()
 #ifdef DELAYTIMER
   g_DelayTimer.CheckTime();
 #endif //#ifdef DELAYTIMER
-
 }

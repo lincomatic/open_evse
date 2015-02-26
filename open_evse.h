@@ -188,6 +188,8 @@
 // begin functional tests
 //
 //
+// for debugging ONLY - turns off all safety checks
+//#define NOCHECKS
 // DO NOT USE FT_xxx. FOR FUNCTIONAL TESTING ONLY
 //
 // Test for GFI fault lockout
@@ -202,6 +204,16 @@
 // 10 sec after charging starts will Induce/Fault. 1 minute after fault
 // induced, should clear the fault and resume normal operation
 //#define FT_GFI_RETRY
+
+//
+// test delay between start of sleep mode and opening relay
+// connect EV and put into charging state C
+// relay should open after pilot goes back to state B or higher
+// or after 3 sec, whichever happens first
+// LCD will display SLEEP OPEN/THRESH if opened due to EV response
+//              or  SLEEP OPEN/TIMEOUT if due to timeout
+//
+//#define FT_SLEEP_DELAY
 
 //
 // end functional tests
@@ -649,7 +661,7 @@ class J1772EVSEController {
   uint8_t m_GfiTripCnt;
 #endif // GFI
 #ifdef ADVPWR
-  unsigned long m_NoGndTimeout;
+  unsigned long m_NoGndStart;
   unsigned long m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt;
   unsigned long m_StuckRelayStartTimeMS;
@@ -663,10 +675,10 @@ class J1772EVSEController {
   uint8_t m_TmpEvseState;
   unsigned long m_TmpEvseStateStart;
   uint8_t m_CurrentCapacity; // max amps we can output
-  unsigned long m_ChargeStartTimeMS;
-  unsigned long m_ChargeOffTimeMS;
-  time_t m_ChargeStartTime;
-  time_t m_ChargeOffTime;
+  unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
+  unsigned long m_ChargeOffTimeMS; // millis() when relay last opened
+  time_t m_ChargeOnTime; // unixtime when relay last closed
+  time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
 
@@ -697,7 +709,6 @@ class J1772EVSEController {
 #endif
 
 #ifdef AMMETER
-  //  long m_LastAmmeterReadMs;
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
   int16_t m_AmmeterCurrentOffset;
@@ -836,8 +847,8 @@ public:
 #define BTN_STATE_LONG  2 // long press
 class Btn {
   uint8_t buttonState;
-  long lastDebounceTime;  // the last time the output pin was toggled
-  long vlongDebounceTime;  // for verylong press
+  unsigned long lastDebounceTime;  // the last time the output pin was toggled
+  unsigned long vlongDebounceTime;  // for verylong press
   
 public:
   Btn();
@@ -1140,3 +1151,4 @@ public:
 // -- end class definitions
 
 #include "rapi_proc.h"
+

@@ -1,5 +1,8 @@
 Change Log
 
+vD3.5.2 SCL 20150226
+- minor fixes for millis() overflow handling
+	
 SCL 20150220
 - merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging
 	
