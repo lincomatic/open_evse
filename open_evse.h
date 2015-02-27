@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.5.1"
+#define VERSION "D3.5.2"
 
 //-- begin features
 
@@ -256,6 +256,7 @@
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
+#define GREEN_LED_PIN 13 // Digital pin
 #endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
@@ -263,7 +264,6 @@
 // if using fast PWM (PAFC_PWM disabled) PILOT_PIN *MUST* be digital 10
 #define PILOT_PIN 10
 
-#define GREEN_LED_PIN 13 // Digital pin
 
 #define SERIAL_BAUD 115200
 

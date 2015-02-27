@@ -2,6 +2,7 @@ Change Log
 
 vD3.5.2 SCL 20150226
 - minor fixes for millis() overflow handling
+- change code to allow RED_LED_PIN and GREEN_LED_PIN to be commented out w/o causing compile errors
 	
 SCL 20150220
 - merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging

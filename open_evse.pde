@@ -691,13 +691,14 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
-#ifndef OPENEVSE_2
+#ifdef GREEN_LED_PIN
   pinMode (GREEN_LED_PIN, OUTPUT);
-  pinMode (RED_LED_PIN, OUTPUT);
-
   SetGreenLed(LOW);
+#endif 
+#ifdef RED_LED_PIN
+  pinMode (RED_LED_PIN, OUTPUT);
   SetRedLed(LOW);
-#endif //!OPENEVSE_2
+#endif
 
 #ifdef LCD16X2
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
@@ -725,14 +726,16 @@ void OnboardDisplay::Init()
 
 void OnboardDisplay::SetGreenLed(uint8_t state)
 {
+#ifdef GREEN_LED_PIN
   digitalWrite(GREEN_LED_PIN,state);
+#endif
 }
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
-#ifndef OPENEVSE_2
+#ifdef RED_LED_PIN
   digitalWrite(RED_LED_PIN,state);
-#endif //!OPENEVSE_2
+#endif
 }
 
 #ifdef LCD16X2
