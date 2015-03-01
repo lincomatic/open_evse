@@ -81,7 +81,7 @@
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
 #define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
-#define TEMPERATURE_DISPLAY_ALWAYS 0  // Set this flag to 1 to always show temperatures
+#define TEMPERATURE_DISPLAY_ALWAYS 1  // Set this flag to 1 to always show temperatures
                                                                             // Set to 0 to only display when temperatures become elevated above a level where we throttle back the pilot signal to a lower current level
 
 
@@ -110,12 +110,12 @@
 */   //  comment out the sensible settings while testing the code
                                                                                                       
 // stub values for testing purposes
-#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 300     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 290     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
 #define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 270  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
                                                   // recover to this level we can kick the current back up to the user's original amperage setting
-#define TEMPERATURE_AMBIENT_SHUTDOWN 320          // Throttling the current back did not work and we need to take strong action, tell the car to quit
+#define TEMPERATURE_AMBIENT_SHUTDOWN 310          // Throttling the current back did not work and we need to take strong action, tell the car to quit
                                                                                                 // drawing any current entirely
-#define TEMPERATURE_AMBIENT_PANIC 330                   //  place the OpenEVSE in an error state                               
+#define TEMPERATURE_AMBIENT_PANIC 320                   //  place the OpenEVSE in an error state                               
 
 #define TEMPERATURE_INFRARED_THROTTLE_DOWN 330    // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 270 // If the OpenEVSE responds nicely to the lower current drawn and IR temperatures

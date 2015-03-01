@@ -2237,7 +2237,8 @@ void J1772EVSEController::Update()
 
 #ifdef TEMPERATURE_MONITORING                 //  A state for OverTemp fault
   if ((g_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  || 
-      (g_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
+      (g_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC)  ||
+      (g_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
     tmpevsestate = EVSE_STATE_OVER_TEMPERATURE;
     m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
     
