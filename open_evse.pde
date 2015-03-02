@@ -242,6 +242,22 @@ TempMonitor g_TempMonitor;
 
 //-- end global variables
 
+static inline void wiresend(uint8_t x) {
+#if ARDUINO >= 100
+  Wire.write((uint8_t)x);
+#else
+  Wire.send(x);
+#endif
+}
+
+static inline uint8_t wirerecv(void) {
+#if ARDUINO >= 100
+  return Wire.read();
+#else
+  return Wire.receive();
+#endif
+}
+
 void EvseReset();
 
 // wdt_init turns off the watchdog timer after we use it
@@ -301,39 +317,29 @@ void TempMonitor::Init()
 
 void TempMonitor::Read()
 {
+#ifdef TMP007_IS_ON_I2C
   m_TMP007_temperature = 10 * m_tmp007.readObjTempC();   //  using the TI TMP007 IR sensor
+#endif
+#ifdef MCP9808_IS_ON_I2C
   m_MCP9808_temperature = 10 * m_tempSensor.readTempC();  // for the MCP9808
+#endif
 
        
-#if defined(ARDUINO) && (ARDUINO >= 100)
+#ifdef RTC
   // This code chunck below reads the DS3231 RTC's internal temperature sensor            
   Wire.beginTransmission(0x68);
-  Wire.write(uint8_t(0x0e));
-  Wire.write( 0x20 );               // write bit 5 to initiate conversion of temperature
+  wiresend(uint8_t(0x0e));
+  wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
   Wire.endTransmission();            
              
   Wire.beginTransmission(0x68);
-  Wire.write(uint8_t(0x11));
+  wiresend(uint8_t(0x11));
   Wire.endTransmission();
       
   Wire.requestFrom(0x68, 2);
-  m_DS3231_temperature = 10 * Wire.read();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + 2.5*(Wire.read()>>6);   // keep the reading like 235 meaning 23.5C
-#else
-  // This code chunck below reads the DS3231 RTC's internal temperature sensor            
-  Wire.beginTransmission(0x68);
-  Wire.send(0x0e);
-  Wire.send( 0x20 );               // send bit 5 to initiate conversion of temperature
-  Wire.endTransmission();            
-             
-  Wire.beginTransmission(0x68);
-  Wire.send(0x11);
-  Wire.endTransmission();
-      
-  Wire.requestFrom(0x68, 2);
-  m_DS3231_temperature = 10 * Wire.receive();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + 2.5*(Wire.receive()>>6);   // keep the receiveing like 235 meaning 23.5C
-#endif //defined(ARDUINO) && (ARDUINO >= 100)
+  m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
+  m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);   // keep the reading like 235 meaning 23.5C
+#endif // RTC
 }
 #endif // TEMPERATURE_MONITORING
 
@@ -1065,20 +1071,26 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #ifdef TEMPERATURE_MONITORING
     if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
       static const char *tempfmt = "%2d.%1dC";
+#ifdef MCP9808_IS_ON_I2C
       if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
 	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, g_TempMonitor.m_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
 	LcdPrint(0,1,g_sTmp);
       }
-	
+#endif
+
+#ifdef RTC	
       if ( g_TempMonitor.m_DS3231_temperature != 0xfff4) {   // it returns 0xfff4 if it is not present
 	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
 	LcdPrint(5,1,g_sTmp);
       }
+#endif
 	
+#ifdef TMP007_IS_ON_I2C
       if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
 	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);       //  Infrared sensor probably looking at 30A fuses
 	LcdPrint(11,1,g_sTmp);
       }
+#endif
 	
       g_TempMonitor.SetBlinkAlarm(0);   // Stub this in so the blinking stops while testing just to avoid the annoyance of the blinking RED and TEAL
         
