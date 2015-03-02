@@ -16,7 +16,8 @@
   8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
   8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
   9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
-  10/25/14               Craig K            add smoothing to the Amperage readout
+  10/25/14      Craig K         add smoothing to the Amperage readout
+  3/1/15        Craig K         add TEMPERATURE_MONITORING
   
  * This file is part of Open EVSE.
 
@@ -47,6 +48,10 @@
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
 //#include <LiquidCrystal_I2C.h>
 #include "open_evse.h"
+#ifdef TEMPERATURE_MONITORING
+#include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+#endif
 
 prog_char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
@@ -167,6 +172,18 @@ char *g_sHHMMfmt = "%02d:%02d";
 
 char g_sTmp[64];
 
+#ifdef TEMPERATURE_MONITORING
+#ifdef MCP9808_IS_ON_I2C
+// Create the MCP9808 temperature sensor object
+Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
+#endif  //MCP9808_IS_ON_I2C
+
+#ifdef TMP007_IS_ON_I2C
+// Create the TMP007 temperature sensor object
+Adafruit_TMP007 tmp007;
+#endif  //TMP007_IS_ON_I2C
+#endif //TEMPERATURE_MONITORING
+
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 J1772EVSEController g_EvseController;
 OnboardDisplay g_OBD;
@@ -219,14 +236,27 @@ prog_char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
 prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
+#ifdef TEMPERATURE_MONITORING
+prog_char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
+#endif
 prog_char g_psNoGround[] PROGMEM = "NO GROUND";
 prog_char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
 prog_char g_psStopped[] PROGMEM =  "Stopped";
 prog_char g_psWaiting[] PROGMEM =  "Waiting";
 prog_char g_psSleeping[] PROGMEM = "Sleeping";
-prog_char g_psEvConnected[] PROGMEM = "EV Connected";
+prog_char g_psEvConnected[] PROGMEM = "Connected";  // shortened it to fit on the first line, second line of the LCD reserved now for useful features like kWh and Temperatures
 prog_char g_psEvNotConnected[] PROGMEM = "EV Not Connected";
 #endif // LCD16X2
+
+#ifdef TEMPERATURE_MONITORING
+      int g_MCP9808_temperature=230;  // 230 means 23.0C  Using an integer to save on floating point library use
+      int g_DS3231_temperature=230;   // the DS3231 RTC has a built in temperature sensor
+      int g_TMP007_temperature=230;
+      boolean g_blink_alarm_flag=0;
+      boolean g_over_temperature_flag=0;
+      boolean g_over_temperature_shutdown_flag=0;
+      word g_ampacity=6;
+#endif // TEMPERATURE_MONITORING
 
 //-- end global variables
 
@@ -718,7 +748,7 @@ void OnboardDisplay::Init()
   LcdPrint_P(0,1,PSTR("Version "));
   LcdPrint_P(VERSTR);
   LcdPrint_P(PSTR("   "));
-  delay(800);
+  delay(3000);        // it doesn't cost much to be able to witness the version at bootup
   WDT_RESET();
 #endif //#ifdef LCD16X2
 }
@@ -822,11 +852,20 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psReady);
       LcdPrint(10,0,g_sTmp);  
-      LcdPrint_P(1,g_psEvNotConnected);
+#ifndef TEMPERATURE_MONITORING
+      LcdPrint_P(1,g_psEvNotConnected);  //keep the second LCD row clear for Temperatures
+#endif
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_B: // connected/not charging
+
+    #ifdef TEMPERATURE_MONITORING
+    if ((g_EvseController.GetCurrentCapacity() != g_ampacity) && (g_over_temperature_flag==1)) {
+      g_EvseController.SetCurrentCapacity(g_ampacity,0);  // Now restore the user setting if the over temperature tripped and set it much lower
+    }
+    #endif
+
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -837,9 +876,11 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #ifdef DELAYTIMER
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
-      LcdPrint_P(g_psReady);
+      LcdPrint_P(g_psEvConnected);  // Show "Connected" in place of "Ready", this is so the 2nd LCD line can be used
       LcdPrint(10,0,g_sTmp);
-      LcdPrint_P(1,g_psEvConnected);
+      // LcdPrint_P(1,g_psEvConnected); // do not print on the second line of the LCD so that Termperatures will be displayed there
+
+
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -885,6 +926,16 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
+#ifdef TEMPERATURE_MONITORING      
+    case EVSE_STATE_OVER_TEMPERATURE:    // overtemp message in Red on the RGB LCD
+      SetGreenLed(LOW);
+      SetRedLed(HIGH);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdMsg_P(g_psEvseError,g_psTemperatureFault);
+#endif
+      break;
+#endif //TEMPERATURE_MONITORING        
      case EVSE_STATE_NO_GROUND:
       SetGreenLed(LOW);
       SetRedLed(HIGH);
@@ -960,7 +1011,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 	
 	// nn.nA
 	int a = current / 1000;
-	int ma = ((current % 1000) + 50) / 100;
+	int ma = (current % 1000) / 100;   //  fixed a bug here, no need to round up by 50 milliamps, and doing that caused a little bug in the amperage display
 	if (ma > 9) {
 	  ma = 0;
 	  a++;
@@ -990,9 +1041,107 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #endif //#ifdef DELAYTIMER
+      
+#ifndef TEMPERATURE_MONITORING  // keeping the second line clear if Temperature monitoring is used
       LcdPrint(1,g_sTmp);
+#endif
+      
+      #ifdef TEMPERATURE_MONITORING
+      
+          g_TMP007_temperature = 10 * tmp007.readObjTempC();   //  using the TI TMP007 IR sensor
+          g_MCP9808_temperature = 10 * tempsensor.readTempC();  // for the MCP9808
+       
+         // This code chunck below reads the DS3231 RTC's internal temperature sensor            
+      	Wire.beginTransmission(0x68);
+      			Wire.write(uint8_t(0x0e));
+      	Wire.write( 0x20 );               // write bit 5 to initiate conversion of temperature
+      	Wire.endTransmission();            
+             
+      	Wire.beginTransmission(0x68);
+      	Wire.write(uint8_t(0x11));
+      	Wire.endTransmission();
+      
+      	Wire.requestFrom(0x68, 2);
+      	g_DS3231_temperature = 10 * Wire.read();	// Here's the MSB
+      	g_DS3231_temperature = g_DS3231_temperature + 2.5*(Wire.read()>>6);   // keep the reading like 235 meaning 23.5C
+      
+          if ((g_over_temperature_flag==1) || TEMPERATURE_DISPLAY_ALWAYS)  {                                                                                         
+              if ( g_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
+                sprintf(g_sTmp,"%2d.%1dC",g_MCP9808_temperature/10, g_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
+                LcdPrint(0,1,g_sTmp);
+              }
+             
+              if ( g_DS3231_temperature != 0xfff4) {   // it returns 0xfff4 if it is not present
+                sprintf(g_sTmp,"%2d.%1dC",g_DS3231_temperature/10, g_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
+                LcdPrint(5,1,g_sTmp);
+              }
+      
+              if ( g_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
+                sprintf(g_sTmp,"%2d.%1dC",g_TMP007_temperature/10, g_TMP007_temperature % 10);       //  Infrared sensor probably looking at 30A fuses
+                LcdPrint(11,1,g_sTmp);
+              }
+              
+              //g_blink_alarm_flag=0;   // Stub this in so the blinking stops while testing just to avoid the annoyance of the blinking RED and TEAL
+              
+              if (g_blink_alarm_flag && g_over_temperature_shutdown_flag) {       // Blink Red off and on once per second while when over the temperature shutdown limit 
+                g_blink_alarm_flag=0;         // toggle the alarm flag so we can blink
+                SetRedLed(HIGH);
+                 #ifdef LCD16X2 //Adafruit RGB LCD
+                     LcdSetBacklightColor(RED);
+                 #endif //Adafruit RGB LCD            
+              }
+                else  {
+                  g_blink_alarm_flag=1;        // toggle the alarm flag so we can blink
+                  SetRedLed(LOW);
+                  #ifdef LCD16X2 //Adafruit RGB LCD
+                    LcdSetBacklightColor(TEAL);
+                  #endif
+              }           
+              
+            }  // (g_over_temperature_flag==1) || TEMPERATURE_DISPLAY_ALWAYS)   
+           else  {
+                sprintf(g_sTmp,"                ");       //  blank the second line
+                LcdPrint(0,1,g_sTmp);
+                
+                SetRedLed(LOW);          // restore the normal TEAL backlight in case it was left RED while last blinking
+                #ifdef LCD16X2 //Adafruit RGB LCD
+                  LcdSetBacklightColor(TEAL);
+                 #endif
+              }          
+           
+          if (g_over_temperature_flag==0 && ((g_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
+                                                                        (g_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
+                                                                        (g_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
+            g_over_temperature_flag=1;
+            g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);     // set L2 to something lower that helps the heat to subside
+          }
+            
+           if (g_over_temperature_flag==1 && ((g_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
+                                                                         (g_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
+                                                                         (g_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {    // restore the original L2 current advice to the EV
+            g_over_temperature_flag=0;
+            g_EvseController.SetCurrentCapacity(g_ampacity,0);    // set L2 to the user's original setting for L2 current
+          }           
+          
+                     
+          if (g_over_temperature_shutdown_flag==0 && ((g_TMP007_temperature   >= TEMPERATURE_INFRARED_SHUTDOWN ) ||  // any sensor reaching threshold trips action
+                                                                        (g_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
+                                                                        (g_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
+            g_over_temperature_shutdown_flag=1;
+            // m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off entirely if the EV is still paying attention  //  This is not working ?? Craig K could use some help from C++ knowledgable folks  :-)
+            g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);  // stub this in while testing and getting the line above working, once the line above is working this line should be removed
+          }
+            
+           if (g_over_temperature_shutdown_flag==1 && ((g_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
+                                                                         (g_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
+                                                                         (g_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {    //  restore the original L2 current advice to the EV
+            g_over_temperature_shutdown_flag=0;
+            g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);    // set L2 to the throttled back level
+          }    
+      #endif  //TEMPERATURE_MONITORING 
     }
   }
+
   // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
 #ifdef DELAYTIMER
   else if (curstate == EVSE_STATE_SLEEPING) {
@@ -1853,7 +2002,10 @@ void J1772EVSEController::Init()
       }
 #endif
     }
-  } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
+  } while ( fault && ( m_EvseState == EVSE_STATE_OVER_TEMPERATURE ||
+                       m_EvseState == EVSE_STATE_GFI_TEST_FAILED || 
+                       m_EvseState == EVSE_STATE_NO_GROUND ||  
+                       m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
@@ -2082,8 +2234,23 @@ void J1772EVSEController::Update()
   }
 #endif // GFI
 
+
+#ifdef TEMPERATURE_MONITORING                 //  A state for OverTemp fault
+  if ((g_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  || 
+      (g_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC)  ||
+      (g_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
+    tmpevsestate = EVSE_STATE_OVER_TEMPERATURE;
+    m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
+    
+    g_EvseController.SetCurrentCapacity(g_ampacity,0);          // now restore the user setting if the over temperature tripped
+
+    nofault = 0;
+  }
+#endif // TEMPERATURE_MONITORING
+
   if (nofault) {
     if ((prevevsestate == EVSE_STATE_GFCI_FAULT) ||
+        (prevevsestate == EVSE_STATE_OVER_TEMPERATURE) ||
         (prevevsestate == EVSE_STATE_NO_GROUND) ||
 	(prevevsestate == EVSE_STATE_STUCK_RELAY)) {
       // just got out of fault state - pilot back on
@@ -2183,6 +2350,30 @@ void J1772EVSEController::Update()
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_N12);
     }
+    #ifdef TEMPERATURE_MONITORING
+    else if (m_EvseState == EVSE_STATE_OVER_TEMPERATURE) {
+      // vehicle state Over Teperature within the EVSE
+      m_Pilot.SetState(PILOT_STATE_P12); // Signal the EV to pause, high current should cease within five seconds
+      
+      //  5 seconds equals 6 * 833ms
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+      delay(833);
+      wdt_reset();
+
+      chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
+      m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
+    }
+    #endif //TEMPERATURE_MONITORING
     else if (m_EvseState == EVSE_STATE_DIODE_CHK_FAILED) {
       chargingOff(); // turn off charging current
       // must leave pilot on so we can keep checking
@@ -2718,7 +2909,7 @@ Menu *SvcLevelMenu::Select()
 }
 
 uint8_t g_L1MaxAmps[] = {6,10,12,14,15,16,0};
-uint8_t g_L2MaxAmps[] = {10,16,20,25,30,35,40,45,50,55,60,65,70,75,80,0};
+uint8_t g_L2MaxAmps[] = {10,16,20,24,30,35,40,45,50,55,60,65,70,75,80,0};   // 24 is a 20% de-rating for a 30A kit
 MaxCurrentMenu::MaxCurrentMenu()
 {
   m_Title = g_psMaxCurrent;
@@ -3679,7 +3870,9 @@ void EvseReset()
 #ifdef RTC
   Wire.begin();
   g_RTC.begin();
+  #ifdef DELAYTIMER
   g_DelayTimer.Init();
+  #endif  // DELAYTIMER
 #endif
 
 #ifdef SERIALCLI
@@ -3710,7 +3903,22 @@ void setup()
   EvseReset();
 
   WDT_ENABLE();
-} 
+ 
+#ifdef TEMPERATURE_MONITORING
+ 
+#ifdef MCP9808_IS_ON_I2C
+tempsensor.begin();
+#endif // MCP9808_IS_ON_I2C
+
+#ifdef TMP007_IS_ON_I2C
+tmp007.begin();
+#endif // TMP007_IS_ON_I2C
+
+g_ampacity = g_EvseController.GetCurrentCapacity();
+
+#endif   // TEMPERATURE_MONITORING
+
+}    // setup()
 
 
 void loop()
