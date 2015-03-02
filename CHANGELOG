@@ -1,5 +1,8 @@
 Change Log
 
+vD3.6.0 SCL 20150301
+- add CraigK TEMPERATURE_MONITORING
+	
 vD3.5.2 SCL 20150226
 - minor fixes for millis() overflow handling
 - change code to allow RED_LED_PIN and GREEN_LED_PIN to be commented out w/o causing compile errors
