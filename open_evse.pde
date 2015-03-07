@@ -19,6 +19,7 @@
  9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
  10/25/14               Craig K            add smoothing to the Amperage readout
  3/1/15        Craig K         add TEMPERATURE_MONITORING
+ 3/7/15        Craig K         add KWH_RECORDING
   
  * This file is part of Open EVSE.
 
@@ -239,6 +240,14 @@ prog_char g_psEvConnected[] PROGMEM = "Connected";
 #ifdef TEMPERATURE_MONITORING
 TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
+
+#ifdef KWH_RECORDING
+boolean g_was_in_ready_state_just_prior = 0;
+boolean g_was_in_connected_state_just_prior = 0;
+unsigned long g_WattHours_accumulated;
+unsigned long g_WattSeconds = 0;
+unsigned long g_current = 0;
+#endif // KWH_RECORDING
 
 //-- end global variables
 
@@ -886,6 +895,22 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     
     switch(curstate) {
     case EVSE_STATE_A: // not connected
+
+#ifdef KWH_RECORDING
+      g_was_in_ready_state_just_prior = 1;     // detect state transition from ready to connected
+      
+     if (g_was_in_connected_state_just_prior == 1) {   // Reset WattSeconds upon transition from Ready to Connected and accumulate the dollars and cents
+      g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);   
+ 
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0,g_WattHours_accumulated);                 // safe to write to eeprom here in the code since it only occurs on the state change from Connected to Ready
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1,g_WattHours_accumulated / 256ul);      // and the specified lifetime write cycles to the eeprom is 100,000 writes cycles
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2,g_WattHours_accumulated / 65536ul);    // if you plugged in ten times per day the eeprom would still be happy for over 25 years
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3,g_WattHours_accumulated / 16777216ul);
+     }
+     
+     g_was_in_connected_state_just_prior = 0;   // Reset this to zero in order to detect the unique transition from Ready to Connected
+#endif // KWH_RECORDING
+     
       SetGreenLed(HIGH);
       SetRedLed(LOW);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -897,12 +922,27 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psReady);
-      LcdPrint(10,0,g_sTmp);  
+      LcdPrint(10,0,g_sTmp);
+      
+ #ifdef KWH_RECORDING 
+      sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
+      LcdPrint(0,1,g_sTmp);
 
+      sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      LcdPrint(7,1,g_sTmp);
+ #endif // KWH_RECORDING
+        
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
     case EVSE_STATE_B: // connected/not charging
+    #ifdef KWH_RECORDING
+    g_was_in_connected_state_just_prior = 1;     // detect state transition from connected to ready
+    if (g_was_in_ready_state_just_prior == 1) {   // Reset WattSeconds upon transition from Ready to Connected
+      g_WattSeconds = 0;
+      }
+      g_was_in_ready_state_just_prior = 0;   // Reset this to zero in order to detect the unique transition from Ready to Connected
+    #endif// KWH_RECORDING
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -915,6 +955,14 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psEvConnected);
       LcdPrint(10,0,g_sTmp);
+
+      #ifdef KWH_RECORDING
+      sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
+      LcdPrint(0,1,g_sTmp);
+
+      sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // Display accumulated kWh
+      LcdPrint(7,1,g_sTmp);
+      #endif // KWH_RECORDING
  
 #endif //Adafruit RGB LCD
     // n.b. blue LED is off
@@ -1023,6 +1071,19 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   SetAmmeterDirty(0);
 
   uint32_t current = g_EvseController.GetChargingCurrent();
+  
+  //  set 28.2A for testing the kWh code with an EV simulator 
+//   current = 28200;
+  
+  #ifdef KWH_RECORDING
+    if (g_EvseController.GetCurSvcLevel() == 2) {                                                     //  first verify L2 or L1
+//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * g_current / 1000);  // accumulate Watt Seconds for Level2 charging
+    }
+    else {
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
+    }
+#endif // KWH_RECORDING
       
   /*      int ma;
 	  if (current < 1000) {
@@ -1068,6 +1129,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   if (curstate == EVSE_STATE_C) {
   time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
   if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
+   
 #ifdef TEMPERATURE_MONITORING
     if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
       static const char *tempfmt = "%2d.%1dC";
@@ -1108,7 +1170,15 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       }           
     }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
     else  {
-      LcdPrint(0,1,g_BlankLine);
+       #ifdef KWH_RECORDING 
+        sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
+        LcdPrint(0,1,g_sTmp);
+  
+        sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
+        LcdPrint(7,1,g_sTmp);
+      #else // KWH_RECORDING
+        LcdPrint(0,1,g_BlankLine);
+      #endif // KWH_RECORDING
         
       SetRedLed(LOW);          // restore the normal TEAL backlight in case it was left RED while last blinking
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -1116,16 +1186,18 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif
     }          
 #else // !TEMPERATURE_MONITORING
-    int h = hour(elapsedTime);
-    int m = minute(elapsedTime);
-    int s = second(elapsedTime);
-#ifdef DELAYTIMER
-    sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)curtime.hour(),(int)curtime.minute());
-#else
-    sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
-#endif //#ifdef DELAYTIMER
-      
-    LcdPrint(1,g_sTmp);
+ #ifndef KWH_RECORDING
+        int h = hour(elapsedTime);          // display the elapsed charge time
+        int m = minute(elapsedTime);
+        int s = second(elapsedTime);
+    #ifdef DELAYTIMER
+        sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)curtime.hour(),(int)curtime.minute());
+    #else
+        sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
+    #endif //#ifdef DELAYTIMER
+          
+        LcdPrint(1,g_sTmp);
+    #endif // KWH_RECORDING
 #endif // TEMPERATURE_MONITORING
   }
  }
@@ -3917,6 +3989,24 @@ void setup()
 #endif
 
   WDT_ENABLE();
+
+#ifdef KWH_RECORDING
+      if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+0) == 0xff) {            // Check for unitialized eeprom condition so it can begin at $0.00
+        if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+1) == 0xff) {
+          if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+2) == 0xff) {    
+             if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+3) == 0xff) {
+              eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED+0, 0x00);           //  Set the four bytes to zero just once in the case of unitialized eeprom
+              eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED+1, 0x00);
+              eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED+2, 0x00);
+              eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED+3, 0x00);             
+          }}}}
+
+      g_WattHours_accumulated = (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0) +                            // get the stored value for the kWh from eeprom
+                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1) * 256ul) +
+                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2) * 65536ul) +
+                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3) * 16777216ul));
+#endif // KWH_RECORDING
+
 }  // setup()
 
 
