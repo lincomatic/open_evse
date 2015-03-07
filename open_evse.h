@@ -76,8 +76,13 @@
 // enable this. ADVPWR must also be defined.
 #define GFI_SELFTEST
 
-// Temperature monitoring support
+// Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define TEMPERATURE_MONITORING
+
+#ifdef AMMETER
+// kWh Recording feature depends upon #AMMETER support
+#define KWH_RECORDING
+#endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
 #define RGBLCD
@@ -284,15 +289,16 @@
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
-#ifdef AMMETER
+#ifdef AMMETER            // Does #ifdef make sense for eeprom byte offsets?  I'm not sure.
 #define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
+#define EOFS_KWH_ACCUMULATED 13 // 4 bytes
 #endif // AMMETER
 
-#define EOFS_GFI_TRIP_CNT      13 // 1 byte
-#define EOFS_NOGND_TRIP_CNT    14 // 1 byte
-#define EOFS_STUCK_RELAY_TRIP_CNT 15 // 1 byte
-#define EOFS_WATCHDOG_TRIP_CNT 16 // 1 byte
+#define EOFS_GFI_TRIP_CNT      17 // 1 byte
+#define EOFS_NOGND_TRIP_CNT    18 // 1 byte
+#define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
+#define EOFS_WATCHDOG_TRIP_CNT 20 // 1 byte
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -394,6 +400,11 @@
 // subtract this from ammeter current reading to correct zero offset
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0
 
+#ifdef KWH_RECORDING
+#define VOLTS_FOR_L1 120    // conventional for North America
+//  #define VOLTS_FOR_L2 230    // conventional for most of the world
+#define VOLTS_FOR_L2 240    // conventional for North America
+#endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -408,7 +419,7 @@
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
 #define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
-#define TEMPERATURE_DISPLAY_ALWAYS 1  // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
+#define TEMPERATURE_DISPLAY_ALWAYS 0  // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
                                                                             // Set to it 0 to only display when temperatures become elevated 
 #define TESTING_TEMPERATURE_OPERATION  // set this flag to play with very low sensor thresholds or to evaluate the code
                                                                                // comment it out instead to run with normal temperature thresholds
