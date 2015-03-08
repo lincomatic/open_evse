@@ -450,8 +450,6 @@
                                                                                                       //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
                                                                                                       //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
                                                                                                       //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
-#define TEMPERATURE_AMPACITY_LOWER_SETTING 16       //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
-                                                                                                      //  I like keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car
 #else  //TESTING_TEMPERATURE_OPERATION
 // these are good values for testing purposes at room temperature with an EV simulator and no actual high current flowing
 #define TEMPERATURE_AMBIENT_THROTTLE_DOWN 290     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
@@ -468,10 +466,9 @@
                                                   // drawing any current entirely  
 #define TEMPERATURE_INFRARED_PANIC 400            // place the OpenEVSE in an error state
 
+#endif // TESTING_TEMPERATURE_OPERATION 
 #define TEMPERATURE_AMPACITY_LOWER_SETTING 16       //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
                                                     //  keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car 
-#endif // TESTING_TEMPERATURE_OPERATION                                                    
-
 #endif // TEMPERATURE_MONITORING
 
 //-- end configuration
