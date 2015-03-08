@@ -246,7 +246,6 @@ boolean g_was_in_ready_state_just_prior = 0;
 boolean g_was_in_connected_state_just_prior = 0;
 unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds = 0;
-unsigned long g_current = 0;
 #endif // KWH_RECORDING
 
 //-- end global variables
@@ -1078,7 +1077,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   #ifdef KWH_RECORDING
     if (g_EvseController.GetCurSvcLevel() == 2) {                                                     //  first verify L2 or L1
 //      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator
-      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * g_current / 1000);  // accumulate Watt Seconds for Level2 charging
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
     }
     else {
       g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
@@ -2520,7 +2519,8 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-	m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off, the current drawn should be zero with the Pilot set steady high voltage
+        g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);     // set L2 to the minimum  // this is the alternative until I get state P12 working with a real EV like the Ford Focus
+//	m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off, the current drawn should be zero with the Pilot set steady high voltage  // this is not working with the Ford Focus, works with an EV simulator, needs investigation
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
