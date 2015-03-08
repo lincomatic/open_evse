@@ -17,7 +17,7 @@
  8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
  8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
  9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
- 10/25/14               Craig K            add smoothing to the Amperage readout
+ 10/25/14      Craig K         add smoothing to the Amperage readout
  3/1/15        Craig K         add TEMPERATURE_MONITORING
  3/7/15        Craig K         add KWH_RECORDING
   
@@ -50,8 +50,12 @@
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
 //#include <LiquidCrystal_I2C.h>
 #ifdef TEMPERATURE_MONITORING
-#include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
-#include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+  #ifdef MCP9808_IS_ON_I2C
+  #include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+  #endif 
+  #ifdef TMP007_IS_ON_I2C
+  #include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+  #endif 
 #endif // TEMPERATURE_MONITORING
 #include "open_evse.h"
 
@@ -345,7 +349,7 @@ void TempMonitor::Read()
       
   Wire.requestFrom(0x68, 2);
   m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);   // keep the reading like 235 meaning 23.5C
+  m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);  // keep the reading like 235 meaning 23.5C
   if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer
 #endif // RTC
 }
@@ -901,9 +905,9 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
      if (g_was_in_connected_state_just_prior == 1) {   // Reset WattSeconds upon transition from Ready to Connected and accumulate the dollars and cents
       g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);   
  
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0,g_WattHours_accumulated);                 // safe to write to eeprom here in the code since it only occurs on the state change from Connected to Ready
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1,g_WattHours_accumulated / 256ul);      // and the specified lifetime write cycles to the eeprom is 100,000 writes cycles
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2,g_WattHours_accumulated / 65536ul);    // if you plugged in ten times per day the eeprom would still be happy for over 25 years
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0,g_WattHours_accumulated);            // safe to write to eeprom here in the code since it only occurs on the state change from Connected to Ready
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1,g_WattHours_accumulated / 256ul);    // and the specified lifetime write cycles to the eeprom is 100,000 writes cycles
+      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2,g_WattHours_accumulated / 65536ul);  // if you plugged in ten times per day the eeprom would still be happy for over 25 years
       eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3,g_WattHours_accumulated / 16777216ul);
      }
      
@@ -937,7 +941,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     case EVSE_STATE_B: // connected/not charging
     #ifdef KWH_RECORDING
     g_was_in_connected_state_just_prior = 1;     // detect state transition from connected to ready
-    if (g_was_in_ready_state_just_prior == 1) {   // Reset WattSeconds upon transition from Ready to Connected
+    if (g_was_in_ready_state_just_prior == 1) {  // Reset WattSeconds upon transition from Ready to Connected
       g_WattSeconds = 0;
       }
       g_was_in_ready_state_just_prior = 0;   // Reset this to zero in order to detect the unique transition from Ready to Connected
@@ -1071,17 +1075,21 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 
   uint32_t current = g_EvseController.GetChargingCurrent();
   
-  //  set 28.2A for testing the kWh code with an EV simulator 
-//   current = 28200;
-  
-  #ifdef KWH_RECORDING
-    if (g_EvseController.GetCurSvcLevel() == 2) {                                                     //  first verify L2 or L1
-//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator
-      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
+//  set 28.2A for testing the kWh code with an EV simulator ??
+   current = 28200;
+ 
+#ifdef KWH_RECORDING
+    #ifdef OPENEVSE_2
+    g_WattSeconds = g_WattSeconds + (g_EvseController.readVoltmeter() / 1000 * current / 1000);
+    #else
+    if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator
+//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
     }
     else {
       g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
     }
+  #endif // OPENEVSE_2
 #endif // KWH_RECORDING
       
   /*      int ma;
@@ -1148,13 +1156,13 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 	
 #ifdef TMP007_IS_ON_I2C
       if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
-	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);       //  Infrared sensor probably looking at 30A fuses
+	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);  //  Infrared sensor probably looking at 30A fuses
 	LcdPrint(11,1,g_sTmp);
       }
 #endif
 
-      if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) {   // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
-	g_TempMonitor.SetBlinkAlarm(0);         // toggle the alarm flag so we can blink
+      if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) { // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
+	g_TempMonitor.SetBlinkAlarm(0);                                            // toggle the alarm flag so we can blink
 	SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
 	LcdSetBacklightColor(RED);
@@ -2296,9 +2304,6 @@ void J1772EVSEController::Update()
       (g_TempMonitor.m_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
     tmpevsestate = EVSE_STATE_OVER_TEMPERATURE;
     m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
-    
-    g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);          // now restore the user setting if the over temperature tripped
-
     nofault = 0;
   }
 #endif // TEMPERATURE_MONITORING
@@ -2377,11 +2382,6 @@ void J1772EVSEController::Update()
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
-#ifdef TEMPERATURE_MONITORING
-      if ((g_EvseController.GetCurrentCapacity() != g_TempMonitor.m_ampacity) && (g_TempMonitor.OverTemperature())) {
-	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);  // Now restore the user setting if the over temperature tripped and set it much lower
-      }
-#endif // TEMPERATURE_MONITORING
       m_Pilot.SetPWM(m_CurrentCapacity);
     }
     else if (m_EvseState == EVSE_STATE_C) {
@@ -2509,7 +2509,7 @@ void J1772EVSEController::Update()
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
-					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {    // restore the original L2 current advice to the EV
+					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
 	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);    // set L2 to the user's original setting for L2 current
       }           
@@ -2519,13 +2519,12 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);     // set L2 to the minimum  // this is the alternative until I get state P12 working with a real EV like the Ford Focus
-//	m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off, the current drawn should be zero with the Pilot set steady high voltage  // this is not working with the Ford Focus, works with an EV simulator, needs investigation
+        g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);     // set L2 to the minimum
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
-						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {    //  restore the throttled down current advice to the EV since things have cooled down again
+						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
 	g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);    // set L2 to the throttled back level
         m_Pilot.SetPWM(m_CurrentCapacity);
@@ -4001,10 +4000,10 @@ void setup()
               eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED+3, 0x00);             
           }}}}
 
-      g_WattHours_accumulated = (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0) +                            // get the stored value for the kWh from eeprom
-                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1) * 256ul) +
-                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2) * 65536ul) +
-                                                         (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3) * 16777216ul));
+      g_WattHours_accumulated = (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0) +          // get the stored value for the kWh from eeprom
+                                (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1) * 256ul) +
+                                (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2) * 65536ul) +
+                                (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3) * 16777216ul));
 #endif // KWH_RECORDING
 
 }  // setup()
