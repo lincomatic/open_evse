@@ -778,7 +778,6 @@ typedef struct calibdata {
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
-  uint8_t m_WatchDogTripCnt;
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiTimeout;

@@ -2009,10 +2009,6 @@ void J1772EVSEController::Init()
 #endif
 
   m_bVFlags = ECVF_DEFAULT;
-  m_WatchDogTripCnt = eeprom_read_byte((uint8_t*)EOFS_WATCHDOG_TRIP_CNT);
-  if (m_WatchDogTripCnt == 255) {
-    m_WatchDogTripCnt = 0;
-  }
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
