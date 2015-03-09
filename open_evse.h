@@ -55,7 +55,7 @@
 
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-//#define OPENEVSE_2
+// #define OPENEVSE_2
 
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
@@ -76,8 +76,13 @@
 // enable this. ADVPWR must also be defined.
 #define GFI_SELFTEST
 
-// Temperature monitoring support
+// Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define TEMPERATURE_MONITORING
+
+#ifdef AMMETER
+// kWh Recording feature depends upon #AMMETER support
+#define KWH_RECORDING
+#endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
 #define RGBLCD
@@ -284,15 +289,16 @@
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
-#ifdef AMMETER
+#ifdef AMMETER            // Does #ifdef make sense for eeprom byte offsets?  I'm not sure.
 #define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
+#define EOFS_KWH_ACCUMULATED 13 // 4 bytes
 #endif // AMMETER
 
-#define EOFS_GFI_TRIP_CNT      13 // 1 byte
-#define EOFS_NOGND_TRIP_CNT    14 // 1 byte
-#define EOFS_STUCK_RELAY_TRIP_CNT 15 // 1 byte
-#define EOFS_WATCHDOG_TRIP_CNT 16 // 1 byte
+#define EOFS_GFI_TRIP_CNT      17 // 1 byte
+#define EOFS_NOGND_TRIP_CNT    18 // 1 byte
+#define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
+#define EOFS_WATCHDOG_TRIP_CNT 20 // 1 byte
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -380,7 +386,8 @@
 // Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent() 
 // method calculates the RMS value before the scaling factor, so RMS need not be taken into account.
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
-// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
+// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference 
+// design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
 //#define DEFAULT_CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
 //#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
 // Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
@@ -394,6 +401,11 @@
 // subtract this from ammeter current reading to correct zero offset
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0
 
+#ifdef KWH_RECORDING
+#define VOLTS_FOR_L1 120       // conventional for North America
+//  #define VOLTS_FOR_L2 230   // conventional for most of the world
+#define VOLTS_FOR_L2 240       // conventional for North America
+#endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -408,10 +420,10 @@
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
 #define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
-#define TEMPERATURE_DISPLAY_ALWAYS 1  // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
-                                                                            // Set to it 0 to only display when temperatures become elevated 
+#define TEMPERATURE_DISPLAY_ALWAYS 0   // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
+                                       // Set to it 0 to only display when temperatures become elevated 
 #define TESTING_TEMPERATURE_OPERATION  // set this flag to play with very low sensor thresholds or to evaluate the code
-                                                                               // comment it out instead to run with normal temperature thresholds
+                                       // comment it out instead to run with normal temperature thresholds
 
 // Temperature thresholds below are expressed as 520 meaning 52.0C to save from needing floating point library
 // Keep any adjustments that you make at least 2C apart, giving things some hysterisis.  (example is 580 is 3C apart from 550)
@@ -420,35 +432,33 @@
 // The SHUTDOWN value must be lower than the PANIC value
 #ifndef TESTING_TEMPERATURE_OPERATION
     // normal oerational thresholds just below
-#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 520        // This is the temperature in the enclosure where we tell the car to draw a lower amperage
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 520     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
 #define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 490  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
-                                                                                                      //  recover to this level we can kick the current back up to the user's original amperage setting
-#define TEMPERATURE_AMBIENT_SHUTDOWN 550                 // Throttling the current back did not work and we need to take stronger action, tell the car to quit
-                                                                                                      //  drawing any current and blink the RGB LCD 
-#define TEMPERATURE_AMBIENT_PANIC 580                           //  This is a threshold while we are  are still connected to
-                                                                                                      //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
-                                                                                                      //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
-                                                                                                      //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
+                                                  //  recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_AMBIENT_SHUTDOWN 550          // Throttling the current back did not work and we need to take stronger action, tell the car to quit
+                                                  //  drawing any current and blink the RGB LCD 
+#define TEMPERATURE_AMBIENT_PANIC 580             //  This is a threshold while we are  are still connected to
+                                                  //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
+                                                  //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
+                                                  //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
 
-#define TEMPERATURE_INFRARED_THROTTLE_DOWN 650       // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
+#define TEMPERATURE_INFRARED_THROTTLE_DOWN 650    // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 600 // If the OpenEVSE responds nicely to the lower current drawn and IR temperatures
-                                                                                                      //  recover to this level we can kick the current back up to the user's original amperage setting
-#define TEMPERATURE_INFRARED_SHUTDOWN 700                 // Throttling the current back did not work and we need to take stronger action, tell the car to quit
-                                                                                                      //  drawing any current and blink the RGB LCD 
-#define TEMPERATURE_INFRARED_PANIC 750                           //  This is a threshold while we are still connected to
-                                                                                                      //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
-                                                                                                      //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
-                                                                                                      //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
-#define TEMPERATURE_AMPACITY_LOWER_SETTING 16       //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
-                                                                                                      //  I like keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car
+                                                  //  recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_INFRARED_SHUTDOWN 700         // Throttling the current back did not work and we need to take stronger action, tell the car to quit
+                                                  //  drawing any current and blink the RGB LCD 
+#define TEMPERATURE_INFRARED_PANIC 750            //  This is a threshold while we are still connected to
+                                                  //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
+                                                  //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
+                                                  //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
 #else  //TESTING_TEMPERATURE_OPERATION
 // these are good values for testing purposes at room temperature with an EV simulator and no actual high current flowing
 #define TEMPERATURE_AMBIENT_THROTTLE_DOWN 290     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
 #define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 270  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
                                                   // recover to this level we can kick the current back up to the user's original amperage setting
 #define TEMPERATURE_AMBIENT_SHUTDOWN 310          // Throttling the current back did not work and we need to take strong action, tell the car to quit
-                                                                                                // drawing any current entirely
-#define TEMPERATURE_AMBIENT_PANIC 320                   //  place the OpenEVSE in an error state                               
+                                                  // drawing any current entirely
+#define TEMPERATURE_AMBIENT_PANIC 330             //  place the OpenEVSE in an error state                               
 
 #define TEMPERATURE_INFRARED_THROTTLE_DOWN 330    // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 270 // If the OpenEVSE responds nicely to the lower current drawn and IR temperatures
@@ -457,10 +467,9 @@
                                                   // drawing any current entirely  
 #define TEMPERATURE_INFRARED_PANIC 400            // place the OpenEVSE in an error state
 
-#define TEMPERATURE_AMPACITY_LOWER_SETTING 16       //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
-                                                    //  keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car 
-#endif // TESTING_TEMPERATURE_OPERATION                                                    
-
+#endif // TESTING_TEMPERATURE_OPERATION 
+#define TEMPERATURE_AMPACITY_LOWER_SETTING 16     //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
+                                                  //  keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car 
 #endif // TEMPERATURE_MONITORING
 
 //-- end configuration
@@ -820,10 +829,6 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
-#ifdef OPENEVSE_2
-  uint32_t readVoltmeter();
-#endif
-
 #ifdef AMMETER
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
@@ -903,6 +908,10 @@ public:
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
 
+  #ifdef OPENEVSE_2      
+  uint32_t readVoltmeter();    // ?? check my work on this since I probably goofed this up by moving it here
+  #endif
+  
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
