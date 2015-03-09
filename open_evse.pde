@@ -302,7 +302,6 @@ void TempMonitor::Init()
   m_MCP9808_temperature = 230;  // 230 means 23.0C  Using an integer to save on floating point library use
   m_DS3231_temperature = 230;   // the DS3231 RTC has a built in temperature sensor
   m_TMP007_temperature = 230;
-  m_ampacity = 6;
 
 #ifdef MCP9808_IS_ON_I2C
   m_tempSensor.begin();
@@ -339,6 +338,7 @@ void TempMonitor::Read()
   Wire.requestFrom(0x68, 2);
   m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
   m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);   // keep the reading like 235 meaning 23.5C
+  if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer
 #endif // RTC
 }
 #endif // TEMPERATURE_MONITORING
@@ -967,7 +967,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
-    LcdMsg_P(g_psEvseError,g_psTemperatureFault);
+    LcdMsg_P(g_psSvcReq,g_psTemperatureFault);  //  SERVICE REQUIRED     OVER TEMPERATURE 
 #endif
     break;
 #endif //TEMPERATURE_MONITORING        
@@ -1079,8 +1079,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif
 
 #ifdef RTC	
-      if ( g_TempMonitor.m_DS3231_temperature != 0xfff4) {   // it returns 0xfff4 if it is not present
-	sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
+      if ( g_TempMonitor.m_DS3231_temperature != 0xffff) {   // it returns 0xffff if it is not present
+        sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
 	LcdPrint(5,1,g_sTmp);
       }
 #endif
@@ -1091,10 +1091,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 	LcdPrint(11,1,g_sTmp);
       }
 #endif
-	
-      g_TempMonitor.SetBlinkAlarm(0);   // Stub this in so the blinking stops while testing just to avoid the annoyance of the blinking RED and TEAL
-        
-      if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) {       // Blink Red off and on once per second while when over the temperature shutdown limit 
+
+      if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) {   // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
 	g_TempMonitor.SetBlinkAlarm(0);         // toggle the alarm flag so we can blink
 	SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -1108,7 +1106,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 	LcdSetBacklightColor(TEAL);
 #endif
       }           
-    }  // (OverTemperature || TEMPERATURE_DISPLAY_ALWAYS)   
+    }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
     else  {
       LcdPrint(0,1,g_BlankLine);
         
@@ -2348,7 +2346,6 @@ void J1772EVSEController::Update()
       while ((millis()-curms) < 5000) {
 	wdt_reset();
       }
-
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
       m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
     }
@@ -2451,15 +2448,15 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-	// m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off entirely if the EV is still paying attention  //  This is not working ?? Craig K could use some help from C++ knowledgable folks  :-)
-	g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);  // stub this in while testing and getting the line above working, once the line above is working this line should be removed
+	m_Pilot.SetState(PILOT_STATE_P12);   // Set charging off, the current drawn should be zero with the Pilot set steady high voltage
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
-						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {    //  restore the original L2 current advice to the EV
+						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {    //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
 	g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);    // set L2 to the throttled back level
+        m_Pilot.SetPWM(m_CurrentCapacity);
       }    
     }
 #endif // TEMPERATURE_MONITORING
