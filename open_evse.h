@@ -77,7 +77,7 @@
 #define GFI_SELFTEST
 
 // Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
-#define TEMPERATURE_MONITORING
+//#define TEMPERATURE_MONITORING
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
@@ -289,16 +289,16 @@
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
-#ifdef AMMETER            // Does #ifdef make sense for eeprom byte offsets?  I'm not sure.
+// AMMETER stuff
 #define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
 #define EOFS_KWH_ACCUMULATED 13 // 4 bytes
-#endif // AMMETER
 
+// fault counters
 #define EOFS_GFI_TRIP_CNT      17 // 1 byte
 #define EOFS_NOGND_TRIP_CNT    18 // 1 byte
 #define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
-#define EOFS_WATCHDOG_TRIP_CNT 20 // 1 byte
+
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
