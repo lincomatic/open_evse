@@ -1139,6 +1139,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
    
 #ifdef TEMPERATURE_MONITORING
     if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
+      g_OBD.LcdClearLine(1);
       static const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
       if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
