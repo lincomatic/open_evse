@@ -1076,15 +1076,15 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   uint32_t current = g_EvseController.GetChargingCurrent();
   
 //  set 28.2A for testing the kWh code with an EV simulator ??
-   current = 28200;
+//   current = 28200;
  
 #ifdef KWH_RECORDING
     #ifdef OPENEVSE_2
     g_WattSeconds = g_WattSeconds + (g_EvseController.readVoltmeter() / 1000 * current / 1000);
     #else
     if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
-      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator
-//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
+//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator ??
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
     }
     else {
       g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
@@ -1139,6 +1139,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
    
 #ifdef TEMPERATURE_MONITORING
     if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
+      g_OBD.LcdClearLine(1);
       static const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
       if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
@@ -2175,7 +2176,7 @@ void J1772EVSEController::Update()
   }
   if (StuckRelayChkEnabled()) {
     if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
-      if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+      if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
 	m_StuckRelayStartTimeMS = curms; // mark start state
 	if (m_StuckRelayTripCnt < 254) {
 	  m_StuckRelayTripCnt++;
@@ -2415,6 +2416,8 @@ void J1772EVSEController::Update()
       }
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
       m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
+      g_OBD.Update(1,1);
+      while (1) processInputs(); // spin forever
     }
 #endif //TEMPERATURE_MONITORING
     else if (m_EvseState == EVSE_STATE_DIODE_CHK_FAILED) {
@@ -3986,7 +3989,7 @@ void setup()
   WDT_ENABLE();
 
 #ifdef KWH_RECORDING
-      if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+0) == 0xff) {            // Check for unitialized eeprom condition so it can begin at $0.00
+      if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+0) == 0xff) {            // Check for unitialized eeprom condition so it can begin at 0kWh
         if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+1) == 0xff) {
           if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+2) == 0xff) {    
              if (eeprom_read_byte((uint8_t*)EOFS_KWH_ACCUMULATED+3) == 0xff) {

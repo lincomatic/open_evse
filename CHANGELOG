@@ -1,5 +1,8 @@
 Change Log
 
+vD3.6.1 SCL 20150311
+- merge CraigK patch-4 temp monitoring fixes
+	
 vD3.6.0 SCL 20150301
 - add CraigK TEMPERATURE_MONITORING
 	
