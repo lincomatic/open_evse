@@ -59,7 +59,7 @@
 #endif // TEMPERATURE_MONITORING
 #include "open_evse.h"
 
-prog_char VERSTR[] PROGMEM = VERSION;
+const char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #ifdef LCD16X2
@@ -69,41 +69,41 @@ char *g_BlankLine = "                ";
 char g_sPlus[] = "+";
 
 #ifdef GFI_SELFTEST
-prog_char g_psGfiTest[] PROGMEM = "GFI Self Test";
+const char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif
 
 #ifdef BTN_MENU
-prog_char g_psSetup[] PROGMEM = "Setup";
-prog_char g_psSvcLevel[] PROGMEM = "Service Level";
-prog_char g_psMaxCurrent[] PROGMEM = "Max Current";
-prog_char g_psDiodeCheck[] PROGMEM = "Diode Check";
-prog_char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
+const char g_psSetup[] PROGMEM = "Setup";
+const char g_psSvcLevel[] PROGMEM = "Service Level";
+const char g_psMaxCurrent[] PROGMEM = "Max Current";
+const char g_psDiodeCheck[] PROGMEM = "Diode Check";
+const char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
 #ifdef RGBLCD
-prog_char g_psBklType[] PROGMEM = "Backlight Type";
+const char g_psBklType[] PROGMEM = "Backlight Type";
 #endif
 #ifdef ADVPWR
-prog_char g_psGndChk[] PROGMEM = "Ground Check";
-prog_char g_psRlyChk[] PROGMEM = "Relay Check";
+const char g_psGndChk[] PROGMEM = "Ground Check";
+const char g_psRlyChk[] PROGMEM = "Relay Check";
 #endif // ADVPWR
-prog_char g_psReset[] PROGMEM = "Restart";
-prog_char g_psExit[] PROGMEM = "Exit";
+const char g_psReset[] PROGMEM = "Restart";
+const char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
 #ifdef AUTOSTART_MENU
-prog_char g_psAutoStart[] PROGMEM = "Auto Start";
+const char g_psAutoStart[] PROGMEM = "Auto Start";
 #endif //#ifdef AUTOSTART_MENU
 #ifdef DELAYTIMER_MENU
-prog_char g_psRTC[] PROGMEM = "Date/Time";
-prog_char g_psRTC_Month[] PROGMEM = "Set Month";
-prog_char g_psRTC_Day[] PROGMEM = "Set Day";
-prog_char g_psRTC_Year[] PROGMEM = "Set Year";
-prog_char g_psRTC_Hour[] PROGMEM = "Set Hour";
-prog_char g_psRTC_Minute[] PROGMEM = "Set Minute";
-prog_char g_psDelayTimer[] PROGMEM = "Delay Timer";
-//prog_char g_psDelayTimerEnableDisable[] PROGMEM = "Enable/Disable Timer?";
-prog_char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
-prog_char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
-prog_char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
-prog_char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
+const char g_psRTC[] PROGMEM = "Date/Time";
+const char g_psRTC_Month[] PROGMEM = "Set Month";
+const char g_psRTC_Day[] PROGMEM = "Set Day";
+const char g_psRTC_Year[] PROGMEM = "Set Year";
+const char g_psRTC_Hour[] PROGMEM = "Set Hour";
+const char g_psRTC_Minute[] PROGMEM = "Set Minute";
+const char g_psDelayTimer[] PROGMEM = "Delay Timer";
+//const char g_psDelayTimerEnableDisable[] PROGMEM = "Enable/Disable Timer?";
+const char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
+const char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
+const char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
+const char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
 #endif // DELAYTIMER_MENU
 
 SetupMenu g_SetupMenu;
@@ -212,33 +212,33 @@ uint8_t sec = 0;
 #ifdef SERIALCLI
 CLI g_CLI;
 
-prog_char g_psEnabled[] PROGMEM = "enabled";
-prog_char g_psDisabled[] PROGMEM = "disabled";
+const char g_psEnabled[] PROGMEM = "enabled";
+const char g_psDisabled[] PROGMEM = "disabled";
 #endif // SERIALCLI
 
 #ifdef LCD16X2
 #ifdef ADVPWR
-prog_char g_psPwrOn[] PROGMEM = "Power On";
-prog_char g_psSelfTest[] PROGMEM = "Self Test";
-prog_char g_psAutoDetect[] PROGMEM = "Auto Detect";
-prog_char g_psLevel1[] PROGMEM = "Svc Level: L1";
-prog_char g_psLevel2[] PROGMEM = "Svc Level: L2";
-prog_char g_psTestFailed[] PROGMEM = "TEST FAILED";
+const char g_psPwrOn[] PROGMEM = "Power On";
+const char g_psSelfTest[] PROGMEM = "Self Test";
+const char g_psAutoDetect[] PROGMEM = "Auto Detect";
+const char g_psLevel1[] PROGMEM = "Svc Level: L1";
+const char g_psLevel2[] PROGMEM = "Svc Level: L2";
+const char g_psTestFailed[] PROGMEM = "TEST FAILED";
 #endif // ADVPWR
-prog_char g_psEvseError[] PROGMEM =  "EVSE ERROR";
-prog_char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
-prog_char g_psVentReq[] PROGMEM = "VENT REQUIRED";
-prog_char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
-prog_char g_psGfciFault[] PROGMEM = "GFCI FAULT";
+const char g_psEvseError[] PROGMEM =  "EVSE ERROR";
+const char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
+const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
+const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
+const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 #ifdef TEMPERATURE_MONITORING
-prog_char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
+const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
 #endif
-prog_char g_psNoGround[] PROGMEM = "NO GROUND";
-prog_char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
-prog_char g_psStopped[] PROGMEM =  "Stopped";
-prog_char g_psWaiting[] PROGMEM =  "Waiting";
-prog_char g_psSleeping[] PROGMEM = "Sleeping";
-prog_char g_psEvConnected[] PROGMEM = "Connected";
+const char g_psNoGround[] PROGMEM = "NO GROUND";
+const char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
+const char g_psStopped[] PROGMEM =  "Stopped";
+const char g_psWaiting[] PROGMEM =  "Waiting";
+const char g_psSleeping[] PROGMEM = "Sleeping";
+const char g_psEvConnected[] PROGMEM = "Connected";
 #endif // LCD16X2
 
 #ifdef TEMPERATURE_MONITORING
@@ -399,7 +399,7 @@ void CLI::printlnn()
   println("");
 }
 
-prog_char g_pson[] PROGMEM = "on";
+const char g_pson[] PROGMEM = "on";
 void CLI::getInput()
 {
   int currentreading;
@@ -732,14 +732,14 @@ void CLI::getInput()
   }
 }
 
-void CLI::println_P(prog_char *s)
+void CLI::println_P(const char PROGMEM *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
   m_strBuf[m_strBufLen-1] = 0;
   println(m_strBuf);
 }
 
-void CLI::print_P(prog_char *s)
+void CLI::print_P(const char PROGMEM *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
   m_strBuf[m_strBufLen-1] = 0;
@@ -765,9 +765,9 @@ OnboardDisplay::OnboardDisplay()
 
 #ifdef DELAYTIMER
 // custom icons - GoldServe
-prog_char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
-prog_char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
-prog_char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
+const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
+const char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
+const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
 #endif // DELAYTIMER
 void OnboardDisplay::Init()
 {
@@ -827,7 +827,7 @@ void OnboardDisplay::SetRedLed(uint8_t state)
 }
 
 #ifdef LCD16X2
-void OnboardDisplay::LcdPrint_P(const prog_char *s)
+void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
 {
   if (LcdDetected()) {
     strncpy_P(m_strBuf,s,m_strBufLen);
@@ -836,14 +836,14 @@ void OnboardDisplay::LcdPrint_P(const prog_char *s)
   }
 }
 
-void OnboardDisplay::LcdPrint_P(int y,const prog_char *s)
+void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
   m_strBuf[m_strBufLen-1] = 0;
   LcdPrint(y,m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int x,int y,const prog_char *s)
+void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
 {
   strncpy_P(m_strBuf,s,m_strBufLen);
   m_strBuf[m_strBufLen-1] = 0;
@@ -851,7 +851,7 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const prog_char *s)
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdMsg_P(const prog_char *l1,const prog_char *l2)
+void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
 {
   LcdPrint_P(0,l1);
   LcdPrint_P(1,l2);
@@ -884,8 +884,8 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 
 
 char g_sRdyLAstr[] = "L%d:%dA";
-prog_char g_psReady[] PROGMEM = "Ready";
-prog_char g_psCharging[] PROGMEM = "Charging";
+const char g_psReady[] PROGMEM = "Ready";
+const char g_psCharging[] PROGMEM = "Charging";
 void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 {
   uint8_t curstate = g_EvseController.GetState();
@@ -2851,7 +2851,7 @@ void SetupMenu::Next()
     m_CurIdx = 0;
   }
 
-  const prog_char *title;
+  const char PROGMEM *title;
   if (m_CurIdx < m_menuCnt) {
     title = g_MenuList[m_CurIdx]->m_Title;
   }
@@ -3250,7 +3250,7 @@ ResetMenu::ResetMenu()
   m_Title = g_psReset;
 }
 
-prog_char g_psResetNow[] PROGMEM = "Restart Now?";
+const char g_psResetNow[] PROGMEM = "Restart Now?";
 void ResetMenu::Init()
 {
   m_CurIdx = 0;
@@ -3279,7 +3279,7 @@ RTCMenu::RTCMenu()
 {
   m_Title = g_psRTC;
 }
-prog_char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
+const char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
 void RTCMenu::Init()
 {
   m_CurIdx = 0;

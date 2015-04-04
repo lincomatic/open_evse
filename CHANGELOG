@@ -1,5 +1,8 @@
 Change Log
 
+vD3.6.3 SCL 20150403
+- fix compile errors in Arduino 1.5.8+ due to deprecation of prog_char
+	
 vD3.6.2 SCL 20150326
 - add delay(200) to beginning of setup() to fix random LCD black out at boot
 	Thanks to CraigK!

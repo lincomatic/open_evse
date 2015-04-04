@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.6.2"
+#define VERSION "D3.6.3"
 
 //-- begin features
 
@@ -499,11 +499,11 @@ public:
   void println(char *s) { 
     Serial.println(s); 
   }
-  void println_P(prog_char *s);
+  void println_P(const char PROGMEM *s);
   void print(char *s) { 
     Serial.print(s); 
   }
-  void print_P(prog_char *s);
+  void print_P(const char PROGMEM *s);
   void printlnn();
   void flush() { 
     Serial.flush(); 
@@ -565,16 +565,16 @@ public:
   void LcdPrint(const char *s) {
     if (LcdDetected()) m_Lcd.print(s); 
   }
-  void LcdPrint_P(const prog_char *s);
+  void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const prog_char *s);
+  void LcdPrint_P(int y,const char PROGMEM *s);
   void LcdPrint(int x,int y,const char *s) { 
     if (LcdDetected()) {
       m_Lcd.setCursor(x,y);
       m_Lcd.print(s); 
     }
   }
-  void LcdPrint_P(int x,int y,const prog_char *s);
+  void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
     if (LcdDetected()) m_Lcd.print(i); 
   }
@@ -592,7 +592,7 @@ public:
     if (LcdDetected()) m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const prog_char *l1,const prog_char *l2);
+  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=1) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
@@ -986,7 +986,7 @@ public:
 
 class Menu {
 public:
-  prog_char *m_Title;
+  const char PROGMEM *m_Title;
   uint8_t m_CurIdx;
   
   void init(const char *firstitem);
