@@ -397,13 +397,17 @@
 // until it is overridden via RAPI
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220   // Craig K, average of three OpenEVSE controller calibrations
 #ifdef OPENEVSE_2
-#define DEFAULT_CURRENT_SCALE_FACTOR 182   // OpenEVSE II with a 27 Ohm burden resistor
+#define DEFAULT_CURRENT_SCALE_FACTOR 186   // OpenEVSE II with a 27 Ohm burden resistor, after a 2-point calibration at 12.5A and 50A
 #else
 #define DEFAULT_CURRENT_SCALE_FACTOR 220   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor (note that the schematic may say 28 Ohms by mistake)
 #endif
 
 // subtract this from ammeter current reading to correct zero offset
-#define DEFAULT_AMMETER_CURRENT_OFFSET 0
+#ifdef OPENEVSE_2
+#define DEFAULT_AMMETER_CURRENT_OFFSET 230 // OpenEVSE II with a 27 Ohm burden resistor, after a 2-point calibration at 12.5A and 50A
+#else
+#define DEFAULT_AMMETER_CURRENT_OFFSET 0   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor.  Could use a more thorough calibration exercise to nails this down.
+#endif
 
 #ifdef KWH_RECORDING
 #define VOLTS_FOR_L1 120       // conventional for North America
