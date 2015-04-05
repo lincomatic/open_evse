@@ -396,7 +396,11 @@
 // NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
 // until it is overridden via RAPI
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220   // Craig K, average of three OpenEVSE controller calibrations
-#define DEFAULT_CURRENT_SCALE_FACTOR 220
+#ifdef OPENEVSE_2
+#define DEFAULT_CURRENT_SCALE_FACTOR 182   // OpenEVSE II with a 27 Ohm burden resistor
+#else
+#define DEFAULT_CURRENT_SCALE_FACTOR 220   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor (note that the schematic may say 28 Ohms by mistake)
+#endif
 
 // subtract this from ammeter current reading to correct zero offset
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0
