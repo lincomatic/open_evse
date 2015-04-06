@@ -2472,7 +2472,7 @@ void J1772EVSEController::Update()
     readAmmeter();
     uint32_t ma = MovingAverage(m_AmmeterReading);
     if (ma != 0xffffffff) {
-      m_ChargingCurrent = ma * m_CurrentScaleFactor + m_AmmeterCurrentOffset;
+      m_ChargingCurrent = ma * m_CurrentScaleFactor - m_AmmeterCurrentOffset;  // subtract it
       if (m_ChargingCurrent < 0) {
 	m_ChargingCurrent = 0;
       }
