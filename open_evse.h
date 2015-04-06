@@ -91,7 +91,7 @@
 #define BKL_TYPE_MONO 0
 #define BKL_TYPE_RGB  1
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_RGB
-//#define DEFAULT_LCD_BKL_TYPE BLK_TYPE_MONO
+//#define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
 
 // Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
@@ -396,7 +396,11 @@
 // NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
 // until it is overridden via RAPI
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220   // Craig K, average of three OpenEVSE controller calibrations
-#define DEFAULT_CURRENT_SCALE_FACTOR 220
+#ifdef OPENEVSE_2
+#define DEFAULT_CURRENT_SCALE_FACTOR 182   // OpenEVSE II with a 27 Ohm burden resistor
+#else
+#define DEFAULT_CURRENT_SCALE_FACTOR 220   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor (note that the schematic may say 28 Ohms by mistake)
+#endif
 
 // subtract this from ammeter current reading to correct zero offset
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0
@@ -468,8 +472,7 @@
 #define TEMPERATURE_INFRARED_PANIC 400            // place the OpenEVSE in an error state
 
 #endif // TESTING_TEMPERATURE_OPERATION 
-#define TEMPERATURE_AMPACITY_LOWER_SETTING 16     //  Throttle the L2 amperage back to this level if we reach either ambient or IR throttle down levels
-                                                  //  keeping this at 16Amps so that OpenEVSE still delivers 2x the L1 kW to the car 
+
 #endif // TEMPERATURE_MONITORING
 
 //-- end configuration
@@ -908,7 +911,7 @@ public:
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
 
   #ifdef OPENEVSE_2      
-  uint32_t readVoltmeter();    // ?? check my work on this since I probably goofed this up by moving it here
+  uint32_t readVoltmeter();
   #endif
   
 #endif // ADVPWR

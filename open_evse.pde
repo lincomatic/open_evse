@@ -243,11 +243,10 @@ const char g_psEvConnected[] PROGMEM = "Connected";
 
 #ifdef TEMPERATURE_MONITORING
 TempMonitor g_TempMonitor;
+uint8_t g_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
 #endif // TEMPERATURE_MONITORING
 
 #ifdef KWH_RECORDING
-boolean g_was_in_ready_state_just_prior = 0;
-boolean g_was_in_connected_state_just_prior = 0;
 unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds = 0;
 #endif // KWH_RECORDING
@@ -323,7 +322,7 @@ void TempMonitor::Init()
   m_tmp007.begin();
 #endif // TMP007_IS_ON_I2C
 
-  m_ampacity = g_EvseController.GetCurrentCapacity();
+  g_ampacity = g_EvseController.GetCurrentCapacity();  // Need to keep track of the user's original ampacity setting since temperature monitoring will throttle it back and need to later restore it
 }
 
 void TempMonitor::Read()
@@ -351,6 +350,9 @@ void TempMonitor::Read()
   m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
   m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);  // keep the reading like 235 meaning 23.5C
   if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer
+  #ifdef OPENEVSE_2
+    m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer, OpenEVSE II does not use the DS3231
+  #endif
 #endif // RTC
 }
 #endif // TEMPERATURE_MONITORING
@@ -898,22 +900,6 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     
     switch(curstate) {
     case EVSE_STATE_A: // not connected
-
-#ifdef KWH_RECORDING
-      g_was_in_ready_state_just_prior = 1;     // detect state transition from ready to connected
-      
-     if (g_was_in_connected_state_just_prior == 1) {   // Reset WattSeconds upon transition from Ready to Connected and accumulate the dollars and cents
-      g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);   
- 
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 0,g_WattHours_accumulated);            // safe to write to eeprom here in the code since it only occurs on the state change from Connected to Ready
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 1,g_WattHours_accumulated / 256ul);    // and the specified lifetime write cycles to the eeprom is 100,000 writes cycles
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 2,g_WattHours_accumulated / 65536ul);  // if you plugged in ten times per day the eeprom would still be happy for over 25 years
-      eeprom_write_byte((uint8_t*)EOFS_KWH_ACCUMULATED + 3,g_WattHours_accumulated / 16777216ul);
-     }
-     
-     g_was_in_connected_state_just_prior = 0;   // Reset this to zero in order to detect the unique transition from Ready to Connected
-#endif // KWH_RECORDING
-     
       SetGreenLed(HIGH);
       SetRedLed(LOW);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -939,13 +925,6 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       // n.b. blue LED is off
       break;
     case EVSE_STATE_B: // connected/not charging
-    #ifdef KWH_RECORDING
-    g_was_in_connected_state_just_prior = 1;     // detect state transition from connected to ready
-    if (g_was_in_ready_state_just_prior == 1) {  // Reset WattSeconds upon transition from Ready to Connected
-      g_WattSeconds = 0;
-      }
-      g_was_in_ready_state_just_prior = 0;   // Reset this to zero in order to detect the unique transition from Ready to Connected
-    #endif// KWH_RECORDING
       SetGreenLed(HIGH);
       SetRedLed(HIGH);
 #ifdef LCD16X2 //Adafruit RGB LCD
@@ -1074,24 +1053,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   SetAmmeterDirty(0);
 
   uint32_t current = g_EvseController.GetChargingCurrent();
-  
-//  set 28.2A for testing the kWh code with an EV simulator ??
-//   current = 28200;
- 
-#ifdef KWH_RECORDING
-    #ifdef OPENEVSE_2
-    g_WattSeconds = g_WattSeconds + (g_EvseController.readVoltmeter() / 1000 * current / 1000);
-    #else
-    if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
-//      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 50);  // accelerate this by 20x for testing with an EV simulator ??
-      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
-    }
-    else {
-      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
-    }
-  #endif // OPENEVSE_2
-#endif // KWH_RECORDING
-      
+
   /*      int ma;
 	  if (current < 1000) {
 	  // nnnmA
@@ -1137,6 +1099,32 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
   time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
   if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
    
+    #ifdef KWH_RECORDING
+      uint32_t current = g_EvseController.GetChargingCurrent();
+    #ifdef OPENEVSE_2
+      g_WattSeconds = g_WattSeconds + (g_EvseController.readVoltmeter() / 1000 * current / 1000);
+    #else
+    if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
+    }
+    else {
+      g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
+    }
+    #endif // OPENEVSE_2   
+    sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
+    LcdPrint(0,1,g_sTmp);
+
+    #ifdef OPENEVSE_2
+      sprintf(g_sTmp," %3luV",(g_EvseController.readVoltmeter() / 1000));  // Display voltage from OpenEVSE II
+      LcdPrint(11,1,g_sTmp);
+    #else
+      sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      LcdPrint(7,1,g_sTmp);
+    #endif // OPENEVSE_2
+    #else // ! KWH_RECORDING
+      LcdPrint(0,1,g_BlankLine);
+    #endif // KWH_RECORDING
+
 #ifdef TEMPERATURE_MONITORING
     if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
       g_OBD.LcdClearLine(1);
@@ -1178,16 +1166,6 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       }           
     }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
     else  {
-       #ifdef KWH_RECORDING 
-        sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
-        LcdPrint(0,1,g_sTmp);
-  
-        sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
-        LcdPrint(7,1,g_sTmp);
-      #else // KWH_RECORDING
-        LcdPrint(0,1,g_BlankLine);
-      #endif // KWH_RECORDING
-        
       SetRedLed(LOW);          // restore the normal TEAL backlight in case it was left RED while last blinking
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(TEAL);
@@ -2376,10 +2354,19 @@ void J1772EVSEController::Update()
     if (m_EvseState == EVSE_STATE_A) { // connected, not ready to charge
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
+      #ifdef KWH_RECORDING
+        g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
+        eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
+      #endif // KWH_RECORDING
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
       m_Pilot.SetPWM(m_CurrentCapacity);
+      #ifdef KWH_RECORDING
+        if (prevevsestate == EVSE_STATE_A) {
+          g_WattSeconds = 0;
+        }
+      #endif
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
@@ -2394,6 +2381,11 @@ void J1772EVSEController::Update()
       g_OBD.LcdMsg("Closing","Relay");
       delay(150);
 #endif // FT_GFI_LOCKOUT
+      #ifdef KWH_RECORDING
+        if (prevevsestate == EVSE_STATE_A) {
+          g_WattSeconds = 0;
+        }
+      #endif
       chargingOn(); // turn on charging current
     }
     else if (m_EvseState == EVSE_STATE_D) {
@@ -2417,6 +2409,7 @@ void J1772EVSEController::Update()
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
       m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
       g_OBD.Update(1,1);
+      g_EvseController.SetCurrentCapacity(g_ampacity,0);  // set L2 to the user's original setting for L2 current, otherwise it will be stuck at the minimum
       while (1) processInputs(); // spin forever
     }
 #endif //TEMPERATURE_MONITORING
@@ -2503,14 +2496,14 @@ void J1772EVSEController::Update()
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(1);
-	g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);     // set L2 to something lower that helps the heat to subside
+	g_EvseController.SetCurrentCapacity(g_ampacity / 2,0);     // set L2 to the throttled back level
       }
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
-	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);    // set L2 to the user's original setting for L2 current
+	g_EvseController.SetCurrentCapacity(g_ampacity,0);    // set L2 to the user's original setting for L2 current
       }           
       
       
@@ -2518,14 +2511,14 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        g_EvseController.SetCurrentCapacity(MIN_CURRENT_CAPACITY,0);     // set L2 to the minimum
+        g_EvseController.SetCurrentCapacity(g_ampacity / 4,0);
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
-	g_EvseController.SetCurrentCapacity(TEMPERATURE_AMPACITY_LOWER_SETTING,0);    // set L2 to the throttled back level
+	g_EvseController.SetCurrentCapacity(g_ampacity / 2,0);    // set L2 to the throttled back level
         m_Pilot.SetPWM(m_CurrentCapacity);
       }    
     }
@@ -2620,8 +2613,10 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd)
 // 35 ms is just a bit longer than 1.5 cycles at 50 Hz
 #define VOLTMETER_POLL_INTERVAL (35)
 // This is just a wild guess
-#define VOLTMETER_SCALE_FACTOR (266)
-#define VOLTMETER_OFFSET_FACTOR (40000)
+// #define VOLTMETER_SCALE_FACTOR (266)     // original guess
+#define VOLTMETER_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+// #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
+#define VOLTMETER_OFFSET_FACTOR (46800)     // calibrated for Craig K OpenEVSE II build
 unsigned long J1772EVSEController::readVoltmeter()
 {
   unsigned int peak = 0;
