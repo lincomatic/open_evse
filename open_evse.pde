@@ -243,7 +243,6 @@ const char g_psEvConnected[] PROGMEM = "Connected";
 
 #ifdef TEMPERATURE_MONITORING
 TempMonitor g_TempMonitor;
-uint8_t g_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
 #endif // TEMPERATURE_MONITORING
 
 #ifdef KWH_RECORDING
@@ -322,7 +321,7 @@ void TempMonitor::Init()
   m_tmp007.begin();
 #endif // TMP007_IS_ON_I2C
 
-  g_ampacity = g_EvseController.GetCurrentCapacity();  // Need to keep track of the user's original ampacity setting since temperature monitoring will throttle it back and need to later restore it
+  m_ampacity = g_EvseController.GetCurrentCapacity();  // Need to keep track of the user's original ampacity setting since temperature monitoring will throttle it back and need to later restore it
 }
 
 void TempMonitor::Read()
@@ -2409,7 +2408,7 @@ void J1772EVSEController::Update()
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
       m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
       g_OBD.Update(1,1);
-      g_EvseController.SetCurrentCapacity(g_ampacity,0);  // set L2 to the user's original setting for L2 current, otherwise it will be stuck at the minimum
+      g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);  // set L2 to the user's original setting for L2 current, otherwise it will be stuck at the minimum
       while (1) processInputs(); // spin forever
     }
 #endif //TEMPERATURE_MONITORING
@@ -2496,14 +2495,14 @@ void J1772EVSEController::Update()
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(1);
-	g_EvseController.SetCurrentCapacity(g_ampacity / 2,0);     // set L2 to the throttled back level
+	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);     // set L2 to the throttled back level
       }
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
-	g_EvseController.SetCurrentCapacity(g_ampacity,0);    // set L2 to the user's original setting for L2 current
+	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);    // set L2 to the user's original setting for L2 current
       }           
       
       
@@ -2511,14 +2510,14 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        g_EvseController.SetCurrentCapacity(g_ampacity / 4,0);
+        g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 4,0);
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
-	g_EvseController.SetCurrentCapacity(g_ampacity / 2,0);    // set L2 to the throttled back level
+	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);    // set L2 to the throttled back level
         m_Pilot.SetPWM(m_CurrentCapacity);
       }    
     }

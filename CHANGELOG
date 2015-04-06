@@ -1,5 +1,11 @@
 Change Log
 
+vD3.6.4 SCL 20150406
+- fix compile error in rapi_proc.cpp due to prog_char fix
+- CraigK Patch 6: temp monitoring and kWh recording
+- CraigK OpenEvse II ammeter calibration (Craigk46 patch 8)
+- SCL move g_ampacity to g_TempMonitor.m_ampacity
+	
 vD3.6.3 SCL 20150403
 - fix compile errors in Arduino 1.5.8+ due to deprecation of prog_char
 	
