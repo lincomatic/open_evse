@@ -2509,14 +2509,14 @@ void J1772EVSEController::Update()
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(1);
-	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);     // set L2 to the throttled back level
+	SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);     // set L2 to the throttled back level
       }
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
-	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);    // set L2 to the user's original setting for L2 current
+	SetCurrentCapacity(g_TempMonitor.m_ampacity,0);    // set L2 to the user's original setting for L2 current
       }           
       
       
@@ -2524,14 +2524,14 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 4,0);
+        SetCurrentCapacity(g_TempMonitor.m_ampacity / 4,0);
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
-	g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);    // set L2 to the throttled back level
+	SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0);    // set L2 to the throttled back level
         m_Pilot.SetPWM(m_CurrentCapacity);
       }    
     }
