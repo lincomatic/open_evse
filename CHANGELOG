@@ -4,6 +4,7 @@ vD3.6.5 SCL 20150406
 - added HardFault()
 - GFI_RETRY_COUNT 255 -> 6 and GFI_TIMEOUT 1min -> 5min
 - set SERVICE REQUIRED message after GFI retries exhausted
+- added nosave parm to SetCurrentCapacity()
 
 vD3.6.4 SCL 20150406
 - fix compile error in rapi_proc.cpp due to prog_char fix
