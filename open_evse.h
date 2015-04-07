@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.6.5"
+#define VERSION "D3.6.6"
 
 //-- begin features
 
@@ -65,16 +65,23 @@
 // GFI support
 #define GFI
 
+// If you loop a wire from the third GFI pin through the CT a few times and then to ground,
+// enable this. ADVPWR must also be defined.
+#define GFI_SELFTEST
+
 // behavior specified by UL
 // 1) if enabled, POST failure will cause a hard fault until power cycled.
 //    disabled, will retry POST continuously until it passes
 // 2) if enabled, any a fault occurs immediately after charge is initiated, 
 //    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
 #define UL_COMPLIANT
+// if enabled, do GFI self test before closing relay
+#define UL_GFI_SELFTEST
 
-// If you loop a wire from the third GFI pin through the CT a few times and then to ground,
-// enable this. ADVPWR must also be defined.
+#ifdef UL_GFI_SELFTEST
 #define GFI_SELFTEST
+#endif //UL_GFI_SELFTEST
+
 
 // Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 //#define TEMPERATURE_MONITORING
@@ -106,6 +113,9 @@
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
+// valid only if ADVPWR defined - for rectified MID400 chips which block
+// half cycle (for ground check on both legs)
+//#define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
 // connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
@@ -194,6 +204,10 @@
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
 
+#if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
+#error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
+#endif
+
 //
 // begin functional tests
 //
@@ -224,6 +238,15 @@
 //              or  SLEEP OPEN/TIMEOUT if due to timeout
 //
 //#define FT_SLEEP_DELAY
+//
+// endurance test
+// alternate state B 9 sec/state C 1 sec forever
+// top line displays cycle count
+// bottom line displays ac pin state
+//#define FT_ENDURANCE
+
+// just read AC pins and display on line 1
+//#define FT_READ_AC_PINS
 
 //
 // end functional tests
@@ -311,14 +334,17 @@
 #define STUCK_RELAY_DELAY 1000 // delay after charging opened to test, ms
 #define RelaySettlingTime  250 // time for relay to settle in post, ms
 
+// for SAMPLE_ACPINS - max number of ms to sample
+#define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
+
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
 #define GFI_PIN 2  // interrupt number 0 = D2, 1 = D3
 
 #ifdef GFI_SELFTEST
 #define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
-#define GFI_TEST_CYCLES 50 // 50 cycles
-#define GFI_PULSE_DURATION_MS 8000 // of roughly 60 Hz. - 8 ms as a half-cycle
+#define GFI_TEST_CYCLES 60
+#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333 us as a half-cycle
 #endif
 
 
@@ -653,10 +679,10 @@ public:
   void SetFault() { m_GfiFault = 1; }
   uint8_t Fault() { return m_GfiFault; }
 #ifdef GFI_SELFTEST
-  void SelfTest();
-  void SetTestSuccess() { testSuccess = true; }
-  int8_t SelfTestSuccess() { return testSuccess; }
-  int8_t SelfTestInProgress() { return testInProgress; }
+  uint8_t SelfTest();
+  void SetTestSuccess() { testSuccess = 1; }
+  uint8_t SelfTestSuccess() { return testSuccess; }
+  uint8_t SelfTestInProgress() { return testInProgress; }
 #endif
 };
 #endif // GFI
@@ -814,13 +840,18 @@ class J1772EVSEController {
   time_t m_ElapsedChargeTimePrev;
 
 #ifdef ADVPWR
-// Define the Power states read from the L1 and L2 test lines
-// 00 = both, 01 = L1on, 10 = L2on, 11 = none ( active low )
-  enum {both, L1on, L2on, none}
-  PowerSTATE;
-// Define Service States UD = undefined state, L1 = level 1, L2 = level 2, OG = open ground, SR = stuck Relay
-  enum { UD, L1, L2, OG, SR, FG} 
-  SVCSTATE;
+// power states for doPost() (active low)
+#define both 0
+#define L1on 1
+#define L2on 2
+#define none 3
+// service states for doPost()
+#define UD 0 // undefined
+#define L1 1 // L1
+#define L2 2 // L2
+#define OG 3 // open ground
+#define SR 4 // stuck relay
+#define FG 5 // GFI fault
 
   uint8_t doPost();
 #endif // ADVPWR

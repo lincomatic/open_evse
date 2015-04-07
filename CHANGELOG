@@ -1,5 +1,13 @@
 Change Log
 
+vD3.6.6 SCL 20150406
+- added SAMPLE_ACPINS logic for setup with MID400 using inline diodes
+- added FT_ENDURANCE and FT_READ_AC_PINS
+- replace booleans w/ uint8_t
+- in GfiSelfTest() delay(50) when reading GFI_PIN
+- add GFI self test before closing relay per UL (UL_GFI_SELFTEST)
+- change GFI_TEST_CYCLES 50->60 GFI_PULSE_DURATION_US 8000->8333
+
 vD3.6.5 SCL 20150406
 - added HardFault()
 - GFI_RETRY_COUNT 255 -> 6 and GFI_TIMEOUT 1min -> 5min

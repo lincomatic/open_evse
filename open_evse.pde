@@ -250,6 +250,12 @@ unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds = 0;
 #endif // KWH_RECORDING
 
+#ifdef FT_ENDURANCE
+int g_CycleCnt = -1;
+long g_CycleHalfStart;
+uint8_t g_CycleState;
+#endif 
+
 //-- end global variables
 
 static inline void wiresend(uint8_t x) {
@@ -1220,6 +1226,13 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #if defined(DELAYTIMER) && defined(LCD16X2)
   g_CurrTime = curtime;
 #endif //#ifdef DELAYTIMER
+
+#ifdef FT_ENDURANCE
+  uint8_t ReadACPins();
+  LcdSetCursor(0,0);
+  sprintf(g_sTmp,"%d %d",g_CycleCnt,(int)ReadACPins());
+  LcdPrint(g_sTmp);
+#endif // FT_ENDURANCE
 }
 
 
@@ -1240,6 +1253,8 @@ void Gfi::Init()
 #ifdef GFI_SELFTEST
   pinMode(GFI_TEST_PIN, OUTPUT);
 #endif
+
+  Reset();
 }
 
 
@@ -1249,8 +1264,8 @@ void Gfi::Reset()
   WDT_RESET();
 
 #ifdef GFI_SELFTEST
-  testInProgress = false;
-  testSuccess = false;
+  testInProgress = 0;
+  testSuccess = 0;
 #endif // GFI_SELFTEST
 
   if (digitalRead(GFI_PIN) ) m_GfiFault = 1; // if interrupt pin is high, set fault
@@ -1259,19 +1274,27 @@ void Gfi::Reset()
 
 #ifdef GFI_SELFTEST
 
-void Gfi::SelfTest()
+uint8_t Gfi::SelfTest()
 {
-  testInProgress = true;
-  testSuccess = false;
-  for(int i = 0; i < GFI_TEST_CYCLES; i++) {
+  testInProgress = 1;
+  testSuccess = 0;
+  for(int i=0; i < GFI_TEST_CYCLES; i++) {
     digitalWrite(GFI_TEST_PIN, HIGH);
-    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    delayMicroseconds(GFI_PULSE_DURATION_US);
     digitalWrite(GFI_TEST_PIN, LOW);
-    delayMicroseconds(GFI_PULSE_DURATION_MS);
+    delayMicroseconds(GFI_PULSE_DURATION_US);
     if (testSuccess) break; // no need to keep trying.
   }
-  while(digitalRead(GFI_PIN) == HIGH) ; // calm down!
-  testInProgress = false;
+
+  // wait for GFI pin to clear
+  do {
+    delay(50);
+  }
+  while(digitalRead(GFI_PIN) == HIGH) ;
+
+  testInProgress = 0;
+
+  return !testSuccess;
 }
 #endif // GFI_SELFTEST
 #endif // GFI
@@ -1708,9 +1731,42 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 }
 
 #ifdef ADVPWR
+
+// acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
+uint8_t ReadACPins()
+{
+#ifdef SAMPLE_ACPINS
+  //
+  // AC pins are active low, so we set them high
+  // and then if voltage is detected on a pin, it will go low
+  //
+  uint8_t ac1 = 2;
+  uint8_t ac2 = 1;
+  unsigned long startms = millis();
+  
+  do {
+    if (ac1 && (digitalRead(ACLINE1_PIN) == LOW)) {
+      ac1 = 0;
+    }
+    if (ac2 && (digitalRead(ACLINE2_PIN) == LOW)) {
+      ac2 = 0;
+    }
+  } while ((ac1 || ac2) && ((millis() - startms) < AC_SAMPLE_MS));
+  return ac1 | ac2;
+#else // !SAMPLE_ACPINS
+  return ((digitalRead(ACLINE1_PIN) == HIGH) ? 2 : 0) |
+    ((digitalRead(ACLINE2_PIN) == HIGH) ? 1 : 0);
+#endif // SAMPLE_ACPINS
+}
+
+
+
 uint8_t J1772EVSEController::doPost()
 {
   WDT_RESET();
+
+  uint8_t RelayOff, Relay1, Relay2; //Relay Power status
+  uint8_t svcState = UD;	// service state = undefined
 
 #ifdef SERIALCLI
   if (SerDbgEnabled()) {
@@ -1718,8 +1774,6 @@ uint8_t J1772EVSEController::doPost()
   }
 #endif //#ifdef SERIALCLI
 
-  int RelayOff, Relay1, Relay2; //Relay Power status
-  int svcState = UD;	// service state = undefined
 
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
 
@@ -1761,7 +1815,7 @@ uint8_t J1772EVSEController::doPost()
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
 
       // save state with both relays off - for stuck relay state
-      RelayOff = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
+      RelayOff = ReadACPins();
           
       // save state with Relay 1 on 
       digitalWrite(CHARGING_PIN, HIGH);
@@ -1769,7 +1823,7 @@ uint8_t J1772EVSEController::doPost()
       digitalWrite(CHARGING_PINAC, HIGH);
 #endif
       delay(RelaySettlingTime);
-      Relay1 = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
+      Relay1 = ReadACPins();
       digitalWrite(CHARGING_PIN, LOW);
 #ifdef CHARGING_PINAC
       digitalWrite(CHARGING_PINAC, LOW);
@@ -1781,7 +1835,7 @@ uint8_t J1772EVSEController::doPost()
       digitalWrite(CHARGING_PIN2, HIGH); 
 #endif
       delay(RelaySettlingTime);
-      Relay2 = (digitalRead(ACLINE1_PIN) << 1) +  digitalRead(ACLINE2_PIN);
+      Relay2 = ReadACPins();
 #ifdef CHARGING_PIN2
       digitalWrite(CHARGING_PIN2, LOW);
 #endif
@@ -1854,18 +1908,22 @@ uint8_t J1772EVSEController::doPost()
   else { // ! AutoSvcLevelEnabled
   stuckrelaychk:
     if (StuckRelayChkEnabled()) {
-      if (
 #ifdef OPENEVSE_2
-	  (digitalRead(RELAY_TEST_PIN) == HIGH)
-#else // !OPENEVSE_2
-	  ((digitalRead(ACLINE1_PIN) == LOW) || (digitalRead(ACLINE1_PIN) == LOW))
-#endif // OPENEVSE_2
-	  ) {
+      if (digitalRead(RELAY_TEST_PIN) == HIGH) {
 	svcState = SR;
 #ifdef LCD16X2
 	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
 #endif // LCD16X2
       }
+#else // !OPENEVSE_2
+      RelayOff = ReadACPins();
+      if ((RelayOff & 3) != 3) {
+	svcState = SR;
+#ifdef LCD16X2
+	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
+#endif // LCD16X2
+      }
+#endif // OPENEVSE_2
     }
   } // endif AutoSvcLevelEnabled
   
@@ -1873,10 +1931,8 @@ uint8_t J1772EVSEController::doPost()
   // only run GFI test if no fault detected above
   if (((svcState == UD)||(svcState == L1)||(svcState == L2)) &&
       GfiSelfTestEnabled()) {
-    m_Gfi.SelfTest();
-    if (!m_Gfi.SelfTestSuccess()) {
+    if (m_Gfi.SelfTest()) {
 #ifdef LCD16X2
-      g_OBD.LcdSetBacklightColor(RED);
       g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
 #endif // LCD16X2
       svcState = FG;
@@ -1885,6 +1941,7 @@ uint8_t J1772EVSEController::doPost()
 #endif
 
   if ((svcState == OG)||(svcState == SR)||(svcState == FG)) {
+    g_OBD.LcdSetBacklightColor(RED);
     g_OBD.SetGreenLed(LOW);
     g_OBD.SetRedLed(HIGH);
   }
@@ -1902,7 +1959,7 @@ uint8_t J1772EVSEController::doPost()
 
   WDT_RESET();
 
-  return int(svcState);
+  return svcState;
 }
 #endif // ADVPWR
 
@@ -2031,7 +2088,15 @@ void J1772EVSEController::Init()
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
 
-#ifdef ADVPWR  // Power on Self Test for Advanced Power Supply
+#ifdef ADVPWR
+
+#ifdef FT_READ_AC_PINS
+  while (1) {
+    WDT_RESET();
+    sprintf(g_sTmp,"%d",(int)ReadACPins());
+    g_OBD.LcdMsg("AC Pins",g_sTmp);
+  }
+#endif // FT_READ_AC_PINS
  
   uint8_t fault; 
   do {
@@ -2062,10 +2127,6 @@ void J1772EVSEController::Init()
 #endif // ADVPWR  
 
   SetSvcLevel(svclvl);
-
-#ifdef GFI
-  m_Gfi.Reset();
-#endif // GFI
 
   // Start Manual Start Feature - GoldServe
 #ifdef MANUALSTART
@@ -2129,7 +2190,7 @@ void J1772EVSEController::Update()
       ReadPilot(&plow,&phigh);
       // wait for car to bring pilot voltage back to state B level or higher
       // (as an indicator that it opened its relay)
-      // if it doesn't do it within 3 sec, we'll just open our relay anyway
+      // if it doesn't do it within 5 sec, we'll just open our relay anyway
       if ((phigh >= m_ThreshData.m_ThreshBC) || ((curms - m_ChargeOffTimeMS) >= 5000)) {
 	chargingOff();
 #ifdef FT_SLEEP_DELAY
@@ -2188,13 +2249,12 @@ void J1772EVSEController::Update()
     else m_StuckRelayStartTimeMS = 0; // not stuck - reset
   }
 #else // !OPENEVSE_2
-  int PS1state = digitalRead(ACLINE1_PIN);
-  int PS2state = digitalRead(ACLINE2_PIN);
+  uint8_t acpinstate = ReadACPins();
   
   if (chargingIsOn()) { // relay closed
     if ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY) {
       // ground check - can only test when relay closed
-      if (GndChkEnabled() && (PS1state == HIGH) && (PS2state == HIGH)) {
+      if (GndChkEnabled() && ((acpinstate & 3) == 3)) {
 	// bad ground
 	tmpevsestate = EVSE_STATE_NO_GROUND;
 	m_EvseState = EVSE_STATE_NO_GROUND;
@@ -2213,7 +2273,7 @@ void J1772EVSEController::Update()
       // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
       // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
       if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
-	if ((PS1state == LOW) && (PS2state == LOW)) {
+	if (!acpinstate) {
 	  // set to L2
 	  SetSvcLevel(2,1);
 	}
@@ -2235,8 +2295,8 @@ void J1772EVSEController::Update()
       }
     }
     else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
-      if ((PS1state == LOW) || (PS2state == LOW)) { // Stuck Relay reading
-	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+      if (((acpinstate & 3) != 3)) { // Stuck Relay reading
+	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
 	  m_StuckRelayStartTimeMS = curms; // mark start state
 	}
         if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
@@ -2340,6 +2400,36 @@ void J1772EVSEController::Update()
       tmpevsestate = EVSE_STATE_UNKNOWN;
     }
 
+#ifdef FT_ENDURANCE
+    if (nofault) {
+      if (((tmpevsestate == EVSE_STATE_A)||(tmpevsestate == EVSE_STATE_B)) && (g_CycleCnt < 0)) {
+        g_CycleCnt = 0;
+        g_CycleHalfStart = curms;
+        g_CycleState = EVSE_STATE_B;
+      } 
+
+      if (g_CycleCnt >= 0) {
+        if (g_CycleState == EVSE_STATE_B) {
+	  if ((curms - g_CycleHalfStart) >= 9000) {
+	    g_CycleCnt++;
+	    g_CycleHalfStart = curms;
+	    tmpevsestate = EVSE_STATE_C;
+	    g_CycleState = EVSE_STATE_C;
+	  }
+	  else tmpevsestate = EVSE_STATE_B;
+        }
+        else if (g_CycleState == EVSE_STATE_C) {
+	  if ((curms - g_CycleHalfStart) >= 1000) {
+	    g_CycleHalfStart = curms;
+	    tmpevsestate = EVSE_STATE_B;
+	    g_CycleState = EVSE_STATE_B;
+	  }
+	  else tmpevsestate = EVSE_STATE_C;
+        }
+      }
+    }
+#endif // FT_ENDURANCE
+
     // debounce state transitions
     if (tmpevsestate != prevevsestate) {
       if (tmpevsestate != m_TmpEvseState) {
@@ -2359,9 +2449,9 @@ void J1772EVSEController::Update()
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
       digitalWrite(GFI_TEST_PIN, HIGH);
-      delayMicroseconds(GFI_PULSE_DURATION_MS);
+      delayMicroseconds(GFI_PULSE_DURATION_US);
       digitalWrite(GFI_TEST_PIN, LOW);
-      delayMicroseconds(GFI_PULSE_DURATION_MS);
+      delayMicroseconds(GFI_PULSE_DURATION_US);
     }
   }
 #endif // FT_GFI_RETRY
@@ -2391,13 +2481,30 @@ void J1772EVSEController::Update()
 #ifdef FT_GFI_LOCKOUT
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
 	digitalWrite(GFI_TEST_PIN, HIGH);
-	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	delayMicroseconds(GFI_PULSE_DURATION_US);
 	digitalWrite(GFI_TEST_PIN, LOW);
-	delayMicroseconds(GFI_PULSE_DURATION_MS);
+	delayMicroseconds(GFI_PULSE_DURATION_US);
       }
       g_OBD.LcdMsg("Closing","Relay");
       delay(150);
 #endif // FT_GFI_LOCKOUT
+
+#ifdef UL_GFI_SELFTEST
+      // test GFI before closing relay
+      if (GfiSelfTestEnabled() && m_Gfi.SelfTest()) {
+       // GFI test failed - hard fault
+        m_EvseState = EVSE_STATE_GFCI_FAULT;
+#ifdef LCD16X2
+	g_OBD.SetGreenLed(LOW);
+	g_OBD.SetRedLed(HIGH);
+	g_OBD.LcdSetBacklightColor(RED);
+	g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
+#endif // LCD16X2
+
+	while (1) processInputs(); // spin forever
+      }
+#endif // UL_GFI_SELFTEST
+
       #ifdef KWH_RECORDING
         if (prevevsestate == EVSE_STATE_A) {
           g_WattSeconds = 0;
