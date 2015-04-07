@@ -889,9 +889,9 @@ const char g_psReady[] PROGMEM = "Ready";
 const char g_psCharging[] PROGMEM = "Charging";
 void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 {
+  int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
-  int i;
 
   if (g_EvseController.StateTransition() || force) {
     // Optimize function call - GoldServe
@@ -2278,6 +2278,7 @@ void J1772EVSEController::Update()
 #endif // FT_GFI_RETRY
       m_GfiRetryCnt++;
 
+      if ((GFI_RETRY_COUNT != 255) && (m_GfiRetryCnt > GFI_RETRY_COUNT)) {
 	HardFault();
       }
       else {
