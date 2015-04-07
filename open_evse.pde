@@ -1224,17 +1224,24 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 
 
 #ifdef GFI
-
 // interrupt service routing
 void gfi_isr()
 {
   g_EvseController.SetGfiTripped();
 }
 
+
 void Gfi::Init()
 {
-  Reset();
+  pinMode(GFI_PIN,INPUT);
+  // GFI triggers on rising edge
+  attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
+
+#ifdef GFI_SELFTEST
+  pinMode(GFI_TEST_PIN, OUTPUT);
+#endif
 }
+
 
 //RESET GFI LOGIC
 void Gfi::Reset()
@@ -1256,7 +1263,6 @@ void Gfi::SelfTest()
 {
   testInProgress = true;
   testSuccess = false;
-  pinMode(GFI_TEST_PIN, OUTPUT);
   for(int i = 0; i < GFI_TEST_CYCLES; i++) {
     digitalWrite(GFI_TEST_PIN, HIGH);
     delayMicroseconds(GFI_PULSE_DURATION_MS);
@@ -1449,6 +1455,12 @@ void J1772EVSEController::chargingOff()
   m_ChargingCurrent = 0;
 #endif
 } 
+
+void J1772EVSEController::HardFault()
+{
+  g_OBD.Update(1,1);
+  while (1) processInputs(); // spin forever or until user resets via menu
+}
 
 #ifdef GFI
 inline void J1772EVSEController::SetGfiTripped()
@@ -1942,6 +1954,10 @@ void J1772EVSEController::Init()
 #endif
 #endif // ADVPWR
 
+#ifdef GFI
+  m_Gfi.Init();
+#endif // GFI
+
   chargingOff();
 
   m_Pilot.Init(); // init the pilot
@@ -2048,7 +2064,7 @@ void J1772EVSEController::Init()
   SetSvcLevel(svclvl);
 
 #ifdef GFI
-  m_Gfi.Init();
+  m_Gfi.Reset();
 #endif // GFI
 
   // Start Manual Start Feature - GoldServe
@@ -2247,22 +2263,25 @@ void J1772EVSEController::Update()
     tmpevsestate = EVSE_STATE_GFCI_FAULT;
     m_EvseState = EVSE_STATE_GFCI_FAULT;
 
-    if ((m_GfiRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) {
-      if (prevevsestate != EVSE_STATE_GFCI_FAULT) {
-	if (m_GfiTripCnt < 254) {
-	  m_GfiTripCnt++;
-	  eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
-	}
- 	m_GfiRetryCnt = 0;
-	m_GfiTimeout = curms + GFI_TIMEOUT;
+    if (prevevsestate != EVSE_STATE_GFCI_FAULT) {
+      if (m_GfiTripCnt < 254) {
+	m_GfiTripCnt++;
+	eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
       }
-      else if (curms >= m_GfiTimeout) {
+      m_GfiRetryCnt = 0;
+      m_GfiTimeout = curms + GFI_TIMEOUT;
+    }
+    else if (curms >= m_GfiTimeout) {
 #ifdef FT_GFI_RETRY
-	g_OBD.LcdMsg("Reset","GFI");
-	delay(250);
+      g_OBD.LcdMsg("Reset","GFI");
+      delay(250);
 #endif // FT_GFI_RETRY
+      m_GfiRetryCnt++;
+
+	HardFault();
+      }
+      else {
 	m_Gfi.Reset();
-	m_GfiRetryCnt++;
 	m_GfiTimeout = curms + GFI_TIMEOUT;
       }
     }
@@ -2337,7 +2356,6 @@ void J1772EVSEController::Update()
   if (nofault && (prevevsestate == EVSE_STATE_C) && 
       ((curms - m_ChargeOnTimeMS) > 10000)) {
     g_OBD.LcdMsg("Induce","Fault");
-    pinMode(GFI_TEST_PIN, OUTPUT);
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
       digitalWrite(GFI_TEST_PIN, HIGH);
       delayMicroseconds(GFI_PULSE_DURATION_MS);
@@ -2370,7 +2388,6 @@ void J1772EVSEController::Update()
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
 #ifdef FT_GFI_LOCKOUT
-      pinMode(GFI_TEST_PIN, OUTPUT);
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
 	digitalWrite(GFI_TEST_PIN, HIGH);
 	delayMicroseconds(GFI_PULSE_DURATION_MS);
@@ -2407,9 +2424,7 @@ void J1772EVSEController::Update()
       }
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
       m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
-      g_OBD.Update(1,1);
-      g_EvseController.SetCurrentCapacity(g_TempMonitor.m_ampacity,0);  // set L2 to the user's original setting for L2 current, otherwise it will be stuck at the minimum
-      while (1) processInputs(); // spin forever
+      HardFault();
     }
 #endif //TEMPERATURE_MONITORING
     else if (m_EvseState == EVSE_STATE_DIODE_CHK_FAILED) {
@@ -2431,8 +2446,7 @@ void J1772EVSEController::Update()
 #ifdef UL_COMPLIANT
       // per discussion w/ UL Fred Reyes 20150217
       // always hard fault stuck relay
-      g_OBD.Update(1,1);
-      while (1) processInputs(); // spin forever
+      HardFault();
 #endif // UL_COMPLIANT
     }
     else {
@@ -2457,8 +2471,7 @@ void J1772EVSEController::Update()
   if (!nofault && (prevevsestate == EVSE_STATE_C)) {
     // if fault happens immediately (within 2 sec) after charging starts, hard fault
     if ((curms - m_ChargeOnTimeMS) <= 2000) {
-      g_OBD.Update(1,1);
-      while (1) processInputs(); // spin forever
+      HardFault();
     }
   }
 #endif // UL_COMPLIANT
@@ -3970,11 +3983,6 @@ void setup()
 #ifdef BTN_MENU
   g_BtnHandler.init();
 #endif // BTN_MENU
-
-#ifdef GFI
-  // GFI triggers on rising edge
-  attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
-#endif // GFI
 
   EvseReset();
 
