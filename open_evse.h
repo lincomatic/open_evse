@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.6.3"
+#define VERSION "D3.6.4"
 
 //-- begin features
 
@@ -647,6 +647,7 @@ class Gfi {
 #endif // GFI_SELFTEST
 public:
   Gfi() {}
+
   void Init();
   void Reset();
   void SetFault() { m_GfiFault = 1; }
@@ -678,12 +679,11 @@ public:
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
 
+  uint8_t m_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
   int16_t m_TMP007_temperature;
-  
-  uint16_t m_ampacity;
 
   TempMonitor() {}
   void Init();
@@ -913,6 +913,8 @@ public:
     else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+
+  void HardFault();
 
   #ifdef OPENEVSE_2      
   uint32_t readVoltmeter();
