@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.6.4"
+#define VERSION "D3.6.5"
 
 //-- begin features
 
@@ -211,7 +211,7 @@
 //#define FT_GFI_LOCKOUT
 
 // Test for auto reclose after GFI fault. Attach EVSIM in STATE C
-// 10 sec after charging starts will Induce/Fault. 1 minute after fault
+// 10 sec after charging starts will induce fault. 1 minute after fault
 // induced, should clear the fault and resume normal operation
 //#define FT_GFI_RETRY
 
@@ -326,9 +326,9 @@
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
 #define GFI_RETRY_COUNT  255
 #else // !GFI_TESTING
-#define GFI_TIMEOUT ((unsigned long)(1*60000)) // 15*60*1000 doesn't work. go figure
+#define GFI_TIMEOUT ((unsigned long)(5*60000)) // 15*60*1000 doesn't work. go figure
 // number of times to retry tests before giving up. 255 = retry indefinitely
-#define GFI_RETRY_COUNT  255
+#define GFI_RETRY_COUNT  6
 #endif // GFI_TESTING
 #endif // GFI
 
