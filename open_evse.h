@@ -43,7 +43,7 @@
 #define AMMETER
 
 // serial remote api
-#define RAPI
+//#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -54,8 +54,8 @@
 #define WATCHDOG
 
 
-// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-// #define OPENEVSE_2
+// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
+#define OPENEVSE_2
 
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
@@ -279,8 +279,10 @@
 #define VOLT_PIN 1 // analog pilot voltage reading pin A1
 #ifdef OPENEVSE_2
 #define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
-#define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
-#define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
+// This pin must match the last write to CHARGING_PIN, modulo a delay. If
+// it is low when CHARGING_PIN is high, that's a missing ground.
+// If it's high when CHARGING_PIN is low, that's a stuck relay.
+#define RELAY_TEST_PIN 3 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
 #define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
@@ -453,7 +455,7 @@
 #ifdef TEMPERATURE_MONITORING
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
-#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
 #define TEMPERATURE_DISPLAY_ALWAYS 0   // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
                                        // Set to it 0 to only display when temperatures become elevated 
 #define TESTING_TEMPERATURE_OPERATION  // set this flag to play with very low sensor thresholds or to evaluate the code

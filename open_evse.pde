@@ -1735,6 +1735,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 // acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
 uint8_t ReadACPins()
 {
+#ifndef OPENEVSE_2
 #ifdef SAMPLE_ACPINS
   //
   // AC pins are active low, so we set them high
@@ -1757,6 +1758,7 @@ uint8_t ReadACPins()
   return ((digitalRead(ACLINE1_PIN) == HIGH) ? 2 : 0) |
     ((digitalRead(ACLINE2_PIN) == HIGH) ? 1 : 0);
 #endif // SAMPLE_ACPINS
+#endif // OPENEVSE_2
 }
 
 
@@ -2208,7 +2210,7 @@ void J1772EVSEController::Update()
 #ifdef ADVPWR
 #ifdef OPENEVSE_2
   if (GndChkEnabled() && digitalRead(CHARGING_PIN) == HIGH) {
-    if ((digitalRead(GROUND_TEST_PIN) != HIGH) &&
+    if ((digitalRead(RELAY_TEST_PIN) != HIGH) &&
 
 	(((curms - m_ChargeOnTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
 	 (prevevsestate == EVSE_STATE_NO_GROUND))) {
@@ -2228,8 +2230,8 @@ void J1772EVSEController::Update()
       nofault = 0;
     }
   }
-  if (StuckRelayChkEnabled()) {
-    if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
+  if (StuckRelayChkEnabled() && digitalRead(CHARGING_PIN) == LOW) {
+    if (digitalRead(RELAY_TEST_PIN) != LOW) {
       if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
 	m_StuckRelayStartTimeMS = curms; // mark start state
 	if (m_StuckRelayTripCnt < 254) {
