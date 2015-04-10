@@ -33,7 +33,7 @@
 extern J1772EVSEController g_EvseController;
 extern OnboardDisplay g_OBD;
 
-prog_char RAPI_VER[] PROGMEM = RAPIVER;
+const char RAPI_VER[] PROGMEM = RAPIVER;
 
 
 // convert 2-digit hex string to uint8

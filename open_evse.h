@@ -35,7 +35,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.4.0"
+#define VERSION "D3.6.6"
 
 //-- begin features
 
@@ -55,7 +55,7 @@
 
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
-//#define OPENEVSE_2
+// #define OPENEVSE_2
 
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
@@ -69,6 +69,27 @@
 // enable this. ADVPWR must also be defined.
 #define GFI_SELFTEST
 
+// behavior specified by UL
+// 1) if enabled, POST failure will cause a hard fault until power cycled.
+//    disabled, will retry POST continuously until it passes
+// 2) if enabled, any a fault occurs immediately after charge is initiated, 
+//    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
+#define UL_COMPLIANT
+// if enabled, do GFI self test before closing relay
+#define UL_GFI_SELFTEST
+
+#ifdef UL_GFI_SELFTEST
+#define GFI_SELFTEST
+#endif //UL_GFI_SELFTEST
+
+
+// Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
+//#define TEMPERATURE_MONITORING
+
+#ifdef AMMETER
+// kWh Recording feature depends upon #AMMETER support
+#define KWH_RECORDING
+#endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
 #define RGBLCD
@@ -77,7 +98,7 @@
 #define BKL_TYPE_MONO 0
 #define BKL_TYPE_RGB  1
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_RGB
-//#define DEFAULT_LCD_BKL_TYPE BLK_TYPE_MONO
+//#define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
 
 // Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
@@ -92,6 +113,9 @@
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
+// valid only if ADVPWR defined - for rectified MID400 chips which block
+// half cycle (for ground check on both legs)
+//#define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
 // connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
@@ -112,14 +136,16 @@
 #endif // BTN_MENU
 
 // Option for RTC and DelayTime
-// REQUIRES HARDWARE RTC: DS1307 connected via I2C
+// REQUIRES HARDWARE RTC: DS1307 or DS3231 connected via I2C
 #define RTC // enable RTC & timer functions
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
+#ifndef TEMPERATURE_MONITORING
+// cannot define TEMPERATURE_MONITORING and DELAYTIMER at the same time due to code space restrictions
 #define DELAYTIMER
-// Option for AutoStart Enable/Disable - GoldServe
-#define MANUALSTART
+#endif
+
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
 //#define AUTOSTART_MENU
 
@@ -129,10 +155,15 @@
 
 // AutoStart feature must be defined if Delay Timers are used - GoldServe
 #if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
+// Option for AutoStart Enable/Disable - GoldServe
 #define MANUALSTART
 #endif
 
 #endif // RTC
+
+// if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
+//#define SLEEP_STATUS_PIN 12
+
 
 // for stability testing - shorter timeout/higher retry count
 //#define GFI_TESTING
@@ -173,6 +204,54 @@
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
 
+#if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
+#error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
+#endif
+
+//
+// begin functional tests
+//
+//
+// for debugging ONLY - turns off all safety checks
+//#define NOCHECKS
+// DO NOT USE FT_xxx. FOR FUNCTIONAL TESTING ONLY
+//
+// Test for GFI fault lockout
+// immediately GFI fault when entering STATE C -> should hard fault
+// there will be a delay of a few seconds before the fault because we
+// need to loop to cause the GFI fault
+// right after GFI fault generated, will flash Closing/Relay on LCD
+// -> should hard GFCI fault instantly when relay closes
+//#define FT_GFI_LOCKOUT
+
+// Test for auto reclose after GFI fault. Attach EVSIM in STATE C
+// 10 sec after charging starts will induce fault. 1 minute after fault
+// induced, should clear the fault and resume normal operation
+//#define FT_GFI_RETRY
+
+//
+// test delay between start of sleep mode and opening relay
+// connect EV and put into charging state C
+// relay should open after pilot goes back to state B or higher
+// or after 3 sec, whichever happens first
+// LCD will display SLEEP OPEN/THRESH if opened due to EV response
+//              or  SLEEP OPEN/TIMEOUT if due to timeout
+//
+//#define FT_SLEEP_DELAY
+//
+// endurance test
+// alternate state B 9 sec/state C 1 sec forever
+// top line displays cycle count
+// bottom line displays ac pin state
+//#define FT_ENDURANCE
+
+// just read AC pins and display on line 1
+//#define FT_READ_AC_PINS
+
+//
+// end functional tests
+//
+
 //-- begin configuration
 
 // WARNING: ALL DELAYS *MUST* BE SHORTER THAN THIS TIMER OR WE WILL GET INTO
@@ -203,21 +282,21 @@
 #define GROUND_TEST_PIN 3 // If this pin is ever low, it's a ground test failure.
 #define RELAY_TEST_PIN 9 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
 #define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
-#else
+#else // !OPENEVSE_2
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
 #define RED_LED_PIN 5 // Digital pin
 #define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
 #define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
 #define CHARGING_PINAC 9 //digital Charging pin for AC relay
-#endif
+#define GREEN_LED_PIN 13 // Digital pin
+#endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
 // (i.e PORTB pins 1 & 2)
 // if using fast PWM (PAFC_PWM disabled) PILOT_PIN *MUST* be digital 10
 #define PILOT_PIN 10
 
-#define GREEN_LED_PIN 13 // Digital pin
 
 #define SERIAL_BAUD 115200
 
@@ -233,15 +312,16 @@
 #define EOFS_TIMER_STOP_HOUR     7 // 1 byte
 #define EOFS_TIMER_STOP_MIN      8 // 1 byte
 
-#ifdef AMMETER
+// AMMETER stuff
 #define EOFS_CURRENT_SCALE_FACTOR 9 // 2 bytes
 #define EOFS_AMMETER_CURR_OFFSET  11 // 2 bytes
-#endif // AMMETER
+#define EOFS_KWH_ACCUMULATED 13 // 4 bytes
 
-#define EOFS_GFI_TRIP_CNT      13 // 1 byte
-#define EOFS_NOGND_TRIP_CNT    14 // 1 byte
-#define EOFS_STUCK_RELAY_TRIP_CNT 15 // 1 byte
-#define EOFS_WATCHDOG_TRIP_CNT 16 // 1 byte
+// fault counters
+#define EOFS_GFI_TRIP_CNT      17 // 1 byte
+#define EOFS_NOGND_TRIP_CNT    18 // 1 byte
+#define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
+
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250
@@ -254,14 +334,17 @@
 #define STUCK_RELAY_DELAY 1000 // delay after charging opened to test, ms
 #define RelaySettlingTime  250 // time for relay to settle in post, ms
 
+// for SAMPLE_ACPINS - max number of ms to sample
+#define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
+
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
 #define GFI_PIN 2  // interrupt number 0 = D2, 1 = D3
 
 #ifdef GFI_SELFTEST
 #define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
-#define GFI_TEST_CYCLES 50 // 50 cycles
-#define GFI_PULSE_DURATION_MS 8000 // of roughly 60 Hz. - 8 ms as a half-cycle
+#define GFI_TEST_CYCLES 60
+#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333 us as a half-cycle
 #endif
 
 
@@ -269,9 +352,9 @@
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
 #define GFI_RETRY_COUNT  255
 #else // !GFI_TESTING
-#define GFI_TIMEOUT ((unsigned long)(1*60000)) // 15*60*1000 doesn't work. go figure
+#define GFI_TIMEOUT ((unsigned long)(5*60000)) // 15*60*1000 doesn't work. go figure
 // number of times to retry tests before giving up. 255 = retry indefinitely
-#define GFI_RETRY_COUNT  15
+#define GFI_RETRY_COUNT  6
 #endif // GFI_TESTING
 #endif // GFI
 
@@ -319,12 +402,18 @@
 #ifdef AMMETER
 // This multiplier is the number of milliamps per A/d converter unit.
 
-// First, you need to select the burden resistor for the CT. You choose the largest value possible such that // the maximum peak-to-peak voltage for the current range is 5 volts. To obtain this value, divide the maximum // outlet current by the Te. That value is the maximum CT current RMS. You must convert that to P-P, so multiply // by 2*sqrt(2). Divide 5 by that value and select the next lower standard resistor value. For the reference // design, Te is 1018 and the outlet maximum is 30. 5/((30/1018)*2*sqrt(2)) = 59.995, so a 56 ohm resistor // is called for. Call this value Rb (burden resistor).
+// First, you need to select the burden resistor for the CT. You choose the largest value possible such that 
+// the maximum peak-to-peak voltage for the current range is 5 volts. To obtain this value, divide the maximum 
+// outlet current by the Te. That value is the maximum CT current RMS. You must convert that to P-P, so multiply 
+// by 2*sqrt(2). Divide 5 by that value and select the next lower standard resistor value. For the reference 
+// design, Te is 1018 and the outlet maximum is 30. 5/((30/1018)*2*sqrt(2)) = 59.995, so a 56 ohm resistor 
+// is called for. Call this value Rb (burden resistor).
 
-// Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent() // method calculates the RMS value before the scaling factor, so RMS need not be taken into account.
+// Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent() 
+// method calculates the RMS value before the scaling factor, so RMS need not be taken into account.
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
-
-// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
+// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference 
+// design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
 //#define DEFAULT_CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
 //#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
 // Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
@@ -332,11 +421,25 @@
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
 // NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
 // until it is overridden via RAPI
-#define DEFAULT_CURRENT_SCALE_FACTOR 0
+//#define DEFAULT_CURRENT_SCALE_FACTOR 220   // Craig K, average of three OpenEVSE controller calibrations
+#ifdef OPENEVSE_2
+#define DEFAULT_CURRENT_SCALE_FACTOR 186   // OpenEVSE II with a 27 Ohm burden resistor, after a 2-point calibration at 12.5A and 50A
+#else
+#define DEFAULT_CURRENT_SCALE_FACTOR 220   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor (note that the schematic may say 28 Ohms by mistake)
+#endif
 
 // subtract this from ammeter current reading to correct zero offset
-#define DEFAULT_AMMETER_CURRENT_OFFSET 0
-//#define DEFAULT_AMMETER_CURRENT_OFFSET -950 // mA //Craig K,  this resolves the zero offset that I observed
+#ifdef OPENEVSE_2
+#define DEFAULT_AMMETER_CURRENT_OFFSET 230 // OpenEVSE II with a 27 Ohm burden resistor, after a 2-point calibration at 12.5A and 50A
+#else
+#define DEFAULT_AMMETER_CURRENT_OFFSET 0   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor.  Could use a more thorough calibration exercise to nails this down.
+#endif
+
+#ifdef KWH_RECORDING
+#define VOLTS_FOR_L1 120       // conventional for North America
+//  #define VOLTS_FOR_L2 230   // conventional for most of the world
+#define VOLTS_FOR_L2 240       // conventional for North America
+#endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -347,13 +450,67 @@
 
 #endif // AMMETER
 
+#ifdef TEMPERATURE_MONITORING
+
+#define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
+#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+#define TEMPERATURE_DISPLAY_ALWAYS 0   // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
+                                       // Set to it 0 to only display when temperatures become elevated 
+#define TESTING_TEMPERATURE_OPERATION  // set this flag to play with very low sensor thresholds or to evaluate the code
+                                       // comment it out instead to run with normal temperature thresholds
+
+// Temperature thresholds below are expressed as 520 meaning 52.0C to save from needing floating point library
+// Keep any adjustments that you make at least 2C apart, giving things some hysterisis.  (example is 580 is 3C apart from 550)
+// The RESTORE_AMPERAGE value must be lower than the THROTTLE_DOWN value
+// The THROTTLE_DOWN value must be lower than the SHUTDOWN value
+// The SHUTDOWN value must be lower than the PANIC value
+#ifndef TESTING_TEMPERATURE_OPERATION
+    // normal oerational thresholds just below
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 520     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 490  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
+                                                  //  recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_AMBIENT_SHUTDOWN 550          // Throttling the current back did not work and we need to take stronger action, tell the car to quit
+                                                  //  drawing any current and blink the RGB LCD 
+#define TEMPERATURE_AMBIENT_PANIC 580             //  This is a threshold while we are  are still connected to
+                                                  //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
+                                                  //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
+                                                  //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
+
+#define TEMPERATURE_INFRARED_THROTTLE_DOWN 650    // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
+#define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 600 // If the OpenEVSE responds nicely to the lower current drawn and IR temperatures
+                                                  //  recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_INFRARED_SHUTDOWN 700         // Throttling the current back did not work and we need to take stronger action, tell the car to quit
+                                                  //  drawing any current and blink the RGB LCD 
+#define TEMPERATURE_INFRARED_PANIC 750            //  This is a threshold while we are still connected to
+                                                  //  the EV but something unpredictable is happening, maybe the car doesn't recongnize the Pilot signal
+                                                  //  steady high level and still the EV is drawing high current.  Now it is time to panic and open our relays
+                                                  //  forcing a complete disconnect from the EV.  Only if the EV is malfunctioning we'll ever get to this panic.
+#else  //TESTING_TEMPERATURE_OPERATION
+// these are good values for testing purposes at room temperature with an EV simulator and no actual high current flowing
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 290     // This is the temperature in the enclosure where we tell the car to draw a lower amperage
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 270  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
+                                                  // recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_AMBIENT_SHUTDOWN 310          // Throttling the current back did not work and we need to take strong action, tell the car to quit
+                                                  // drawing any current entirely
+#define TEMPERATURE_AMBIENT_PANIC 330             //  place the OpenEVSE in an error state                               
+
+#define TEMPERATURE_INFRARED_THROTTLE_DOWN 330    // This is the temperature seen  by the IR sensor where we tell the car to draw a lower amperage
+#define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 270 // If the OpenEVSE responds nicely to the lower current drawn and IR temperatures
+                                                  // recover to this level we can kick the current back up to the user's original amperage setting
+#define TEMPERATURE_INFRARED_SHUTDOWN 360         // Throttling the current back did not work and we need to take strong action, tell the car to quit
+                                                  // drawing any current entirely  
+#define TEMPERATURE_INFRARED_PANIC 400            // place the OpenEVSE in an error state
+
+#endif // TESTING_TEMPERATURE_OPERATION 
+
+#endif // TEMPERATURE_MONITORING
 
 //-- end configuration
 
 //-- begin class definitions
 
 #ifdef WATCHDOG
-#define WDT_RESET() wdt_reset()
+#define WDT_RESET() wdt_reset() // pat the dog
 #define WDT_ENABLE() wdt_enable(WATCHDOG_TIMEOUT)
 #else
 #define WDT_RESET()
@@ -375,11 +532,11 @@ public:
   void println(char *s) { 
     Serial.println(s); 
   }
-  void println_P(prog_char *s);
+  void println_P(const char PROGMEM *s);
   void print(char *s) { 
     Serial.print(s); 
   }
-  void print_P(prog_char *s);
+  void print_P(const char PROGMEM *s);
   void printlnn();
   void flush() { 
     Serial.flush(); 
@@ -441,16 +598,16 @@ public:
   void LcdPrint(const char *s) {
     if (LcdDetected()) m_Lcd.print(s); 
   }
-  void LcdPrint_P(const prog_char *s);
+  void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const prog_char *s);
+  void LcdPrint_P(int y,const char PROGMEM *s);
   void LcdPrint(int x,int y,const char *s) { 
     if (LcdDetected()) {
       m_Lcd.setCursor(x,y);
       m_Lcd.print(s); 
     }
   }
-  void LcdPrint_P(int x,int y,const prog_char *s);
+  void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
     if (LcdDetected()) m_Lcd.print(i); 
   }
@@ -468,7 +625,7 @@ public:
     if (LcdDetected()) m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const prog_char *l1,const prog_char *l2);
+  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=1) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
@@ -504,7 +661,7 @@ public:
   int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
 #endif // AMMETER
 
-  void Update(int8_t force=0);
+  void Update(int8_t force=0,uint8_t hardfault=0);
 };
 
 #ifdef GFI
@@ -516,19 +673,65 @@ class Gfi {
 #endif // GFI_SELFTEST
 public:
   Gfi() {}
+
   void Init();
   void Reset();
   void SetFault() { m_GfiFault = 1; }
   uint8_t Fault() { return m_GfiFault; }
 #ifdef GFI_SELFTEST
-  void SelfTest();
-  void SetTestSuccess() { testSuccess = true; }
-  boolean SelfTestSuccess() { return testSuccess; }
-  boolean SelfTestInProgress() { return testInProgress; }
+  uint8_t SelfTest();
+  void SetTestSuccess() { testSuccess = 1; }
+  uint8_t SelfTestSuccess() { return testSuccess; }
+  uint8_t SelfTestInProgress() { return testInProgress; }
 #endif
 };
 #endif // GFI
 
+#ifdef TEMPERATURE_MONITORING
+#include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+
+// TempMonitor.m_Flags
+#define TMF_OVERTEMPERATURE          0x01
+#define TMF_OVERTEMPERATURE_SHUTDOWN 0x02
+#define TMF_BLINK_ALARM              0x04
+class TempMonitor {
+  uint8_t m_Flags;
+public:
+#ifdef MCP9808_IS_ON_I2C
+  Adafruit_MCP9808 m_tempSensor;
+#endif  //MCP9808_IS_ON_I2C
+#ifdef TMP007_IS_ON_I2C
+  Adafruit_TMP007 m_tmp007;
+#endif  //TMP007_IS_ON_I2C
+
+  uint8_t m_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
+  // these three temperatures need to be signed integers
+  int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
+  int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
+  int16_t m_TMP007_temperature;
+
+  TempMonitor() {}
+  void Init();
+  void Read();
+
+  void SetBlinkAlarm(int8_t tf) {
+    if (tf) m_Flags |= TMF_BLINK_ALARM;
+    else m_Flags &= ~TMF_BLINK_ALARM;
+  }
+  int8_t BlinkAlarm() { return (m_Flags & TMF_BLINK_ALARM) ? 1 : 0; }
+  void SetOverTemperature(int8_t tf) {
+    if (tf) m_Flags |= TMF_OVERTEMPERATURE;
+    else m_Flags &= ~TMF_OVERTEMPERATURE;
+  }
+  int8_t OverTemperature() { return (m_Flags & TMF_OVERTEMPERATURE) ? 1 : 0; }
+  void SetOverTemperatureShutdown(int8_t tf) {
+    if (tf) m_Flags |= TMF_OVERTEMPERATURE_SHUTDOWN;
+    else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
+  }
+  int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+};
+#endif // TEMPERATURE_MONITORING
 
 typedef enum {
   PILOT_STATE_P12,PILOT_STATE_PWM,PILOT_STATE_N12} 
@@ -561,6 +764,7 @@ public:
 #define EVSE_STATE_NO_GROUND 0x07 //bad ground
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
 #define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
+#define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown                    
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
 
@@ -598,6 +802,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
@@ -606,7 +811,6 @@ typedef struct calibdata {
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
-  uint8_t m_WatchDogTripCnt;
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiTimeout;
@@ -614,7 +818,7 @@ class J1772EVSEController {
   uint8_t m_GfiTripCnt;
 #endif // GFI
 #ifdef ADVPWR
-  unsigned long m_NoGndTimeout;
+  unsigned long m_NoGndStart;
   unsigned long m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt;
   unsigned long m_StuckRelayStartTimeMS;
@@ -628,24 +832,30 @@ class J1772EVSEController {
   uint8_t m_TmpEvseState;
   unsigned long m_TmpEvseStateStart;
   uint8_t m_CurrentCapacity; // max amps we can output
-  unsigned long m_ChargeStartTimeMS;
-  unsigned long m_ChargeOffTimeMS;
-  time_t m_ChargeStartTime;
-  time_t m_ChargeOffTime;
+  unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
+  unsigned long m_ChargeOffTimeMS; // millis() when relay last opened
+  time_t m_ChargeOnTime; // unixtime when relay last closed
+  time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
 
 #ifdef ADVPWR
-// Define the Power states read from the L1 and L2 test lines
-// 00 = both, 01 = L1on, 10 = L2on, 11 = none ( active low )
-  enum {both, L1on, L2on, none}
-  PowerSTATE;
-// Define Service States UD = undefined state, L1 = level 1, L2 = level 2, OG = open ground, SR = stuck Relay
-  enum { UD, L1, L2, OG, SR, FG} 
-  SVCSTATE;
+// power states for doPost() (active low)
+#define both 0
+#define L1on 1
+#define L2on 2
+#define none 3
+// service states for doPost()
+#define UD 0 // undefined
+#define L1 1 // L1
+#define L2 2 // L2
+#define OG 3 // open ground
+#define SR 4 // stuck relay
+#define FG 5 // GFI fault
 
   uint8_t doPost();
 #endif // ADVPWR
+  void processInputs();
   void chargingOn();
   void chargingOff();
   uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
@@ -656,12 +866,7 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
-#ifdef OPENEVSE_2
-  uint32_t readVoltmeter();
-#endif
-
 #ifdef AMMETER
-  //  long m_LastAmmeterReadMs;
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
   int16_t m_AmmeterCurrentOffset;
@@ -692,7 +897,7 @@ public:
   uint8_t GetCurrentCapacity() { 
     return m_CurrentCapacity; 
   }
-  int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0);
+  int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0,uint8_t nosave=0);
   //int GetCurrentReading() { return m_CurrentReading; }
   //float GetCurrentAmps();
   time_t GetElapsedChargeTime() { 
@@ -733,6 +938,19 @@ public:
   void EnableAutoSvcLevel(uint8_t tf);
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
+
+  void SetAutoSvcLvlSkipped(uint8_t tf) {
+    if (tf) m_bVFlags |= ECVF_AUTOSVCLVL_SKIPPED;
+    else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
+  }
+  uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+
+  void HardFault();
+
+  #ifdef OPENEVSE_2      
+  uint32_t readVoltmeter();
+  #endif
+  
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
@@ -793,8 +1011,8 @@ public:
 #define BTN_STATE_LONG  2 // long press
 class Btn {
   uint8_t buttonState;
-  long lastDebounceTime;  // the last time the output pin was toggled
-  long vlongDebounceTime;  // for verylong press
+  unsigned long lastDebounceTime;  // the last time the output pin was toggled
+  unsigned long vlongDebounceTime;  // for verylong press
   
 public:
   Btn();
@@ -808,7 +1026,7 @@ public:
 
 class Menu {
 public:
-  prog_char *m_Title;
+  const char PROGMEM *m_Title;
   uint8_t m_CurIdx;
   
   void init(const char *firstitem);

@@ -1,5 +1,74 @@
 Change Log
 
+vD3.6.6 SCL 20150406
+- added SAMPLE_ACPINS logic for setup with MID400 using inline diodes
+- added FT_ENDURANCE and FT_READ_AC_PINS
+- replace booleans w/ uint8_t
+- in GfiSelfTest() delay(50) when reading GFI_PIN
+- add GFI self test before closing relay per UL (UL_GFI_SELFTEST)
+- change GFI_TEST_CYCLES 50->60 GFI_PULSE_DURATION_US 8000->8333
+
+vD3.6.5 SCL 20150406
+- added HardFault()
+- GFI_RETRY_COUNT 255 -> 6 and GFI_TIMEOUT 1min -> 5min
+- set SERVICE REQUIRED message after GFI retries exhausted
+- added nosave parm to SetCurrentCapacity()
+
+vD3.6.4 SCL 20150406
+- fix compile error in rapi_proc.cpp due to prog_char fix
+- CraigK Patch 6: temp monitoring and kWh recording
+- CraigK OpenEvse II ammeter calibration (Craigk46 patch 8)
+- SCL move g_ampacity to g_TempMonitor.m_ampacity
+	
+vD3.6.3 SCL 20150403
+- fix compile errors in Arduino 1.5.8+ due to deprecation of prog_char
+	
+vD3.6.2 SCL 20150326
+- add delay(200) to beginning of setup() to fix random LCD black out at boot
+	Thanks to CraigK!
+- code cleanup on KWH_RECORDING .. change eeprom_read_byte() to eeprom_read_dword()
+
+vD3.6.1 SCL 20150311
+- merge CraigK patch-4 temp monitoring fixes
+	
+vD3.6.0 SCL 20150301
+- add CraigK TEMPERATURE_MONITORING
+	
+vD3.5.2 SCL 20150226
+- minor fixes for millis() overflow handling
+- change code to allow RED_LED_PIN and GREEN_LED_PIN to be commented out w/o causing compile errors
+	
+SCL 20150220
+- merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging
+	
+vD3.5.1 SCL 20150218
+- added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
+- per UL Fred Reyes, stuck relay always results in hard fault (lockout)
+- GFI_RETRY_COUNT to 255 (infinite) instead of 15
+
+vD3.5.0 SCL 20150216
+- added UL_COMPLIANT: UL wants EVSE to hard fault (cease operation until manual intervention)
+  1) if POST fails
+  2) if fault happens immediately after charge starts
+- consolidated some redundant fault strings
+- if AutoSvcLevel couldn't be detected due to car being plugged in during POST,
+  and L1 was set because of this, upon first charge session, we will detect the
+  actual svc level, and switch to L2 if detected
+
+vD3.4.3 SCL 20150213
+- don't do GFI self test in doPost() if other fault already found
+- when in menus, lock out all other functions until exit 
+- do stuck relay chk in POST even if EV is plugged in and AutoSvcLevel()
+- for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
+  because we can't auto detect level.
+
+vD3.4.2 SCL 20150210
+- added SLEEP_STATUS_PIN
+	
+vD3.4.1 SCL 20150205
+- forgot to set svcState to SR when stuck relay test fails in doPost() and
+	not AutoSvcLevel()
+	
 vD3.4.0 SCL 20150123
 - added writing of safety check trip counters to EEPROM
 - added RAPI $GF
