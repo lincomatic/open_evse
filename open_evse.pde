@@ -2244,12 +2244,41 @@ void J1772EVSEController::Update()
 	tmpevsestate = EVSE_STATE_STUCK_RELAY;
 	m_EvseState = EVSE_STATE_STUCK_RELAY;
 	nofault = 0;
+<<<<<<< HEAD
       }
     }
     else m_StuckRelayStartTimeMS = 0; // not stuck - reset
   }
 #else // !OPENEVSE_2
   uint8_t acpinstate = ReadACPins();
+=======
+            }
+   }
+ }
+ if (StuckRelayChkEnabled()) {
+   if (digitalRead(RELAY_TEST_PIN) != digitalRead(CHARGING_PIN)) {
+     if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurance
+       m_StuckRelayStartTimeMS = curms; // mark start state
+       if (m_StuckRelayTripCnt < 254) {
+	 m_StuckRelayTripCnt++;
+	 eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+       }
+     }   
+     if ( ( ((curms-m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+	    ((curms-m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+	  (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+       // stuck relay
+       tmpevsestate = EVSE_STATE_STUCK_RELAY;
+       m_EvseState = EVSE_STATE_STUCK_RELAY;
+       nofault = 0;
+     }
+   }
+   else m_StuckRelayStartTimeMS = 0; // not stuck - reset
+ }
+#else
+  int PS1state = digitalRead(ACLINE1_PIN);
+  int PS2state = digitalRead(ACLINE2_PIN);
+>>>>>>> cac681fc319ab56315c31b374509acc03444cf92
   
   if (chargingIsOn()) { // relay closed
     if ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY) {
