@@ -1758,6 +1758,12 @@ uint8_t ReadACPins()
   return ((digitalRead(ACLINE1_PIN) == HIGH) ? 2 : 0) |
     ((digitalRead(ACLINE2_PIN) == HIGH) ? 1 : 0);
 #endif // SAMPLE_ACPINS
+#else
+  // For OpenEVSE II, there is only ACLINE1_PIN, and it is
+  // active *high*. '3' is the value for "both AC lines dead"
+  // and '0' is the value for "both AC lines live". There is
+  // no need to sample, as the hardware does a peak-hold.
+  return ((digitalRead(ACLINE1_PIN) == HIGH) ? 0 : 3);
 #endif // OPENEVSE_2
 }
 
@@ -1786,6 +1792,7 @@ uint8_t J1772EVSEController::doPost()
 
   if (AutoSvcLevelEnabled()) {
 #ifdef OPENEVSE_2
+    // For OpenEVSE II, there is a voltmeter for auto L1/L2.
     unsigned long ac_volts = readVoltmeter();
     if (ac_volts > L2_VOLTAGE_THRESHOLD) {
       svcState = L2;
@@ -1910,14 +1917,6 @@ uint8_t J1772EVSEController::doPost()
   else { // ! AutoSvcLevelEnabled
   stuckrelaychk:
     if (StuckRelayChkEnabled()) {
-#ifdef OPENEVSE_2
-      if (digitalRead(RELAY_TEST_PIN) == HIGH) {
-	svcState = SR;
-#ifdef LCD16X2
-	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
-#endif // LCD16X2
-      }
-#else // !OPENEVSE_2
       RelayOff = ReadACPins();
       if ((RelayOff & 3) != 3) {
 	svcState = SR;
@@ -1925,7 +1924,6 @@ uint8_t J1772EVSEController::doPost()
 	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
 #endif // LCD16X2
       }
-#endif // OPENEVSE_2
     }
   } // endif AutoSvcLevelEnabled
   
@@ -2004,11 +2002,10 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef ADVPWR
-#ifdef OPENEVSE_2
-#else //!OPENEVSE_2
   pinMode(ACLINE1_PIN, INPUT);
-  pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
+#ifdef ACLINE2_PIN
+  pinMode(ACLINE2_PIN, INPUT);
   digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
 #endif
 #endif // ADVPWR
@@ -2208,49 +2205,6 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
-#ifdef OPENEVSE_2
-  if (GndChkEnabled() && digitalRead(CHARGING_PIN) == HIGH) {
-    if ((digitalRead(RELAY_TEST_PIN) != HIGH) &&
-
-	(((curms - m_ChargeOnTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
-	 (prevevsestate == EVSE_STATE_NO_GROUND))) {
-     	
-      tmpevsestate = EVSE_STATE_NO_GROUND;
-      m_EvseState = EVSE_STATE_NO_GROUND;
-	
-      chargingOff(); // open the relay
-
-      if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
-	m_NoGndTripCnt++;
-	eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
-      }
-
-      m_NoGndStart = curms;
-
-      nofault = 0;
-    }
-  }
-  if (StuckRelayChkEnabled() && digitalRead(CHARGING_PIN) == LOW) {
-    if (digitalRead(RELAY_TEST_PIN) != LOW) {
-      if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
-	m_StuckRelayStartTimeMS = curms; // mark start state
-	if (m_StuckRelayTripCnt < 254) {
-	  m_StuckRelayTripCnt++;
-	  eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
-	}
-      }   
-      if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-	     ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
-	   (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
-	// stuck relay
-	tmpevsestate = EVSE_STATE_STUCK_RELAY;
-	m_EvseState = EVSE_STATE_STUCK_RELAY;
-	nofault = 0;
-      }
-    }
-    else m_StuckRelayStartTimeMS = 0; // not stuck - reset
-  }
-#else // !OPENEVSE_2
   uint8_t acpinstate = ReadACPins();
   
   if (chargingIsOn()) { // relay closed
@@ -2317,7 +2271,6 @@ void J1772EVSEController::Update()
       else m_StuckRelayStartTimeMS = 0; // not stuck - reset
     } // end of StuckRelayChkEnabled
   } // end of !chargingIsOn() - relay open
-#endif //!OPENEVSE_2
 #endif // ADVPWR
    
 #ifdef GFI
