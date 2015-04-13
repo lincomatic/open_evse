@@ -54,7 +54,7 @@
 #define WATCHDOG
 
 
-// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check, no stuck relay check and a voltmeter for L1/L2.
+// Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
 
 #ifdef OPENEVSE_2
@@ -282,7 +282,8 @@
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
-#define RELAY_TEST_PIN 3 // This pin must read the same as the last write to CHARGING_PIN, modulo a delay.
+// Auto L1/L2 is done with the voltmeter.
+#define ACLINE1_PIN 3 // OpenEVSE II has only one AC test pin.
 #define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
 #define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay

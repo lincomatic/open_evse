@@ -1732,7 +1732,6 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
 #ifdef ADVPWR
 
-#ifdef ACLINE1_PIN
 // acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
 uint8_t ReadACPins()
 {
@@ -1767,7 +1766,6 @@ uint8_t ReadACPins()
   return ((digitalRead(ACLINE1_PIN) == HIGH) ? 0 : 3);
 #endif // OPENEVSE_2
 }
-#endif // ACLINE1_PIN
 
 
 
@@ -2207,49 +2205,6 @@ void J1772EVSEController::Update()
   uint8_t nofault = 1;
 
 #ifdef ADVPWR
-#ifdef OPENEVSE_2
-  if (GndChkEnabled() && digitalRead(CHARGING_PIN) == HIGH) {
-    if ((digitalRead(RELAY_TEST_PIN) != HIGH) &&
-
-	(((curms - m_ChargeOnTimeMS) > STUCK_RELAY_DELAY) || // debounce at start of charging
-	 (prevevsestate == EVSE_STATE_NO_GROUND))) {
-     	
-      tmpevsestate = EVSE_STATE_NO_GROUND;
-      m_EvseState = EVSE_STATE_NO_GROUND;
-	
-      chargingOff(); // open the relay
-
-      if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
-	m_NoGndTripCnt++;
-	eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
-      }
-
-      m_NoGndStart = curms;
-
-      nofault = 0;
-    }
-  }
-  if (StuckRelayChkEnabled() && digitalRead(CHARGING_PIN) == LOW) {
-    if (digitalRead(RELAY_TEST_PIN) != LOW) {
-      if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
-	m_StuckRelayStartTimeMS = curms; // mark start state
-	if (m_StuckRelayTripCnt < 254) {
-	  m_StuckRelayTripCnt++;
-	  eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
-	}
-      }   
-      if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-	     ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
-	   (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
-	// stuck relay
-	tmpevsestate = EVSE_STATE_STUCK_RELAY;
-	m_EvseState = EVSE_STATE_STUCK_RELAY;
-	nofault = 0;
-      }
-    }
-    else m_StuckRelayStartTimeMS = 0; // not stuck - reset
-  }
-#else // !OPENEVSE_2
   uint8_t acpinstate = ReadACPins();
   
   if (chargingIsOn()) { // relay closed
