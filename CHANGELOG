@@ -1,5 +1,12 @@
 Change Log
 
+vD3.6.7 SCL 20150410
+- merge NSayer PR: Latest OpenEVSE II 1.0 hardware changes #30
+1. Gut ReadACPins(). It s unused.
+2. GROUND_TEST_PIN is gone in the 1.0 hardware.
+3. RELAY_TEST_PIN is high when charging or it s a ground fail. It s low
+when not charging or it s a stuck relay.
+
 vD3.6.6 SCL 20150406
 - added SAMPLE_ACPINS logic for setup with MID400 using inline diodes
 - added FT_ENDURANCE and FT_READ_AC_PINS
@@ -19,10 +26,10 @@ vD3.6.4 SCL 20150406
 - CraigK Patch 6: temp monitoring and kWh recording
 - CraigK OpenEvse II ammeter calibration (Craigk46 patch 8)
 - SCL move g_ampacity to g_TempMonitor.m_ampacity
-	
+
 vD3.6.3 SCL 20150403
 - fix compile errors in Arduino 1.5.8+ due to deprecation of prog_char
-	
+
 vD3.6.2 SCL 20150326
 - add delay(200) to beginning of setup() to fix random LCD black out at boot
 	Thanks to CraigK!
@@ -30,17 +37,17 @@ vD3.6.2 SCL 20150326
 
 vD3.6.1 SCL 20150311
 - merge CraigK patch-4 temp monitoring fixes
-	
+
 vD3.6.0 SCL 20150301
 - add CraigK TEMPERATURE_MONITORING
-	
+
 vD3.5.2 SCL 20150226
 - minor fixes for millis() overflow handling
 - change code to allow RED_LED_PIN and GREEN_LED_PIN to be commented out w/o causing compile errors
-	
+
 SCL 20150220
 - merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging
-	
+
 vD3.5.1 SCL 20150218
 - added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
 - per UL Fred Reyes, stuck relay always results in hard fault (lockout)
