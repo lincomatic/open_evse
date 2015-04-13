@@ -1732,7 +1732,6 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
 #ifdef ADVPWR
 
-#ifdef ACLINE1_PIN
 // acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
 uint8_t ReadACPins()
 {
@@ -1767,7 +1766,6 @@ uint8_t ReadACPins()
   return ((digitalRead(ACLINE1_PIN) == HIGH) ? 0 : 3);
 #endif // OPENEVSE_2
 }
-#endif // ACLINE1_PIN
 
 
 
