@@ -43,7 +43,7 @@
 #define AMMETER
 
 // serial remote api
-#define RAPI
+//#define RAPI
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -456,7 +456,7 @@
 #ifdef TEMPERATURE_MONITORING
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
-#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
 #define TEMPERATURE_DISPLAY_ALWAYS 0   // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
                                        // Set to it 0 to only display when temperatures become elevated 
 #define TESTING_TEMPERATURE_OPERATION  // set this flag to play with very low sensor thresholds or to evaluate the code
