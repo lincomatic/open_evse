@@ -1,5 +1,8 @@
 Change Log
 
+vD3.6.8 SCL 20150413
+- merge NSayer PR #32 OpenEVSE II streamline
+
 vD3.6.7 SCL 20150410
 - merge NSayer PR: Latest OpenEVSE II 1.0 hardware changes #30
 1. Gut ReadACPins(). It s unused.
