@@ -163,7 +163,7 @@
 #endif // RTC
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
-//#define SLEEP_STATUS_PRT &PORTB
+//#define SLEEP_STATUS_PRT &PINB
 //#define SLEEP_STATUS_IDX 4
 
 
@@ -285,33 +285,33 @@
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
 // Auto L1/L2 is done with the voltmeter.
-#define ACLINE1_PRT &PORTD // OpenEVSE II has only one AC test pin.
+#define ACLINE1_PRT &PIND // OpenEVSE II has only one AC test pin.
 #define ACLINE1_IDX 3 
 
-#define CHARGING_PRT &PORTD // OpenEVSE II has just one relay pin.
+#define CHARGING_PRT &PIND // OpenEVSE II has just one relay pin.
 #define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
  // TEST PIN 1 for L1/L2, ground and stuck relay
-#define ACLINE1_PRT &PORTD
+#define ACLINE1_PRT &PIND
 #define ACLINE1_IDX 3
  // TEST PIN 2 for L1/L2, ground and stuck relay
-#define ACLINE2_PRT &PORTD
+#define ACLINE2_PRT &PIND
 #define ACLINE2_IDX 4
 
 // digital Relay trigger pin
-#define CHARGING_PRT &PORTB
+#define CHARGING_PRT &PINB
 #define CHARGING_IDX 0
 // digital Relay trigger pin for second relay
-#define CHARGING2_PRT &PORTD
+#define CHARGING2_PRT &PIND
 #define CHARGING2_IDX 7
 //digital Charging pin for AC relay
-#define CHARGINGAC_PRT &PORTB
+#define CHARGINGAC_PRT &PINB
 #define CHARGINGAC_IDX 1
 
-#define RED_LED_PRT &PORTD
+#define RED_LED_PRT &PIND
 #define RED_LED_IDX 5
 
-#define GREEN_LED_PRT &PORTB
+#define GREEN_LED_PRT &PINB
 #define GREEN_LED_IDX 5
 #endif // OPENEVSE_2
 
@@ -363,12 +363,12 @@
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = PD2, 1 = PD3
 // interrupt number 0 = PD2, 1 = PD3
-#define GFI_PRT &PORTD
+#define GFI_PRT &PIND
 #define GFI_IDX 2
 
 #ifdef GFI_SELFTEST
 // pin is supposed to be wrapped around the GFI CT 5+ times
-#define GFITEST_PRT &PORTD
+#define GFITEST_PRT &PIND
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
@@ -409,7 +409,7 @@
 #endif // RGBLCD || I2CLCD
 
 // button sensing pin
-#define BTN_PRT &PORTC
+#define BTN_PRT &PINC
 #define BTN_IDX 3
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
