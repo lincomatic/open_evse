@@ -245,7 +245,7 @@
 // alternate state B 9 sec/state C 1 sec forever
 // top line displays cycle count
 // bottom line displays ac pin state
-#define FT_ENDURANCE
+//#define FT_ENDURANCE
 
 // just read AC pins and display on line 1
 //#define FT_READ_AC_PINS
