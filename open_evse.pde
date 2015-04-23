@@ -38,6 +38,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+#include <avr/io.h>
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
@@ -763,7 +764,7 @@ OnboardDisplay::OnboardDisplay()
 //                    addr, en,rw,rs,d4,d5,d6,d7,bl,blpol
   : m_Lcd(LCD_I2C_ADDR, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE)
 #else
-    : m_Lcd(LCD_I2C_ADDR,1)
+  : m_Lcd(LCD_I2C_ADDR,1)
 #endif // I2CLCD_PCF8574
 #endif // defined(I2CLCD) || defined(RGBLCD)
 {
@@ -787,12 +788,12 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
-#ifdef GREEN_LED_PIN
-  pinMode (GREEN_LED_PIN, OUTPUT);
+#ifdef GREEN_LED_PRT
+  pinGreenLed.init(GREEN_LED_PRT,GREEN_LED_IDX,DigitalPin::OUT);
   SetGreenLed(LOW);
-#endif 
-#ifdef RED_LED_PIN
-  pinMode (RED_LED_PIN, OUTPUT);
+#endif
+#ifdef RED_LED_PRT
+  pinRedLed.init(RED_LED_PRT,RED_LED_IDX,DigitalPin::OUT);
   SetRedLed(LOW);
 #endif
 
@@ -822,15 +823,15 @@ void OnboardDisplay::Init()
 
 void OnboardDisplay::SetGreenLed(uint8_t state)
 {
-#ifdef GREEN_LED_PIN
-  digitalWrite(GREEN_LED_PIN,state);
+#ifdef GREEN_LED_PRT
+  pinGreenLed.write(state);
 #endif
 }
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
-#ifdef RED_LED_PIN
-  digitalWrite(RED_LED_PIN,state);
+#ifdef RED_LED_PRT
+  pinRedLed.write(state);
 #endif
 }
 
@@ -1229,9 +1230,9 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif //#ifdef DELAYTIMER
 
 #ifdef FT_ENDURANCE
-  uint8_t ReadACPins();
+  extern J1772EVSEController g_EvseController;
   LcdSetCursor(0,0);
-  sprintf(g_sTmp,"%d %d",g_CycleCnt,(int)ReadACPins());
+  sprintf(g_sTmp,"%d %d",g_CycleCnt,(int)g_EvseController.ReadACPins());
   LcdPrint(g_sTmp);
 #endif // FT_ENDURANCE
 }
@@ -1247,12 +1248,12 @@ void gfi_isr()
 
 void Gfi::Init()
 {
-  pinMode(GFI_PIN,INPUT);
+  pin.init(GFI_PRT,GFI_IDX,DigitalPin::INP);
   // GFI triggers on rising edge
   attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
 
 #ifdef GFI_SELFTEST
-  pinMode(GFI_TEST_PIN, OUTPUT);
+  pinTest.init(GFITEST_PRT,GFITEST_IDX,DigitalPin::INP);
 #endif
 
   Reset();
@@ -1269,7 +1270,7 @@ void Gfi::Reset()
   testSuccess = 0;
 #endif // GFI_SELFTEST
 
-  if (digitalRead(GFI_PIN) ) m_GfiFault = 1; // if interrupt pin is high, set fault
+  if (pin.read()) m_GfiFault = 1; // if interrupt pin is high, set fault
   else m_GfiFault = 0;
 }
 
@@ -1280,9 +1281,9 @@ uint8_t Gfi::SelfTest()
   testInProgress = 1;
   testSuccess = 0;
   for(int i=0; i < GFI_TEST_CYCLES; i++) {
-    digitalWrite(GFI_TEST_PIN, HIGH);
+    pinTest.write(HIGH);
     delayMicroseconds(GFI_PULSE_DURATION_US);
-    digitalWrite(GFI_TEST_PIN, LOW);
+    pinTest.write(LOW);
     delayMicroseconds(GFI_PULSE_DURATION_US);
     if (testSuccess) break; // no need to keep trying.
   }
@@ -1291,7 +1292,7 @@ uint8_t Gfi::SelfTest()
   do {
     delay(50);
   }
-  while(digitalRead(GFI_PIN) == HIGH) ;
+  while(pin.read() == HIGH) ;
 
   testInProgress = 0;
 
@@ -1448,12 +1449,12 @@ J1772EVSEController::J1772EVSEController()
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
-  digitalWrite(CHARGING_PIN,HIGH); 
-#ifdef CHARGING_PIN2
-  digitalWrite(CHARGING_PIN2,HIGH);
+  pinCharging.write(HIGH);
+#ifdef CHARGING2_PRT
+  pinCharging2.write(HIGH);
 #endif
-#ifdef CHARGING_PINAC
-  digitalWrite(CHARGING_PINAC,HIGH);
+#ifdef CHARGINGAC_PRT
+  pinChargingAC.write(HIGH);
 #endif
   m_bVFlags |= ECVF_CHARGING_ON;
   
@@ -1463,12 +1464,12 @@ void J1772EVSEController::chargingOn()
 
 void J1772EVSEController::chargingOff()
 { // turn off charging current
-  digitalWrite(CHARGING_PIN,LOW); 
-#ifdef CHARGING_PIN2
-  digitalWrite(CHARGING_PIN2,LOW);
+  pinCharging.write(LOW);
+#ifdef CHARGING2_PRT
+  pinCharging2.write(LOW);
 #endif
-#ifdef CHARGING_PINAC
-  digitalWrite(CHARGING_PINAC,LOW);
+#ifdef CHARGINGAC_PRT
+  pinChargingAC.write(LOW);
 #endif
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
@@ -1621,11 +1622,11 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 #endif // RGBLCD
 void J1772EVSEController::Enable()
 {
-#ifdef SLEEP_STATUS_PIN
+#ifdef SLEEP_STATUS_PRT
   if (m_EvseState == EVSE_STATE_SLEEPING) {
-    digitalWrite(SLEEP_STATUS_PIN,LOW);
+    pinSleepStatus.write(LOW);
   }
-#endif // SLEEP_STATUS_PIN
+#endif // SLEEP_STATUS_PRT
 
   m_PrevEvseState = EVSE_STATE_DISABLED;
   m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1656,9 +1657,9 @@ void J1772EVSEController::Sleep()
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
-#ifdef SLEEP_STATUS_PIN
-    digitalWrite(SLEEP_STATUS_PIN,HIGH);
-#endif // SLEEP_STATUS_PIN
+#ifdef SLEEP_STATUS_PRT
+    pinSleepStatus.write(HIGH);
+#endif // SLEEP_STATUS_PRT
 
     g_OBD.Update();
 #ifdef RAPI
@@ -1734,7 +1735,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #ifdef ADVPWR
 
 // acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
-uint8_t ReadACPins()
+uint8_t J1772EVSEController::ReadACPins()
 {
 #ifndef OPENEVSE_2
 #ifdef SAMPLE_ACPINS
@@ -1747,24 +1748,24 @@ uint8_t ReadACPins()
   unsigned long startms = millis();
   
   do {
-    if (ac1 && (digitalRead(ACLINE1_PIN) == LOW)) {
+    if (ac1 && (pinAC1.read() == LOW)) {
       ac1 = 0;
     }
-    if (ac2 && (digitalRead(ACLINE2_PIN) == LOW)) {
+    if (ac2 && (pinAC2.read() == LOW)) {
       ac2 = 0;
     }
   } while ((ac1 || ac2) && ((millis() - startms) < AC_SAMPLE_MS));
   return ac1 | ac2;
 #else // !SAMPLE_ACPINS
-  return ((digitalRead(ACLINE1_PIN) == HIGH) ? 2 : 0) |
-    ((digitalRead(ACLINE2_PIN) == HIGH) ? 1 : 0);
+  return ((pinAC1.read() == HIGH) ? 2 : 0) |
+    ((pinAC2.read() == HIGH) ? 1 : 0);
 #endif // SAMPLE_ACPINS
 #else
   // For OpenEVSE II, there is only ACLINE1_PIN, and it is
   // active *high*. '3' is the value for "both AC lines dead"
   // and '0' is the value for "both AC lines live". There is
   // no need to sample, as the hardware does a peak-hold.
-  return ((digitalRead(ACLINE1_PIN) == HIGH) ? 0 : 3);
+  return ((pinAC1.read() == HIGH) ? 0 : 3);
 #endif // OPENEVSE_2
 }
 
@@ -1828,26 +1829,26 @@ uint8_t J1772EVSEController::doPost()
       RelayOff = ReadACPins();
           
       // save state with Relay 1 on 
-      digitalWrite(CHARGING_PIN, HIGH);
-#ifdef CHARGING_PINAC
-      digitalWrite(CHARGING_PINAC, HIGH);
+      pinCharging.write(HIGH);
+#ifdef CHARGINGAC_PRT
+      pinChargingAC.write(HIGH);
 #endif
       delay(RelaySettlingTime);
       Relay1 = ReadACPins();
-      digitalWrite(CHARGING_PIN, LOW);
-#ifdef CHARGING_PINAC
-      digitalWrite(CHARGING_PINAC, LOW);
+      pinCharging.write(LOW);
+#ifdef CHARGINGAC_PRT
+      pinChargingAC.write(LOW);
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
       // save state for Relay 2 on
-#ifdef CHARGING_PIN2
-      digitalWrite(CHARGING_PIN2, HIGH); 
+#ifdef CHARGING2_PRT
+      pinCharging2.write(HIGH); 
 #endif
       delay(RelaySettlingTime);
       Relay2 = ReadACPins();
-#ifdef CHARGING_PIN2
-      digitalWrite(CHARGING_PIN2, LOW);
+#ifdef CHARGING2_PRT
+      pinCharging2.write(LOW); 
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
@@ -1990,26 +1991,22 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
-#ifdef SLEEP_STATUS_PIN
-  pinMode(SLEEP_STATUS_PIN,OUTPUT);
-#endif // SLEEP_STATUS_PIN
-
-  pinMode(CHARGING_PIN,OUTPUT);
-#ifdef CHARGING_PIN2
-  pinMode(CHARGING_PIN2,OUTPUT);
+  pinCharging.init(CHARGING_PRT,CHARGING_IDX,DigitalPin::OUT);
+#ifdef CHARGING2_PRT
+  pinCharging2.init(CHARGING2_PRT,CHARGING2_IDX,DigitalPin::OUT);
 #endif
-#ifdef CHARGING_PINAC
-  pinMode(CHARGING_PINAC,OUTPUT);
+#ifdef CHARGINGAC_PRT
+  pinChargingAC.init(CHARGINGAC_PRT,CHARGINGAC_IDX,DigitalPin::OUT);
 #endif
-
-#ifdef ADVPWR
-  pinMode(ACLINE1_PIN, INPUT);
-  digitalWrite(ACLINE1_PIN, HIGH); // enable pullup
-#ifdef ACLINE2_PIN
-  pinMode(ACLINE2_PIN, INPUT);
-  digitalWrite(ACLINE2_PIN, HIGH); // enable pullup
+#ifdef ACLINE1_PRT
+  pinAC1.init(ACLINE1_PRT,ACLINE1_IDX,DigitalPin::INP_PU);
 #endif
-#endif // ADVPWR
+#ifdef ACLINE2_PRT
+  pinAC2.init(ACLINE2_PRT,ACLINE2_IDX,DigitalPin::INP_PU);
+#endif
+#ifdef SLEEP_STATUS_PRT
+  pinSleepStatus.init(SLEEP_STATUS_PRT,SLEEP_STATUS_IDX,DigitalPin::OUT);
+#endif
 
 #ifdef GFI
   m_Gfi.Init();
@@ -2404,9 +2401,9 @@ void J1772EVSEController::Update()
       ((curms - m_ChargeOnTimeMS) > 10000)) {
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
-      digitalWrite(GFI_TEST_PIN, HIGH);
+      pinTest.write(HIGH);
       delayMicroseconds(GFI_PULSE_DURATION_US);
-      digitalWrite(GFI_TEST_PIN, LOW);
+      pinTest.write(LOW);
       delayMicroseconds(GFI_PULSE_DURATION_US);
     }
   }
@@ -2436,9 +2433,9 @@ void J1772EVSEController::Update()
       m_Pilot.SetPWM(m_CurrentCapacity);
 #ifdef FT_GFI_LOCKOUT
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
-	digitalWrite(GFI_TEST_PIN, HIGH);
+	pinTest.write(HIGH);
 	delayMicroseconds(GFI_PULSE_DURATION_US);
-	digitalWrite(GFI_TEST_PIN, LOW);
+	pinTest.write(LOW);
 	delayMicroseconds(GFI_PULSE_DURATION_US);
       }
       g_OBD.LcdMsg("Closing","Relay");
@@ -2817,8 +2814,9 @@ Btn::Btn()
 
 void Btn::init()
 {
-  pinMode(BTN_PIN,INPUT);
-  digitalWrite(BTN_PIN,HIGH); // turn on pullup
+#ifdef BTN_PRT
+  pinBtn.init(BTN_PRT,BTN_IDX,DigitalPin::INP_PU);
+#endif
 }
 
 void Btn::read()
@@ -2828,7 +2826,7 @@ void Btn::read()
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
-  sample = digitalRead(BTN_PIN) ? 0 : 1;
+  sample = btnPin.read() ? 0 : 1;
 #endif // ADAFRUIT_BTN
   if (!sample && (buttonState == BTN_STATE_LONG) && !lastDebounceTime) {
     buttonState = BTN_STATE_OFF;

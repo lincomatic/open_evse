@@ -29,13 +29,14 @@
 #include <Wire.h>
 #include <FlexiTimer2.h> // Required for RTC and Delay Timer
 #include <Time.h>
+#include "avrstuff.h"
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.6.9"
+#define VERSION "D3.7.0"
 
 //-- begin features
 
@@ -162,7 +163,8 @@
 #endif // RTC
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
-//#define SLEEP_STATUS_PIN 12
+//#define SLEEP_STATUS_PRT &PORTB
+//#define SLEEP_STATUS_IDX 4
 
 
 // for stability testing - shorter timeout/higher retry count
@@ -243,7 +245,7 @@
 // alternate state B 9 sec/state C 1 sec forever
 // top line displays cycle count
 // bottom line displays ac pin state
-//#define FT_ENDURANCE
+#define FT_ENDURANCE
 
 // just read AC pins and display on line 1
 //#define FT_READ_AC_PINS
@@ -283,16 +285,34 @@
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
 // Auto L1/L2 is done with the voltmeter.
-#define ACLINE1_PIN 3 // OpenEVSE II has only one AC test pin.
-#define CHARGING_PIN 7 // OpenEVSE II has just one relay pin.
+#define ACLINE1_PRT &PORTD // OpenEVSE II has only one AC test pin.
+#define ACLINE1_IDX 3 
+
+#define CHARGING_PRT &PORTD // OpenEVSE II has just one relay pin.
+#define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
-#define ACLINE1_PIN 3 // TEST PIN 1 for L1/L2, ground and stuck relay
-#define ACLINE2_PIN 4 // TEST PIN 2 for L1/L2, ground and stuck relay
-#define RED_LED_PIN 5 // Digital pin
-#define CHARGING_PIN2 7 // digital Relay trigger pin for second relay
-#define CHARGING_PIN 8 // digital Charging LED and Relay Trigger 
-#define CHARGING_PINAC 9 //digital Charging pin for AC relay
-#define GREEN_LED_PIN 13 // Digital pin
+ // TEST PIN 1 for L1/L2, ground and stuck relay
+#define ACLINE1_PRT &PORTD
+#define ACLINE1_IDX 3
+ // TEST PIN 2 for L1/L2, ground and stuck relay
+#define ACLINE2_PRT &PORTD
+#define ACLINE2_IDX 4
+
+// digital Relay trigger pin
+#define CHARGING_PRT &PORTB
+#define CHARGING_IDX 0
+// digital Relay trigger pin for second relay
+#define CHARGING2_PRT &PORTD
+#define CHARGING2_IDX 7
+//digital Charging pin for AC relay
+#define CHARGINGAC_PRT &PORTB
+#define CHARGINGAC_IDX 1
+
+#define RED_LED_PRT &PORTD
+#define RED_LED_IDX 5
+
+#define GREEN_LED_PRT &PORTB
+#define GREEN_LED_IDX 5
 #endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
@@ -341,11 +361,16 @@
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
 #ifdef GFI
-#define GFI_INTERRUPT 0 // interrupt number 0 = D2, 1 = D3
-#define GFI_PIN 2  // interrupt number 0 = D2, 1 = D3
+#define GFI_INTERRUPT 0 // interrupt number 0 = PD2, 1 = PD3
+// interrupt number 0 = PD2, 1 = PD3
+#define GFI_PRT &PORTD
+#define GFI_IDX 2
 
 #ifdef GFI_SELFTEST
-#define GFI_TEST_PIN 6 // D6 is supposed to be wrapped around the GFI CT 5+ times
+// pin is supposed to be wrapped around the GFI CT 5+ times
+#define GFITEST_PRT &PORTD
+#define GFITEST_IDX 6
+
 #define GFI_TEST_CYCLES 60
 #define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333 us as a half-cycle
 #endif
@@ -383,7 +408,9 @@
 #endif // I2CLCD_PCF8574
 #endif // RGBLCD || I2CLCD
 
-#define BTN_PIN A3 // button sensing pin
+// button sensing pin
+#define BTN_PRT &PORTC
+#define BTN_IDX 3
 #define BTN_PRESS_SHORT 100  // ms
 #define BTN_PRESS_LONG 500 // ms
 #define BTN_PRESS_VERYLONG 10000
@@ -558,8 +585,13 @@ extern char *g_BlankLine;
 #define OBDF_MONO_BACKLIGHT 0x01
 #define OBDF_AMMETER_DIRTY  0x80
 class OnboardDisplay 
-
 {
+#ifdef RED_LED_PRT
+  DigitalPin pinRedLed;
+#endif
+#ifdef GREEN_LED_PRT
+  DigitalPin pinGreenLed;
+#endif
 #if defined(RGBLCD) || defined(I2CLCD)
 #ifdef I2CLCD_PCF8574
 #include <LiquidCrystal_I2C.h>
@@ -669,10 +701,12 @@ public:
 
 #ifdef GFI
 class Gfi {
- uint8_t m_GfiFault;
+  DigitalPin pin;
+  uint8_t m_GfiFault;
 #ifdef GFI_SELFTEST
- uint8_t testSuccess;
- uint8_t testInProgress;
+  DigitalPin pinTest;
+  uint8_t testSuccess;
+  uint8_t testInProgress;
 #endif // GFI_SELFTEST
 public:
   Gfi() {}
@@ -820,6 +854,22 @@ class J1772EVSEController {
   unsigned long m_GfiRetryCnt;
   uint8_t m_GfiTripCnt;
 #endif // GFI
+  DigitalPin pinCharging;
+#ifdef CHARGING2_PRT
+  DigitalPin pinCharging2;
+#endif
+#ifdef CHARGINGAC_PRT
+  DigitalPin pinChargingAC;
+#endif
+#ifdef ACLINE1_PRT
+  DigitalPin pinAC1;
+#endif
+#ifdef ACLINE2_PRT
+  DigitalPin pinAC2;
+#endif
+#ifdef SLEEP_STATUS_PRT
+  DigitalPin pinSleepStatus;
+#endif
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
   unsigned long m_NoGndRetryCnt;
@@ -953,7 +1003,7 @@ public:
   #ifdef OPENEVSE_2      
   uint32_t readVoltmeter();
   #endif
-  
+  uint8_t ReadACPins();
 #endif // ADVPWR
 #ifdef GFI
   void SetGfiTripped();
@@ -1013,6 +1063,9 @@ public:
 #define BTN_STATE_SHORT 1 // short press
 #define BTN_STATE_LONG  2 // long press
 class Btn {
+#ifdef BTN_PRT
+  DigitalPin pinBtn;
+#endif
   uint8_t buttonState;
   unsigned long lastDebounceTime;  // the last time the output pin was toggled
   unsigned long vlongDebounceTime;  // for verylong press

@@ -1,5 +1,9 @@
 Change Log
 
+vD3.7.0 SCL 20150423
+- added avrstuff.h/cpp -> switch from Arduino digital pin functions to
+	DigitalPin
+	
 vD3.6.9 SCL 20150423
 - GFCI test message now "GFCI". Only fault will cause "GFCI FAULT"
 	
