@@ -230,6 +230,7 @@ const char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
 const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
 const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
+const char g_psGfci[] PROGMEM = "GFCI";
 #ifdef TEMPERATURE_MONITORING
 const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
 #endif
@@ -1933,7 +1934,7 @@ uint8_t J1772EVSEController::doPost()
       GfiSelfTestEnabled()) {
     if (m_Gfi.SelfTest()) {
 #ifdef LCD16X2
-      g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
+      g_OBD.LcdMsg_P(g_psTestFailed,g_psGfci);
 #endif // LCD16X2
       svcState = FG;
     }
@@ -2453,7 +2454,7 @@ void J1772EVSEController::Update()
 	g_OBD.SetGreenLed(LOW);
 	g_OBD.SetRedLed(HIGH);
 	g_OBD.LcdSetBacklightColor(RED);
-	g_OBD.LcdMsg_P(g_psTestFailed,g_psGfciFault);
+	g_OBD.LcdMsg_P(g_psTestFailed,g_psGfci);
 #endif // LCD16X2
 
 	while (1) processInputs(); // spin forever

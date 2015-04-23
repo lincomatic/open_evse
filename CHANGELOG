@@ -1,5 +1,8 @@
 Change Log
 
+vD3.6.9 SCL 20150423
+- GFCI test message now "GFCI". Only fault will cause "GFCI FAULT"
+	
 vD3.6.8 SCL 20150413
 - merge NSayer PR #32 OpenEVSE II streamline
 
