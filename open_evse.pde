@@ -1253,7 +1253,7 @@ void Gfi::Init()
   attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
 
 #ifdef GFI_SELFTEST
-  pinTest.init(GFITEST_PRT,GFITEST_IDX,DigitalPin::INP);
+  pinTest.init(GFITEST_PRT,GFITEST_IDX,DigitalPin::OUT);
 #endif
 
   Reset();
