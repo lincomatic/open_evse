@@ -315,10 +315,10 @@
 #define GREEN_LED_IDX 5
 #endif // OPENEVSE_2
 
-// N.B. if PAFC_PWM is enabled, then PILOT_PIN can be either 9 or 10
-// (i.e PORTB pins 1 & 2)
-// if using fast PWM (PAFC_PWM disabled) PILOT_PIN *MUST* be digital 10
-#define PILOT_PIN 10
+// N.B. if PAFC_PWM is enabled, then pilot pin can be PB1 or PB2
+// if using fast PWM (PAFC_PWM disabled) pilot pin *MUST* be PB2
+#define PILOT_PRT &PINB
+#define PILOT_IDX 2
 
 
 #define SERIAL_BAUD 115200
@@ -774,11 +774,10 @@ typedef enum {
   PILOT_STATE_P12,PILOT_STATE_PWM,PILOT_STATE_N12} 
 PILOT_STATE;
 class J1772Pilot {
-#ifndef PAFC_PWM
-  uint8_t m_bit;
-  uint8_t m_port;
-#endif // PAFC_PWM
   PILOT_STATE m_State;
+#ifndef PAFC_PWM
+  DigitalPin pin;
+#endif // !PAFC_PWM
 public:
   J1772Pilot() {
   }

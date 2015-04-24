@@ -1312,17 +1312,15 @@ void J1772Pilot::Init()
   // WGM13 -> select P&F mode CS10 -> prescaler = 1
   TCCR1B = _BV(WGM13) | _BV(CS10);
  
-#if (PILOT_PIN == 9)
+#if (PILOT_IDX == 1) // PB1
   DDRB |= _BV(PORTB1);
   TCCR1A |= _BV(COM1A1);
-#else // PILOT_PIN == 10
+#else // PB2
   DDRB |= _BV(PORTB2);
   TCCR1A |= _BV(COM1B1);
-#endif // PILOT_PIN
+#endif // PILOT_IDX
 #else // fast PWM
-  pinMode(PILOT_PIN,OUTPUT);
-  m_bit = digitalPinToBitMask(PILOT_PIN);
-  m_port = digitalPinToPort(PILOT_PIN);
+  pin.init(PILOT_PRT,PILOT_IDX,DigitalPin::OUT);
 #endif
 
   SetState(PILOT_STATE_P12); // turns the pilot on 12V steady state
@@ -1334,34 +1332,26 @@ void J1772Pilot::Init()
 // PILOT_STATE_N12 = steady -12V (EVSE_STATE_F - FAULT) 
 void J1772Pilot::SetState(PILOT_STATE state)
 {
+  AutoCriticalSection asc;
+
 #ifdef PAFC_PWM
   if (state == PILOT_STATE_P12) {
-#if (PILOT_PIN == 9)
+#if (PILOT_IDX == 1)
     OCR1A = TOP;
 #else
     OCR1B = TOP;
 #endif
   }
   else {
-#if (PILOT_PIN == 9)
+#if (PILOT_IDX == 1) // PB1
     OCR1A = 0;
-#else
+#else // PB2
     OCR1B = 0;
 #endif
   }
 #else // fast PWM
-  volatile uint8_t *out = portOutputRegister(m_port);
-
-  uint8_t oldSREG = SREG;
-  cli();
   TCCR1A = 0; //disable pwm by turning off COM1A1,COM1A0,COM1B1,COM1B0
-  if (state == PILOT_STATE_P12) {
-    *out |= m_bit;  // set pin high
-  }
-  else {
-    *out &= ~m_bit;  // set pin low
-  }
-  SREG = oldSREG;
+  pin.write((state == PILOT_STATE_P12) ? HIGH : LOW);
 #endif // PAFC_PWM
 
   m_State = state;
@@ -1391,9 +1381,9 @@ int J1772Pilot::SetPWM(int amps)
   }
 
 
-#if (PILOT_PIN == 9)
+#if (PILOT_IDX == 1) // PB1
   OCR1A = cnt;
-#else // PILOT_PIN == 10
+#else // PB2
   OCR1B = cnt;
 #endif
   
@@ -1412,13 +1402,12 @@ int J1772Pilot::SetPWM(int amps)
   }
 
   if (ocr1b) {
+    AutoCriticalSection asc;
     // Timer1 initialization:
     // 16MHz / 64 / (OCR1A+1) / 2 on digital 9
     // 16MHz / 64 / (OCR1A+1) on digital 10
     // 1KHz variable duty cycle on digital 10, 500Hz fixed 50% on digital 9
     // pin 10 duty cycle = (OCR1B+1)/(OCR1A+1)
-    uint8_t oldSREG = SREG;
-    cli();
 
     TCCR1A = _BV(COM1A0) | _BV(COM1B1) | _BV(WGM11) | _BV(WGM10);
     TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11) | _BV(CS10);
@@ -1426,8 +1415,6 @@ int J1772Pilot::SetPWM(int amps)
 
     // 10% = 24 , 96% = 239
     OCR1B = ocr1b;
-
-    SREG = oldSREG;
 
     m_State = PILOT_STATE_PWM;
     return 0;
@@ -2616,7 +2603,6 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
     delay(250); // wait for stabilization
 
     // 1x = 114us 20x = 2.3ms 100x = 11.3ms
-    uint8_t pin = PILOT_PIN;
     int i;
     for (i=0;i < 1000;i++) {
       reading = analogRead(VOLT_PIN);  // measures pilot voltage
