@@ -60,6 +60,8 @@ public:
 #define DPIN_SET(reg,idx) _DPIN_SET(reg,idx)
 #define DPIN_CLR(reg,idx) _DPIN_CLR(reg,idx) 
 #define DPIN_WRITE(reg,idx,val) _DPIN_WRITE(reg,idx,val) 
+ // for (PINx > (uint8_t *)0x100 *must* use DPIN_WRITE_ATOMIC() instead of DPIN_WRITE()
+#define DPIN_WRITE_ATOMIC(reg,idx,val) {AutoCriticalSection acs;_DPIN_WRITE(reg,idx,val)}
 #define DPIN_MODE_INPUT(reg,idx) _DPIN_MODE_INPUT(reg,idx)
 #define DPIN_MODE_PULLUP(reg,idx) _DPIN_MODE_PULLUP(reg,idx)
 #define DPIN_MODE_OUTPUT(reg,idx) _DPIN_MODE_OUTPUT(reg,idx)
@@ -113,6 +115,11 @@ public:
     if (state) *port() |= bit;
     else *port() &= ~bit;
   }
+  // for (PINx > (uint8_t *)0x100 *must* use writeAtomic() instead of write()
+  void writeAtomic(uint8_t state) {
+    AutoCriticalSection acs;
+    write(state);
+  }  
 
   volatile uint8_t* pin() { return reg; }
   volatile uint8_t* ddr() { return reg+1; }
@@ -122,8 +129,8 @@ public:
 
 
 //
-// begin digitalPin class
-// using this class beautifies the code, but wastes 3 bytes per pin
+// begin AdcPin class
+// using this class beautifies the code, but wastes 1 byte per pin
 //
 class AdcPin {
   static uint8_t refMode;
