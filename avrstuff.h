@@ -17,6 +17,11 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#if defined(ARDUINO) && (ARDUINO >= 100)
+#include "Arduino.h"
+#else
+#include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
+#endif // ARDUINO
 
 class CriticalSection {
   uint8_t sreg;
@@ -98,7 +103,11 @@ public:
 
   void mode(PinMode mode);
   uint8_t read() {
+#ifdef HIGH
+    return (*pin() & bit) ? HIGH : LOW;
+#else
     return *pin() & bit;
+#endif
   }
   void write(uint8_t state) {
     if (state) *port() |= bit;
