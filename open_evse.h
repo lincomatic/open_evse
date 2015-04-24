@@ -372,7 +372,7 @@
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
-#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333 us as a half-cycle
+#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333us as a half-cycle
 #endif
 
 

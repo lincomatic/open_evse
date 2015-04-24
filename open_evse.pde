@@ -790,11 +790,11 @@ void OnboardDisplay::Init()
 
 #ifdef GREEN_LED_PRT
   pinGreenLed.init(GREEN_LED_PRT,GREEN_LED_IDX,DigitalPin::OUT);
-  SetGreenLed(LOW);
+  SetGreenLed(0);
 #endif
 #ifdef RED_LED_PRT
   pinRedLed.init(RED_LED_PRT,RED_LED_IDX,DigitalPin::OUT);
-  SetRedLed(LOW);
+  SetRedLed(0);
 #endif
 
 #ifdef LCD16X2
@@ -907,8 +907,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     
     switch(curstate) {
     case EVSE_STATE_A: // not connected
-      SetGreenLed(HIGH);
-      SetRedLed(LOW);
+      SetGreenLed(1);
+      SetRedLed(0);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(GREEN);
       // Display Timer and Stop Icon - GoldServe
@@ -932,8 +932,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       // n.b. blue LED is off
       break;
     case EVSE_STATE_B: // connected/not charging
-      SetGreenLed(HIGH);
-      SetRedLed(HIGH);
+      SetGreenLed(1);
+      SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(YELLOW);
       LcdClear();
@@ -957,8 +957,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     // n.b. blue LED is off
       break;
     case EVSE_STATE_C: // charging
-      SetGreenLed(LOW);
-      SetRedLed(LOW);
+      SetGreenLed(0);
+      SetRedLed(0);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(TEAL);
       LcdClear();
@@ -972,8 +972,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
       // n.b. blue LED is on
       break;
   case EVSE_STATE_D: // vent required
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(g_psEvseError,g_psVentReq);
@@ -981,8 +981,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     // n.b. blue LED is off
     break;
   case EVSE_STATE_DIODE_CHK_FAILED:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(g_psEvseError,g_psDiodeChkFailed);
@@ -990,8 +990,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     // n.b. blue LED is off
     break;
   case EVSE_STATE_GFCI_FAULT:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psGfciFault);
@@ -1000,8 +1000,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     break;
 #ifdef TEMPERATURE_MONITORING      
   case EVSE_STATE_OVER_TEMPERATURE:    // overtemp message in Red on the RGB LCD
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(g_psSvcReq,g_psTemperatureFault);  //  SERVICE REQUIRED     OVER TEMPERATURE 
@@ -1009,8 +1009,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     break;
 #endif //TEMPERATURE_MONITORING        
   case EVSE_STATE_NO_GROUND:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psNoGround);
@@ -1018,8 +1018,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     // n.b. blue LED is off
     break;
   case EVSE_STATE_STUCK_RELAY:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
     LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
@@ -1027,8 +1027,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     // n.b. blue LED is off
     break;
   case EVSE_STATE_DISABLED:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
 #ifdef LCD16X2
     LcdSetBacklightColor(VIOLET);
     LcdClear();
@@ -1038,8 +1038,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif // LCD16X2
     break;
   case EVSE_STATE_SLEEPING:
-    SetGreenLed(HIGH);
-    SetRedLed(HIGH);
+    SetGreenLed(1);
+    SetRedLed(1);
 #ifdef LCD16X2
     LcdSetBacklightColor(VIOLET);
     LcdClear();
@@ -1049,8 +1049,8 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 #endif // LCD16X2
     break;
   default:
-    SetGreenLed(LOW);
-    SetRedLed(HIGH);
+    SetGreenLed(0);
+    SetRedLed(1);
     // n.b. blue LED is off
   }
   }
@@ -1159,21 +1159,21 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
 
       if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) { // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
 	g_TempMonitor.SetBlinkAlarm(0);                                            // toggle the alarm flag so we can blink
-	SetRedLed(HIGH);
+	SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
 	LcdSetBacklightColor(RED);
 #endif //Adafruit RGB LCD            
       }
       else  {
 	g_TempMonitor.SetBlinkAlarm(1);        // toggle the alarm flag so we can blink
-	SetRedLed(LOW);
+	SetRedLed(0);
 #ifdef LCD16X2 //Adafruit RGB LCD
 	LcdSetBacklightColor(TEAL);
 #endif
       }           
     }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
     else  {
-      SetRedLed(LOW);          // restore the normal TEAL backlight in case it was left RED while last blinking
+      SetRedLed(0);          // restore the normal TEAL backlight in case it was left RED while last blinking
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(TEAL);
 #endif
@@ -1281,9 +1281,9 @@ uint8_t Gfi::SelfTest()
   testInProgress = 1;
   testSuccess = 0;
   for(int i=0; i < GFI_TEST_CYCLES; i++) {
-    pinTest.write(HIGH);
+    pinTest.write(1);
     delayMicroseconds(GFI_PULSE_DURATION_US);
-    pinTest.write(LOW);
+    pinTest.write(0);
     delayMicroseconds(GFI_PULSE_DURATION_US);
     if (testSuccess) break; // no need to keep trying.
   }
@@ -1292,7 +1292,7 @@ uint8_t Gfi::SelfTest()
   do {
     delay(50);
   }
-  while(pin.read() == HIGH) ;
+  while(pin.read()) ;
 
   testInProgress = 0;
 
@@ -1351,7 +1351,7 @@ void J1772Pilot::SetState(PILOT_STATE state)
   }
 #else // fast PWM
   TCCR1A = 0; //disable pwm by turning off COM1A1,COM1A0,COM1B1,COM1B0
-  pin.write((state == PILOT_STATE_P12) ? HIGH : LOW);
+  pin.write((state == PILOT_STATE_P12) ? 1 : 0);
 #endif // PAFC_PWM
 
   m_State = state;
@@ -1436,12 +1436,12 @@ J1772EVSEController::J1772EVSEController()
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
-  pinCharging.write(HIGH);
+  pinCharging.write(1);
 #ifdef CHARGING2_PRT
-  pinCharging2.write(HIGH);
+  pinCharging2.write(1);
 #endif
 #ifdef CHARGINGAC_PRT
-  pinChargingAC.write(HIGH);
+  pinChargingAC.write(1);
 #endif
   m_bVFlags |= ECVF_CHARGING_ON;
   
@@ -1451,12 +1451,12 @@ void J1772EVSEController::chargingOn()
 
 void J1772EVSEController::chargingOff()
 { // turn off charging current
-  pinCharging.write(LOW);
+  pinCharging.write(0);
 #ifdef CHARGING2_PRT
-  pinCharging2.write(LOW);
+  pinCharging2.write(0);
 #endif
 #ifdef CHARGINGAC_PRT
-  pinChargingAC.write(LOW);
+  pinChargingAC.write(0);
 #endif
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
@@ -1611,7 +1611,7 @@ void J1772EVSEController::Enable()
 {
 #ifdef SLEEP_STATUS_PRT
   if (m_EvseState == EVSE_STATE_SLEEPING) {
-    pinSleepStatus.write(LOW);
+    pinSleepStatus.write(0);
   }
 #endif // SLEEP_STATUS_PRT
 
@@ -1645,7 +1645,7 @@ void J1772EVSEController::Sleep()
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
 #ifdef SLEEP_STATUS_PRT
-    pinSleepStatus.write(HIGH);
+    pinSleepStatus.write(1);
 #endif // SLEEP_STATUS_PRT
 
     g_OBD.Update();
@@ -1735,24 +1735,23 @@ uint8_t J1772EVSEController::ReadACPins()
   unsigned long startms = millis();
   
   do {
-    if (ac1 && (pinAC1.read() == LOW)) {
+    if (ac1 && !pinAC1.read()) {
       ac1 = 0;
     }
-    if (ac2 && (pinAC2.read() == LOW)) {
+    if (ac2 && !pinAC2.read()) {
       ac2 = 0;
     }
   } while ((ac1 || ac2) && ((millis() - startms) < AC_SAMPLE_MS));
   return ac1 | ac2;
 #else // !SAMPLE_ACPINS
-  return ((pinAC1.read() == HIGH) ? 2 : 0) |
-    ((pinAC2.read() == HIGH) ? 1 : 0);
+  return (pinAC1.read() ? 2 : 0) | (pinAC2.read() ? 1 : 0);
 #endif // SAMPLE_ACPINS
 #else
   // For OpenEVSE II, there is only ACLINE1_PIN, and it is
   // active *high*. '3' is the value for "both AC lines dead"
   // and '0' is the value for "both AC lines live". There is
   // no need to sample, as the hardware does a peak-hold.
-  return ((pinAC1.read() == HIGH) ? 0 : 3);
+  return (pinAC1.read() ? 0 : 3);
 #endif // OPENEVSE_2
 }
 
@@ -1774,7 +1773,7 @@ uint8_t J1772EVSEController::doPost()
 
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
 
-  g_OBD.SetRedLed(HIGH); 
+  g_OBD.SetRedLed(1); 
 #ifdef LCD16X2 //Adafruit RGB LCD
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
 #endif //Adafruit RGB LCD 
@@ -1816,26 +1815,26 @@ uint8_t J1772EVSEController::doPost()
       RelayOff = ReadACPins();
           
       // save state with Relay 1 on 
-      pinCharging.write(HIGH);
+      pinCharging.write(1);
 #ifdef CHARGINGAC_PRT
-      pinChargingAC.write(HIGH);
+      pinChargingAC.write(1);
 #endif
       delay(RelaySettlingTime);
       Relay1 = ReadACPins();
-      pinCharging.write(LOW);
+      pinCharging.write(0);
 #ifdef CHARGINGAC_PRT
-      pinChargingAC.write(LOW);
+      pinChargingAC.write(0);
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
       // save state for Relay 2 on
 #ifdef CHARGING2_PRT
-      pinCharging2.write(HIGH); 
+      pinCharging2.write(1); 
 #endif
       delay(RelaySettlingTime);
       Relay2 = ReadACPins();
 #ifdef CHARGING2_PRT
-      pinCharging2.write(LOW); 
+      pinCharging2.write(0); 
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
@@ -1931,11 +1930,11 @@ uint8_t J1772EVSEController::doPost()
 
   if ((svcState == OG)||(svcState == SR)||(svcState == FG)) {
     g_OBD.LcdSetBacklightColor(RED);
-    g_OBD.SetGreenLed(LOW);
-    g_OBD.SetRedLed(HIGH);
+    g_OBD.SetGreenLed(0);
+    g_OBD.SetRedLed(1);
   }
   else {
-    g_OBD.SetRedLed(LOW);
+    g_OBD.SetRedLed(0);
   }
   m_Pilot.SetState(PILOT_STATE_P12);
 
@@ -2122,7 +2121,7 @@ void J1772EVSEController::Init()
 #endif //#ifdef MANUALSTART
   // End Manual Start Feature - GoldServe
 
-  g_OBD.SetGreenLed(LOW);
+  g_OBD.SetGreenLed(0);
 }
 
 void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
@@ -2388,9 +2387,9 @@ void J1772EVSEController::Update()
       ((curms - m_ChargeOnTimeMS) > 10000)) {
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
-      pinTest.write(HIGH);
+      pinTest.write(1);
       delayMicroseconds(GFI_PULSE_DURATION_US);
-      pinTest.write(LOW);
+      pinTest.write(0);
       delayMicroseconds(GFI_PULSE_DURATION_US);
     }
   }
@@ -2420,9 +2419,9 @@ void J1772EVSEController::Update()
       m_Pilot.SetPWM(m_CurrentCapacity);
 #ifdef FT_GFI_LOCKOUT
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
-	pinTest.write(HIGH);
+	pinTest.write(1);
 	delayMicroseconds(GFI_PULSE_DURATION_US);
-	pinTest.write(LOW);
+	pinTest.write(0);
 	delayMicroseconds(GFI_PULSE_DURATION_US);
       }
       g_OBD.LcdMsg("Closing","Relay");
@@ -2435,8 +2434,8 @@ void J1772EVSEController::Update()
        // GFI test failed - hard fault
         m_EvseState = EVSE_STATE_GFCI_FAULT;
 #ifdef LCD16X2
-	g_OBD.SetGreenLed(LOW);
-	g_OBD.SetRedLed(HIGH);
+	g_OBD.SetGreenLed(0);
+	g_OBD.SetRedLed(1);
 	g_OBD.LcdSetBacklightColor(RED);
 	g_OBD.LcdMsg_P(g_psTestFailed,g_psGfci);
 #endif // LCD16X2
