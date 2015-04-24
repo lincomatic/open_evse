@@ -1430,7 +1430,14 @@ int J1772Pilot::SetPWM(int amps)
 
 //-- begin J1772EVSEController
 
-J1772EVSEController::J1772EVSEController()
+J1772EVSEController::J1772EVSEController() :
+  adcPilot(VOLT_PIN)
+#ifdef CURRENT_PIN
+  , adcCurrent(CURRENT_PIN)
+#endif
+#ifdef VOLTMETER_PIN
+  , adcVoltMeter(VOLTMETER_PIN)
+#endif
 {
 }
 
@@ -1800,7 +1807,7 @@ uint8_t J1772EVSEController::doPost()
 #else //!OPENEVSE_2
 
     delay(150); // delay reading for stable pilot before reading
-    int reading = analogRead(VOLT_PIN); //read pilot
+    int reading = adcPilot.read(); //read pilot
 #ifdef SERIALCLI
     if (SerDbgEnabled()) {
       g_CLI.printlnn();
@@ -2131,7 +2138,7 @@ void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
 
   // 1x = 114us 20x = 2.3ms 100x = 11.3ms
   for (int i=0;i < 100;i++) {
-    int reading = analogRead(VOLT_PIN);  // measures pilot voltage
+    int reading = adcPilot.read();  // measures pilot voltage
     
     if (reading > ph) {
       ph = reading;
@@ -2604,7 +2611,7 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
     // 1x = 114us 20x = 2.3ms 100x = 11.3ms
     int i;
     for (i=0;i < 1000;i++) {
-      reading = analogRead(VOLT_PIN);  // measures pilot voltage
+      reading = adcPilot.read();  // measures pilot voltage
 
       if (reading > phigh) {
         phigh = reading;
@@ -2681,7 +2688,7 @@ unsigned long J1772EVSEController::readVoltmeter()
 {
   unsigned int peak = 0;
   for(unsigned long start_time = millis(); (millis() - start_time) < VOLTMETER_POLL_INTERVAL; ) {
-    unsigned int val = analogRead(VOLTMETER_PIN);
+    unsigned int val = adcVoltMeter.read();
     if (val > peak) peak = val;
   }
   return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
@@ -2709,7 +2716,7 @@ void J1772EVSEController::readAmmeter()
   long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
   unsigned int sample_count = 0;
   for(unsigned long start = millis(); ((now_ms = millis()) - start) < CURRENT_SAMPLE_INTERVAL; ) {
-    long sample = analogRead(CURRENT_PIN);
+    long sample = (long) adcCurrent.read();
     // If this isn't the first sample, and if the sign of the value differs from the
     // sign of the previous value, then count that as a zero crossing.
     if (last_sample != -1 && ((last_sample > 512) != (sample > 512))) {

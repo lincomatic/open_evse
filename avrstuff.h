@@ -120,6 +120,30 @@ public:
 
 };
 
+
+//
+// begin digitalPin class
+// using this class beautifies the code, but wastes 3 bytes per pin
+//
+class AdcPin {
+  static uint8_t refMode;
+  uint8_t channel;
+  
+public:
+  enum PinMode { INP,INP_PU,OUT };
+
+  AdcPin(uint8_t _adcNum) {
+    init(_adcNum);
+  }
+
+  void init(uint8_t _adcNum);
+  uint16_t read();
+
+  static void referenceMode(uint8_t mode) {
+    refMode = mode;
+  }
+};
+
 //  why double up on these macros? see http://gcc.gnu.org/onlinedocs/cpp/Stringification.html
 // don't call the _xxx() version directly
 #define _DIGITAL_PIN(name,reg,idx,mode) name(&PIN ## reg,idx,mode)
