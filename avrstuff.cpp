@@ -14,9 +14,9 @@
 
 #include "avrstuff.h"
 
-void DigitalPin::init(volatile uint8_t* _pinReg,uint8_t idx,PinMode _mode)
+void DigitalPin::init(volatile uint8_t* _reg,uint8_t idx,PinMode _mode)
 {
-  pinReg = _pinReg;
+  reg = _reg;
   bit = 1 << idx;
   mode(_mode);
 }

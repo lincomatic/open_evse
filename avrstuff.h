@@ -47,22 +47,22 @@ public:
 // digital pin macros .. ugly, but no RAM usage
 //
 // don't use _xxx() versions
-#define _DPIN_READ(port,idx) (PIN ## port & (1 << idx))
-#define _DPIN_SET(port,idx) {PORT ## port |= (1<<idx);}
-#define _DPIN_CLR(port,idx) {PORT ## port &= ~(1<<idx);}
-#define _DPIN_WRITE(port,idx,val) {if (val) DPIN_SET(port,idx); else DPIN_CLR(port,idx); }
-#define _DPIN_MODE_INPUT(port,idx) {DDR ## port &= ~(1<<idx)}
-#define _DPIN_MODE_PULLUP(port,idx) { DPIN_SET(port,idx);DPIN_MODE_INPUT(port,idx);}
-#define _DPIN_MODE_OUTPUT(port,idx) {DDR ## port |= (1<<idx);}
+#define _DPIN_READ(reg,idx) (PIN ## reg & (1 << idx))
+#define _DPIN_SET(reg,idx) {PORT ## reg |= (1<<idx);}
+#define _DPIN_CLR(reg,idx) {PORT ## reg &= ~(1<<idx);}
+#define _DPIN_WRITE(reg,idx,val) {if (val) DPIN_SET(reg,idx); else DPIN_CLR(reg,idx); }
+#define _DPIN_MODE_INPUT(reg,idx) {DDR ## reg &= ~(1<<idx)}
+#define _DPIN_MODE_PULLUP(reg,idx) { DPIN_SET(reg,idx);DPIN_MODE_INPUT(reg,idx);}
+#define _DPIN_MODE_OUTPUT(reg,idx) {DDR ## reg |= (1<<idx);}
 
 // use these
-#define DPIN_READ(port,idx) _DPIN_READ(port,idx)
-#define DPIN_SET(port,idx) _DPIN_SET(port,idx)
-#define DPIN_CLR(port,idx) _DPIN_CLR(port,idx) 
-#define DPIN_WRITE(port,idx,val) _DPIN_WRITE(port,idx,val) 
-#define DPIN_MODE_INPUT(port,idx) _DPIN_MODE_INPUT(port,idx)
-#define DPIN_MODE_PULLUP(port,idx) _DPIN_MODE_PULLUP(port,idx)
-#define DPIN_MODE_OUTPUT(port,idx) _DPIN_MODE_OUTPUT(port,idx)
+#define DPIN_READ(reg,idx) _DPIN_READ(reg,idx)
+#define DPIN_SET(reg,idx) _DPIN_SET(reg,idx)
+#define DPIN_CLR(reg,idx) _DPIN_CLR(reg,idx) 
+#define DPIN_WRITE(reg,idx,val) _DPIN_WRITE(reg,idx,val) 
+#define DPIN_MODE_INPUT(reg,idx) _DPIN_MODE_INPUT(reg,idx)
+#define DPIN_MODE_PULLUP(reg,idx) _DPIN_MODE_PULLUP(reg,idx)
+#define DPIN_MODE_OUTPUT(reg,idx) _DPIN_MODE_OUTPUT(reg,idx)
 /*
 example
 #define LED_PORT B
@@ -88,18 +88,18 @@ example
 // using this class beautifies the code, but wastes 3 bytes per pin
 //
 class DigitalPin {
-  volatile uint8_t* pinReg;
+  volatile uint8_t* reg;
   uint8_t bit;
   
 public:
   enum PinMode { INP,INP_PU,OUT };
 
   DigitalPin() {}
-  DigitalPin(volatile uint8_t* _pinReg,uint8_t idx,PinMode _mode) {
-    init(_pinReg,idx,_mode);
+  DigitalPin(volatile uint8_t* _reg,uint8_t idx,PinMode _mode) {
+    init(_reg,idx,_mode);
   }
 
-  void init(volatile uint8_t* _pinReg,uint8_t idx,PinMode _mode);
+  void init(volatile uint8_t* _reg,uint8_t idx,PinMode _mode);
 
   void mode(PinMode mode);
   uint8_t read() {
@@ -114,23 +114,25 @@ public:
     else *port() &= ~bit;
   }
 
-  volatile uint8_t* pin() { return pinReg; }
-  volatile uint8_t* ddr() { return pinReg+1; }
-  volatile uint8_t* port() { return pinReg+2; }
+  volatile uint8_t* pin() { return reg; }
+  volatile uint8_t* ddr() { return reg+1; }
+  volatile uint8_t* port() { return reg+2; }
 
 };
 
 //  why double up on these macros? see http://gcc.gnu.org/onlinedocs/cpp/Stringification.html
 // don't call the _xxx() version directly
-#define _DIGITAL_PIN(name,port,idx,mode) name(&PIN ## port,idx,mode)
-#define DIGITAL_PIN(name,port,idx,mode) _DIGITAL_PIN(name,port,idx,mode)
+#define _DIGITAL_PIN(name,reg,idx,mode) name(&PIN ## reg,idx,mode)
+#define DIGITAL_PIN(name,reg,idx,mode) _DIGITAL_PIN(name,reg,idx,mode)
 
 /*
 examples:
-// pin B6: port=B,pin=6
+// pin B6: reg=B,pin=6
 DigitalPin DIGITAL_PIN(mypin,B,6,DigitalPin::INP);
 mypin.write(HIGH);
 uint8_t val = mypin.read();
+
+DigitalPin mypin2(&PINB,6,DigitalPin::INP);
 
 class Led {
   DigitalPin pin;

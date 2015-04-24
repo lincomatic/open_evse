@@ -788,12 +788,12 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
-#ifdef GREEN_LED_PRT
-  pinGreenLed.init(GREEN_LED_PRT,GREEN_LED_IDX,DigitalPin::OUT);
+#ifdef GREEN_LED_REG
+  pinGreenLed.init(GREEN_LED_REG,GREEN_LED_IDX,DigitalPin::OUT);
   SetGreenLed(0);
 #endif
-#ifdef RED_LED_PRT
-  pinRedLed.init(RED_LED_PRT,RED_LED_IDX,DigitalPin::OUT);
+#ifdef RED_LED_REG
+  pinRedLed.init(RED_LED_REG,RED_LED_IDX,DigitalPin::OUT);
   SetRedLed(0);
 #endif
 
@@ -823,14 +823,14 @@ void OnboardDisplay::Init()
 
 void OnboardDisplay::SetGreenLed(uint8_t state)
 {
-#ifdef GREEN_LED_PRT
+#ifdef GREEN_LED_REG
   pinGreenLed.write(state);
 #endif
 }
 
 void OnboardDisplay::SetRedLed(uint8_t state)
 {
-#ifdef RED_LED_PRT
+#ifdef RED_LED_REG
   pinRedLed.write(state);
 #endif
 }
@@ -1248,12 +1248,12 @@ void gfi_isr()
 
 void Gfi::Init()
 {
-  pin.init(GFI_PRT,GFI_IDX,DigitalPin::INP);
+  pin.init(GFI_REG,GFI_IDX,DigitalPin::INP);
   // GFI triggers on rising edge
   attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
 
 #ifdef GFI_SELFTEST
-  pinTest.init(GFITEST_PRT,GFITEST_IDX,DigitalPin::OUT);
+  pinTest.init(GFITEST_REG,GFITEST_IDX,DigitalPin::OUT);
 #endif
 
   Reset();
@@ -1320,7 +1320,7 @@ void J1772Pilot::Init()
   TCCR1A |= _BV(COM1B1);
 #endif // PILOT_IDX
 #else // fast PWM
-  pin.init(PILOT_PRT,PILOT_IDX,DigitalPin::OUT);
+  pin.init(PILOT_REG,PILOT_IDX,DigitalPin::OUT);
 #endif
 
   SetState(PILOT_STATE_P12); // turns the pilot on 12V steady state
@@ -1437,10 +1437,10 @@ J1772EVSEController::J1772EVSEController()
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
   pinCharging.write(1);
-#ifdef CHARGING2_PRT
+#ifdef CHARGING2_REG
   pinCharging2.write(1);
 #endif
-#ifdef CHARGINGAC_PRT
+#ifdef CHARGINGAC_REG
   pinChargingAC.write(1);
 #endif
   m_bVFlags |= ECVF_CHARGING_ON;
@@ -1452,10 +1452,10 @@ void J1772EVSEController::chargingOn()
 void J1772EVSEController::chargingOff()
 { // turn off charging current
   pinCharging.write(0);
-#ifdef CHARGING2_PRT
+#ifdef CHARGING2_REG
   pinCharging2.write(0);
 #endif
-#ifdef CHARGINGAC_PRT
+#ifdef CHARGINGAC_REG
   pinChargingAC.write(0);
 #endif
   m_bVFlags &= ~ECVF_CHARGING_ON;
@@ -1609,11 +1609,11 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 #endif // RGBLCD
 void J1772EVSEController::Enable()
 {
-#ifdef SLEEP_STATUS_PRT
+#ifdef SLEEP_STATUS_REG
   if (m_EvseState == EVSE_STATE_SLEEPING) {
     pinSleepStatus.write(0);
   }
-#endif // SLEEP_STATUS_PRT
+#endif // SLEEP_STATUS_REG
 
   m_PrevEvseState = EVSE_STATE_DISABLED;
   m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1644,9 +1644,9 @@ void J1772EVSEController::Sleep()
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
-#ifdef SLEEP_STATUS_PRT
+#ifdef SLEEP_STATUS_REG
     pinSleepStatus.write(1);
-#endif // SLEEP_STATUS_PRT
+#endif // SLEEP_STATUS_REG
 
     g_OBD.Update();
 #ifdef RAPI
@@ -1816,24 +1816,24 @@ uint8_t J1772EVSEController::doPost()
           
       // save state with Relay 1 on 
       pinCharging.write(1);
-#ifdef CHARGINGAC_PRT
+#ifdef CHARGINGAC_REG
       pinChargingAC.write(1);
 #endif
       delay(RelaySettlingTime);
       Relay1 = ReadACPins();
       pinCharging.write(0);
-#ifdef CHARGINGAC_PRT
+#ifdef CHARGINGAC_REG
       pinChargingAC.write(0);
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
       // save state for Relay 2 on
-#ifdef CHARGING2_PRT
+#ifdef CHARGING2_REG
       pinCharging2.write(1); 
 #endif
       delay(RelaySettlingTime);
       Relay2 = ReadACPins();
-#ifdef CHARGING2_PRT
+#ifdef CHARGING2_REG
       pinCharging2.write(0); 
 #endif
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
@@ -1977,21 +1977,21 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
-  pinCharging.init(CHARGING_PRT,CHARGING_IDX,DigitalPin::OUT);
-#ifdef CHARGING2_PRT
-  pinCharging2.init(CHARGING2_PRT,CHARGING2_IDX,DigitalPin::OUT);
+  pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
+#ifdef CHARGING2_REG
+  pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
 #endif
-#ifdef CHARGINGAC_PRT
-  pinChargingAC.init(CHARGINGAC_PRT,CHARGINGAC_IDX,DigitalPin::OUT);
+#ifdef CHARGINGAC_REG
+  pinChargingAC.init(CHARGINGAC_REG,CHARGINGAC_IDX,DigitalPin::OUT);
 #endif
-#ifdef ACLINE1_PRT
-  pinAC1.init(ACLINE1_PRT,ACLINE1_IDX,DigitalPin::INP_PU);
+#ifdef ACLINE1_REG
+  pinAC1.init(ACLINE1_REG,ACLINE1_IDX,DigitalPin::INP_PU);
 #endif
-#ifdef ACLINE2_PRT
-  pinAC2.init(ACLINE2_PRT,ACLINE2_IDX,DigitalPin::INP_PU);
+#ifdef ACLINE2_REG
+  pinAC2.init(ACLINE2_REG,ACLINE2_IDX,DigitalPin::INP_PU);
 #endif
-#ifdef SLEEP_STATUS_PRT
-  pinSleepStatus.init(SLEEP_STATUS_PRT,SLEEP_STATUS_IDX,DigitalPin::OUT);
+#ifdef SLEEP_STATUS_REG
+  pinSleepStatus.init(SLEEP_STATUS_REG,SLEEP_STATUS_IDX,DigitalPin::OUT);
 #endif
 
 #ifdef GFI
@@ -2799,8 +2799,8 @@ Btn::Btn()
 
 void Btn::init()
 {
-#ifdef BTN_PRT
-  pinBtn.init(BTN_PRT,BTN_IDX,DigitalPin::INP_PU);
+#ifdef BTN_REG
+  pinBtn.init(BTN_REG,BTN_IDX,DigitalPin::INP_PU);
 #endif
 }
 
