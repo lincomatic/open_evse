@@ -277,10 +277,10 @@
 #define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
 
 //J1772EVSEController
-#define CURRENT_PIN 0 // analog current reading pin A0
-#define VOLT_PIN 1 // analog pilot voltage reading pin A1
+#define CURRENT_PIN 0 // analog current reading pin ADCx
+#define VOLT_PIN 1 // analog pilot voltage reading pin ADCx
 #ifdef OPENEVSE_2
-#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin A2
+#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin ADCx
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
@@ -853,6 +853,14 @@ class J1772EVSEController {
   unsigned long m_GfiRetryCnt;
   uint8_t m_GfiTripCnt;
 #endif // GFI
+  AdcPin adcPilot;
+#ifdef CURRENT_PIN
+  AdcPin adcCurrent;
+#endif
+#ifdef VOLTMETER_PIN
+  AdcPin adcVoltMeter;
+#endif
+
   DigitalPin pinCharging;
 #ifdef CHARGING2_REG
   DigitalPin pinCharging2;
