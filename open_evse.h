@@ -144,7 +144,7 @@
 // Option for Delay Timer - GoldServe
 #ifndef TEMPERATURE_MONITORING
 // cannot define TEMPERATURE_MONITORING and DELAYTIMER at the same time due to code space restrictions
-//#define DELAYTIMER
+#define DELAYTIMER
 #endif
 
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
