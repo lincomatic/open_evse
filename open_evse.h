@@ -1115,11 +1115,15 @@ public:
 
 class SetupMenu : public Menu {
   uint8_t m_menuCnt;
+  uint8_t m_noExit;
 public:
   SetupMenu();
   void Init();
   void Next();
   Menu *Select();
+  void EnableExitItem(uint8_t tf) {
+    m_noExit = !tf;
+  }
 };
 
 class SvcLevelMenu : public Menu {

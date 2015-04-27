@@ -1314,6 +1314,11 @@ uint8_t Gfi::SelfTest()
   }
   while(pin.read());
 
+  // sometimes getting spurious GFI faults when testing just before closing
+  // relay.
+  // wait a little more for everything to settle down
+  delay(200);
+
   m_GfiFault = 0;
   testInProgress = 0;
 
@@ -1498,6 +1503,7 @@ void J1772EVSEController::chargingOff()
 
 void J1772EVSEController::HardFault()
 {
+  g_SetupMenu.EnableExitItem(0);
   g_OBD.Update(OBD_UPD_HARDFAULT);
   while (1) ProcessInputs(1); // spin forever or until user resets via menu
 }
@@ -1987,9 +1993,7 @@ void J1772EVSEController::ProcessInputs(uint8_t nosleeptoggle)
   g_CLI.getInput();
 #endif // SERIALCLI
 #ifdef BTN_MENU
-  //  do {
-    g_BtnHandler.ChkBtn(nosleeptoggle);
-    //  } while (g_BtnHandler.InMenu());
+  g_BtnHandler.ChkBtn(nosleeptoggle);
 #endif
 }
 
@@ -2108,6 +2112,7 @@ void J1772EVSEController::Init()
   }
 #endif // FT_READ_AC_PINS
  
+  g_SetupMenu.EnableExitItem(0);
   uint8_t fault; 
   do {
     fault = 0; // reset post fault
@@ -2135,6 +2140,8 @@ void J1772EVSEController::Init()
     }
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
+
+  g_SetupMenu.EnableExitItem(1);
 
   SetSvcLevel(svclvl);
 
@@ -2523,7 +2530,7 @@ void J1772EVSEController::Update()
     }
 
 #ifdef SERIALCLI
-   if (SerDbgEnabled() && (m_EvseState != prevevsestate)) {
+    if (SerDbgEnabled()) {
       g_CLI.print_P(PSTR("state: "));
       Serial.print((int)prevevsestate);
       g_CLI.print_P(PSTR("->"));
@@ -2926,7 +2933,8 @@ void SetupMenu::Init()
 
 void SetupMenu::Next()
 {
-  if (++m_CurIdx > m_menuCnt) {
+  if ((++m_CurIdx > m_menuCnt) ||
+      (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
     m_CurIdx = 0;
   }
 
