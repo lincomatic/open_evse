@@ -1,5 +1,10 @@
 Change Log
 
+vD3.7.1 SCL 20150427
+- clean up OnboardDisplay::Update() - added OBD_UPD_xxx
+- GFI hard fault .. change status to EVSE_STATE_GFI_TEST_FAILED instead of EVSE_GFCI_FAULT
+	
+	
 vD3.7.0 SCL 20150423
 - added avrstuff.h/cpp -> switch from Arduino digital pin functions to
 	DigitalPin
