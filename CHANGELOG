@@ -7,17 +7,18 @@ vD3.7.1 SCL 20150427
 - GFI hard fault .. change status to EVSE_STATE_GFI_TEST_FAILED instead of EVSE_GFCI_FAULT
 - when rebooting EVSE if our relay is closed, set pilot to +12VDC and wait 3 sec
 	to give EV time to open its contactor before we open ours
+- UL-mandated GFI test before closing contacts causing spurious GFI faults
+	-> add a 200ms delay after GFI test
+- during hard fault, disable Exit menu item
 - misc code cleanup
 
-	
-	
 vD3.7.0 SCL 20150423
 - added avrstuff.h/cpp -> switch from Arduino digital pin functions to
 	DigitalPin
-	
+
 vD3.6.9 SCL 20150423
 - GFCI test message now "GFCI". Only fault will cause "GFCI FAULT"
-	
+
 vD3.6.8 SCL 20150413
 - merge NSayer PR #32 OpenEVSE II streamline
 
