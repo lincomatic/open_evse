@@ -1250,7 +1250,6 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif //#ifdef DELAYTIMER
 
 #ifdef FT_ENDURANCE
-  extern J1772EVSEController g_EvseController;
   LcdSetCursor(0,0);
   sprintf(g_sTmp,"%d %d",g_CycleCnt,(int)g_EvseController.ReadACPins());
   LcdPrint(g_sTmp);
