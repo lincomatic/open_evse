@@ -1,8 +1,14 @@
 Change Log
 
 vD3.7.1 SCL 20150427
+- fix bug: if entered menu during charging, relay would stay open when user pulled plug from EV
 - clean up OnboardDisplay::Update() - added OBD_UPD_xxx
+- disable OnboardDisplay::Update() when in menu
 - GFI hard fault .. change status to EVSE_STATE_GFI_TEST_FAILED instead of EVSE_GFCI_FAULT
+- when rebooting EVSE if our relay is closed, set pilot to +12VDC and wait 3 sec
+	to give EV time to open its contactor before we open ours
+- misc code cleanup
+
 	
 	
 vD3.7.0 SCL 20150423

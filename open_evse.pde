@@ -290,11 +290,19 @@ void wdt_init(void)
 }
 
 // use watchdog to perform a reset
-void WatchDogResetEvse()
+void J1772EVSEController::Reboot()
 {
+  m_Pilot.SetState(PILOT_STATE_P12);
+
 #ifdef LCD16X2
   g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
 #endif
+
+  if (chargingIsOn()) {
+   // give the EV some time to open its contactor in response to P12
+    delay(3000);
+  }
+
   // hardware reset by forcing watchdog to timeout
   wdt_enable(WDTO_1S);   // enable watchdog timer
   delay(1500);
@@ -899,13 +907,15 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 char g_sRdyLAstr[] = "L%d:%dA";
 const char g_psReady[] PROGMEM = "Ready";
 const char g_psCharging[] PROGMEM = "Charging";
-void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
+void OnboardDisplay::Update(int8_t updmode)
 {
+  if (updateDisabled()) return;
+
   int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
 
-  if (g_EvseController.StateTransition() || force) {
+  if (g_EvseController.StateTransition() || (updmode != OBD_UPD_NORMAL)) {
     // Optimize function call - GoldServe
     sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
     
@@ -998,7 +1008,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
-    LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psGfciFault);
+    LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psGfciFault);
 #endif //Adafruit RGB LCD
     // n.b. blue LED is off
     break;
@@ -1017,7 +1027,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
-    LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psNoGround);
+    LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psNoGround);
 #endif //Adafruit RGB LCD
     // n.b. blue LED is off
     break;
@@ -1026,7 +1036,7 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
     LcdSetBacklightColor(RED);
-    LcdMsg_P(hardfault ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
+    LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
 #endif //Adafruit RGB LCD
     // n.b. blue LED is off
     break;
@@ -1040,6 +1050,12 @@ void OnboardDisplay::Update(int8_t force,uint8_t hardfault)
     LcdPrint_P(g_psStopped);
     LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
+    break;
+ case EVSE_STATE_GFI_TEST_FAILED:
+    SetGreenLed(0);
+    SetRedLed(1);
+    LcdSetBacklightColor(RED);
+    LcdMsg_P(g_psTestFailed,g_psGfci);
     break;
   case EVSE_STATE_SLEEPING:
     SetGreenLed(1);
@@ -1295,9 +1311,11 @@ uint8_t Gfi::SelfTest()
   // wait for GFI pin to clear
   do {
     delay(50);
+    WDT_RESET();
   }
-  while(pin.read()) ;
+  while(pin.read());
 
+  m_GfiFault = 0;
   testInProgress = 0;
 
   return !testSuccess;
@@ -1481,8 +1499,8 @@ void J1772EVSEController::chargingOff()
 
 void J1772EVSEController::HardFault()
 {
-  g_OBD.Update(1,1);
-  while (1) processInputs(); // spin forever or until user resets via menu
+  g_OBD.Update(OBD_UPD_HARDFAULT);
+  while (1) ProcessInputs(1); // spin forever or until user resets via menu
 }
 
 #ifdef GFI
@@ -1638,7 +1656,7 @@ void J1772EVSEController::Disable()
     m_EvseState = EVSE_STATE_DISABLED;
     // panic stop so we won't wait for EV to open its contacts first
     chargingOff();
-    g_OBD.Update();
+    g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
     if (StateTransition()) {
       g_ERP.sendEvseState();
@@ -1659,7 +1677,7 @@ void J1772EVSEController::Sleep()
     pinSleepStatus.write(1);
 #endif // SLEEP_STATUS_REG
 
-    g_OBD.Update();
+    g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
     if (StateTransition()) {
       g_ERP.sendEvseState();
@@ -1670,7 +1688,6 @@ void J1772EVSEController::Sleep()
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
     // when to open the contacts in Update()
-    // car has 3 sec to open contacts after we go to State F
     m_ChargeOffTimeMS = millis();
   }
 }
@@ -1726,7 +1743,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
   SetCurrentCapacity(ampacity);
 
   if (updatelcd) {
-    g_OBD.Update(1);
+    g_OBD.Update(OBD_UPD_FORCE);
   }
 }
 
@@ -1962,7 +1979,7 @@ uint8_t J1772EVSEController::doPost()
 }
 #endif // ADVPWR
 
-void J1772EVSEController::processInputs()
+void J1772EVSEController::ProcessInputs(uint8_t nosleeptoggle)
 {
 #ifdef RAPI
   g_ERP.doCmd(0);
@@ -1971,9 +1988,9 @@ void J1772EVSEController::processInputs()
   g_CLI.getInput();
 #endif // SERIALCLI
 #ifdef BTN_MENU
-  do {
-    g_BtnHandler.ChkBtn(1);
-  } while (g_BtnHandler.InMenu());
+  //  do {
+    g_BtnHandler.ChkBtn(nosleeptoggle);
+    //  } while (g_BtnHandler.InMenu());
 #endif
 }
 
@@ -1984,7 +2001,7 @@ void J1772EVSEController::Init()
 
 #ifdef RGBLCD
   if ((rflgs != 0xffff) && (rflgs & ECF_MONO_LCD)) {
-    g_OBD.LcdSetBacklightType(0);
+    g_OBD.LcdSetBacklightType(BKL_TYPE_MONO);
   }
 #endif // RGBLCD
 
@@ -2111,7 +2128,7 @@ void J1772EVSEController::Init()
 	unsigned long faultms = millis();
 	// wait for GFI_TIMEOUT before retrying POST
 	while ((millis() - faultms) < GFI_TIMEOUT) {
-	  processInputs();
+	  ProcessInputs(1);
 	}
 #ifdef UL_COMPLIANT
       }
@@ -2179,13 +2196,14 @@ void J1772EVSEController::Update()
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
-    
     if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
-      // wait for car to bring pilot voltage back to state B level or higher
-      // (as an indicator that it opened its relay)
-      // if it doesn't do it within 5 sec, we'll just open our relay anyway
-      if ((phigh >= m_ThreshData.m_ThreshBC) || ((curms - m_ChargeOffTimeMS) >= 5000)) {
+      // wait for pilot voltage to go > STATE C. This will happen if
+      // a) EV reacts and goes back to state B (opens its contacts)
+      // b) user pulls out the charge connector
+      // if it doesn't happen within 3 sec, we'll just open our relay anyway
+      if ((phigh >= m_ThreshData.m_ThreshBC)
+	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
 	chargingOff();
 #ifdef FT_SLEEP_DELAY
 	g_OBD.LcdMsg("SLEEP OPEN",(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
@@ -2443,15 +2461,8 @@ void J1772EVSEController::Update()
       // test GFI before closing relay
       if (GfiSelfTestEnabled() && m_Gfi.SelfTest()) {
        // GFI test failed - hard fault
-        m_EvseState = EVSE_STATE_GFCI_FAULT;
-#ifdef LCD16X2
-	g_OBD.SetGreenLed(0);
-	g_OBD.SetRedLed(1);
-	g_OBD.LcdSetBacklightColor(RED);
-	g_OBD.LcdMsg_P(g_psTestFailed,g_psGfci);
-#endif // LCD16X2
-
-	while (1) processInputs(); // spin forever
+        m_EvseState = EVSE_STATE_GFI_TEST_FAILED;
+	HardFault();
       }
 #endif // UL_GFI_SELFTEST
 
@@ -2511,8 +2522,9 @@ void J1772EVSEController::Update()
       m_Pilot.SetState(PILOT_STATE_P12);
       chargingOff(); // turn off charging current
     }
+
 #ifdef SERIALCLI
-    if (SerDbgEnabled()) {
+   if (SerDbgEnabled() && (m_EvseState != prevevsestate)) {
       g_CLI.print_P(PSTR("state: "));
       Serial.print((int)prevevsestate);
       g_CLI.print_P(PSTR("->"));
@@ -2523,6 +2535,7 @@ void J1772EVSEController::Update()
       Serial.println(phigh);
     }
 #endif //#ifdef SERIALCLI
+
   }
 
 #ifdef UL_COMPLIANT
@@ -2674,7 +2687,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   }
 
   if (updatelcd) {
-    g_OBD.Update(1);
+    g_OBD.Update(OBD_UPD_FORCE);
   }
 
   return rc;
@@ -2983,12 +2996,9 @@ Menu *BklTypeMenu::Select()
   g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_BklMenuItems[m_CurIdx]);
 
-  g_EvseController.SetBacklightType((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO,0);
+  g_EvseController.SetBacklightType((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO);
   g_BtnHandler.SetSavedLcdMode((m_CurIdx == 0) ? BKL_TYPE_RGB : BKL_TYPE_MONO);
 
-  g_OBD.LcdSetBacklightType(0,0); // set to mono so menus are always white
-
-  delay(500);
   return &g_SetupMenu;
 
 }
@@ -3801,8 +3811,7 @@ Menu *ResetMenu::Select()
   g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
-    WatchDogResetEvse();
-    while (1);
+    g_EvseController.Reboot();
   }
   return NULL;
 }
@@ -3812,7 +3821,7 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
-void BtnHandler::ChkBtn(int8_t notoggle)
+void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 {
   WDT_RESET();
 
@@ -3823,7 +3832,7 @@ void BtnHandler::ChkBtn(int8_t notoggle)
     }
     else {
 #ifdef BTN_ENABLE_TOGGLE
-      if (!notoggle) {
+      if (!nosleeptoggle) {
 	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
 	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
 	  g_EvseController.Enable();
@@ -3860,8 +3869,9 @@ void BtnHandler::ChkBtn(int8_t notoggle)
 #else  
 	g_EvseController.Enable();
 #endif        
-	g_OBD.LcdSetBacklightType(m_CurLcdMode); // exiting menus - restore LCD mode
-	g_OBD.Update(1);
+	g_OBD.DisableUpdate(0);
+	g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
+	g_OBD.Update(OBD_UPD_FORCE);
       }
     }
     else {
@@ -3870,8 +3880,9 @@ void BtnHandler::ChkBtn(int8_t notoggle)
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
 	g_EvseController.Sleep();
-	m_CurLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
-	g_OBD.LcdSetBacklightType(0); // set to mono so menus are always white
+	g_OBD.DisableUpdate(1);
+	m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
+	g_OBD.LcdSetBacklightColor(WHITE);
 	g_SetupMenu.Init();
 	m_CurMenu = &g_SetupMenu;
 #ifndef BTN_ENABLE_TOGGLE
@@ -3989,14 +4000,14 @@ void DelayTimer::Enable(){
   SaveSettings();
   CheckNow();
   CheckTime();
-  g_OBD.Update(1);
+  g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(1);
   SaveSettings();
-  g_OBD.Update(1);
+  g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
   //g_OBD.LcdClear();
@@ -4067,41 +4078,12 @@ void loop()
 {
   WDT_RESET();
 
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
-
-#ifdef RAPI
-  g_ERP.doCmd();
-#endif
-
   g_EvseController.Update();
 
   g_OBD.Update();
-  
-#ifdef BTN_MENU
-  do {
-    g_BtnHandler.ChkBtn();
-  } while (g_BtnHandler.InMenu());
 
-  //  debugging code
-  /*   g_Btn.read();
-       if (g_Btn.shortPress()) {
-       g_OBD.LcdSetCursor(0,0);
-       g_OBD.LcdPrint("short");
-       delay(1000);
-       g_OBD.LcdSetCursor(0,0);
-       g_OBD.LcdPrint("     ");
-       }
-       else if (g_Btn.longPress()) {
-       g_OBD.LcdSetCursor(0,0);
-       g_OBD.LcdPrint("long");
-       delay(1000);
-       g_OBD.LcdSetCursor(0,0);
-       g_OBD.LcdPrint("    ");
-       }
-  */
-#endif // BTN_MENU
+  g_EvseController.ProcessInputs(0);
+  
   // Delay Timer Handler - GoldServe
 #ifdef DELAYTIMER
   g_DelayTimer.CheckTime();
