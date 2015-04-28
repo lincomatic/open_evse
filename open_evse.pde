@@ -69,11 +69,7 @@ char *g_BlankLine = "                ";
 
 char g_sPlus[] = "+";
 
-#ifdef GFI_SELFTEST
-const char g_psGfiTest[] PROGMEM = "GFI Self Test";
-#endif
-
-#ifdef BTN_MENU
+#if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
 const char g_psSetup[] PROGMEM = "Setup";
 const char g_psSvcLevel[] PROGMEM = "Service Level";
 const char g_psMaxCurrent[] PROGMEM = "Max Current";
@@ -86,6 +82,11 @@ const char g_psBklType[] PROGMEM = "Backlight Type";
 const char g_psGndChk[] PROGMEM = "Ground Check";
 const char g_psRlyChk[] PROGMEM = "Relay Check";
 #endif // ADVPWR
+#ifdef GFI_SELFTEST
+const char g_psGfiTest[] PROGMEM = "GFI Self Test";
+#endif
+#endif // BTN_MENU || SHOW_DISABLED_TEST
+#ifdef BTN_MENU
 const char g_psReset[] PROGMEM = "Restart";
 const char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
@@ -229,7 +230,7 @@ const char g_psTestFailed[] PROGMEM = "TEST FAILED";
 const char g_psEvseError[] PROGMEM =  "EVSE ERROR";
 const char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
 const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
-const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHK FAILED";
+const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHECK";
 const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 const char g_psGfci[] PROGMEM = "GFCI";
 #ifdef TEMPERATURE_MONITORING
@@ -241,6 +242,9 @@ const char g_psStopped[] PROGMEM =  "Stopped";
 const char g_psWaiting[] PROGMEM =  "Waiting";
 const char g_psSleeping[] PROGMEM = "Sleeping";
 const char g_psEvConnected[] PROGMEM = "Connected";
+#ifdef SHOW_DISABLED_TESTS
+const char g_psDisabledTests[] PROGMEM = "TEST DISABLED";
+#endif
 #endif // LCD16X2
 
 #ifdef TEMPERATURE_MONITORING
@@ -287,25 +291,6 @@ void wdt_init(void)
   wdt_disable();
 
   return;
-}
-
-// use watchdog to perform a reset
-void J1772EVSEController::Reboot()
-{
-  m_Pilot.SetState(PILOT_STATE_P12);
-
-#ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
-#endif
-
-  if (chargingIsOn()) {
-   // give the EV some time to open its contactor in response to P12
-    delay(3000);
-  }
-
-  // hardware reset by forcing watchdog to timeout
-  wdt_enable(WDTO_1S);   // enable watchdog timer
-  delay(1500);
 }
 
 void SaveEvseFlags()
@@ -816,17 +801,17 @@ void OnboardDisplay::Init()
   m_Lcd.createChar(1, (uint8_t*)g_sTmp);
   memcpy_P(g_sTmp,CustomChar_2,8);
   m_Lcd.createChar(2, (uint8_t*)g_sTmp);
-  m_Lcd.clear(); // need this to activate the custom chars
 #endif //#ifdef DELAYTIMER
 
+  m_Lcd.clear();
+
 #ifdef OPENEVSE_2
-  LcdPrint_P(0,PSTR("Open EVSE II    "));
+  LcdPrint_P(0,PSTR("Open EVSE II"));
 #else
-  LcdPrint_P(0,PSTR("Open EVSE       "));
+  LcdPrint_P(0,PSTR("Open EVSE"));
 #endif
   LcdPrint_P(0,1,PSTR("Version "));
   LcdPrint_P(VERSTR);
-  LcdPrint_P(PSTR("   "));
   delay(1500);
   WDT_RESET();
 #endif //#ifdef LCD16X2
@@ -1204,7 +1189,7 @@ void OnboardDisplay::Update(int8_t updmode)
         int m = minute(elapsedTime);
         int s = second(elapsedTime);
     #ifdef DELAYTIMER
-        sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)curtime.hour(),(int)curtime.minute());
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)((curtime.hour() <= 23) ? curtime.hour() : 0),(int)((curtime.hour() <= 23) ? curtime.minute() : 0));
     #else
         sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
     #endif //#ifdef DELAYTIMER
@@ -1466,6 +1451,63 @@ J1772EVSEController::J1772EVSEController() :
 #endif
 {
 }
+
+// use watchdog to perform a reset
+void J1772EVSEController::Reboot()
+{
+  m_Pilot.SetState(PILOT_STATE_P12);
+
+#ifdef LCD16X2
+  g_OBD.LcdPrint_P(1,PSTR("Resetting..."));
+#endif
+
+  if (chargingIsOn()) {
+   // give the EV some time to open its contactor in response to P12
+    delay(3000);
+  }
+
+  // hardware reset by forcing watchdog to timeout
+  wdt_enable(WDTO_1S);   // enable watchdog timer
+  delay(1500);
+}
+
+
+
+#ifdef SHOW_DISABLED_TESTS
+void J1772EVSEController::ShowDisabledTests()
+{
+  if (m_wFlags & (ECF_DIODE_CHK_DISABLED|
+		  ECF_VENT_REQ_DISABLED|
+		  ECF_GND_CHK_DISABLED|
+		  ECF_STUCK_RELAY_CHK_DISABLED|
+		  ECF_GFI_TEST_DISABLED)) {
+    g_OBD.LcdSetBacklightColor(YELLOW);
+
+    if (!DiodeCheckEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psDiodeCheck);
+      delay(SHOW_DISABLED_DELAY);
+    }
+    if (!VentReqEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psVentReqChk);
+      delay(SHOW_DISABLED_DELAY);
+    }
+    if (!GndChkEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGndChk);
+      delay(SHOW_DISABLED_DELAY);
+    }
+    if (!StuckRelayChkEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psRlyChk);
+      delay(SHOW_DISABLED_DELAY);
+    }
+    if (!GfiSelfTestEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGfiTest);
+      delay(SHOW_DISABLED_DELAY);
+    }
+
+    g_OBD.LcdSetBacklightColor(WHITE);
+  }
+}
+#endif //SHOW_DISABLED_TESTS
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
@@ -2112,6 +2154,10 @@ void J1772EVSEController::Init()
   }
 #endif // FT_READ_AC_PINS
  
+#ifdef SHOW_DISABLED_TESTS
+  ShowDisabledTests();
+#endif
+ 
   g_SetupMenu.EnableExitItem(0);
   uint8_t fault; 
   do {
@@ -2212,7 +2258,9 @@ void J1772EVSEController::Update()
 	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
 	chargingOff();
 #ifdef FT_SLEEP_DELAY
-	g_OBD.LcdMsg("SLEEP OPEN",(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
+	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	delay(2000);
 #endif
       }
     }

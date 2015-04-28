@@ -1,5 +1,11 @@
 Change Log
 
+vD3.7.2 SCL 20150428
+- added SHOW_DISABLED_TESTS
+- try to fix random GFI fault due to UL-mandated GFI self test just before
+  closing contacts. Gfi::SelfTest() - add 200ms delay and then clear m_GfiFault
+- add code to avoid arcing contacts if user reboots while EVSE is charging
+
 vD3.7.1 SCL 20150427
 - fix bug: if entered menu during charging, relay would stay open when user pulled plug from EV
 - clean up OnboardDisplay::Update() - added OBD_UPD_xxx

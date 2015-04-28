@@ -36,9 +36,12 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.1"
+#define VERSION "D3.7.2"
 
 //-- begin features
+
+// show disabled tests before POST
+#define SHOW_DISABLED_TESTS
 
 // current measurement
 #define AMMETER
@@ -535,6 +538,9 @@
 
 #endif // TEMPERATURE_MONITORING
 
+// how long to show each disabled test on LCD
+#define SHOW_DISABLED_DELAY 1500
+
 //-- end configuration
 
 //-- begin class definitions
@@ -1015,13 +1021,15 @@ public:
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
 
-  void HardFault();
 
   #ifdef OPENEVSE_2      
   uint32_t readVoltmeter();
   #endif
   uint8_t ReadACPins();
 #endif // ADVPWR
+
+  void HardFault();
+
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
@@ -1075,6 +1083,9 @@ public:
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
   void ProcessInputs(uint8_t nosleeptoggle);
   void Reboot();
+#ifdef SHOW_DISABLED_TESTS
+  void ShowDisabledTests();
+#endif
 };
 
 #ifdef BTN_MENU
