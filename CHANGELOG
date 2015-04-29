@@ -1,5 +1,10 @@
 Change Log
 
+vD3.7.3 SCL 20150429
+- no substantial changes.. mainly reorganizing of the code to use the libraries
+	in place -> no more copying to Arduino libraries folder
+- shorten short button press from 100ms -> 50ms
+	
 vD3.7.2 SCL 20150428
 - added SHOW_DISABLED_TESTS
 - try to fix random GFI fault due to UL-mandated GFI self test just before
