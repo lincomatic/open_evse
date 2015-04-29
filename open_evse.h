@@ -311,11 +311,12 @@
 #define CHARGINGAC_REG &PINB
 #define CHARGINGAC_IDX 1
 
-#define RED_LED_REG &PIND
-#define RED_LED_IDX 5
-
-#define GREEN_LED_REG &PINB
-#define GREEN_LED_IDX 5
+// obsolete LED pin
+//#define RED_LED_REG &PIND
+//#define RED_LED_IDX 5
+// obsolete LED pin
+//#define GREEN_LED_REG &PINB
+//#define GREEN_LED_IDX 5
 #endif // OPENEVSE_2
 
 // N.B. if PAFC_PWM is enabled, then pilot pin can be PB1 or PB2
