@@ -62,7 +62,6 @@
 
 const char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
-char junk[1000];
 
 #ifdef LCD16X2
 char *g_BlankLine = "                ";
