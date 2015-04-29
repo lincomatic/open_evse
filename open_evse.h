@@ -27,8 +27,8 @@
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include <Wire.h>
-#include <FlexiTimer2.h> // Required for RTC and Delay Timer
-#include <Time.h>
+#include "./FlexiTimer2.h" // Required for RTC and Delay Timer
+#include "./Time.h"
 #include "avrstuff.h"
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
@@ -407,7 +407,7 @@
 #include <LiquidCrystal_I2C.h>
 #define LCD_I2C_ADDR 0x27
 #else
-#include <LiquidTWI2.h>
+#include "./LiquidTWI2.h"
 #define LCD_I2C_ADDR 0x20 // for adafruit shield or backpack
 #endif // I2CLCD_PCF8574
 #endif // RGBLCD || I2CLCD
@@ -743,8 +743,8 @@ public:
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING
-#include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
-#include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+#include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
 // TempMonitor.m_Flags
 #define TMF_OVERTEMPERATURE          0x01

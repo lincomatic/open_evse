@@ -12,7 +12,6 @@
   Compatible with Adafruit I2C LCD backpack (MCP23008) and
   Adafruit RGB LCD Shield
 */
-
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>

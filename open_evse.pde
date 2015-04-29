@@ -44,24 +44,25 @@
 #include <avr/pgmspace.h>
 #include <pins_arduino.h>
 #include <Wire.h>
-#include <RTClib.h>
-#include <FlexiTimer2.h> // Required for RTC and Delay Timer
-#include <Time.h>
-#include <LiquidTWI2.h>
+#include "./RTClib.h"
+#include "./FlexiTimer2.h" // Required for RTC and Delay Timer
+#include "./Time.h"
+#include "./LiquidTWI2.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
 //#include <LiquidCrystal_I2C.h>
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
-  #include "Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+  #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
   #endif 
   #ifdef TMP007_IS_ON_I2C
-  #include "Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
+  #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
   #endif 
 #endif // TEMPERATURE_MONITORING
 #include "open_evse.h"
 
 const char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
+char junk[1000];
 
 #ifdef LCD16X2
 char *g_BlankLine = "                ";
