@@ -421,7 +421,7 @@
 // button sensing pin
 #define BTN_REG &PINC
 #define BTN_IDX 3
-#define BTN_PRESS_SHORT 100  // ms
+#define BTN_PRESS_SHORT 50  // ms
 #define BTN_PRESS_LONG 500 // ms
 #define BTN_PRESS_VERYLONG 10000
 
