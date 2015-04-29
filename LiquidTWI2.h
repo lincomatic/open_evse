@@ -4,9 +4,13 @@
 #include <inttypes.h>
 #include "Print.h"
 
+
+#ifndef OPEN_EVSE
 // for memory-constrained projects, comment out the MCP230xx that doesn't apply
 #define MCP23017 // Adafruit RGB LCD (PANELOLU2 is now supported without additional define)
 #define MCP23008 // Adafruit I2C Backpack
+#endif // !OPEN_EVSE
+
 
 // if DETECT_DEVICE is enabled, then when constructor's detectDevice != 0
 // device will be detected in the begin() function...

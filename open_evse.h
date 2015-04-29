@@ -21,6 +21,7 @@
  */
 
 
+#define OPEN_EVSE
 
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
@@ -407,6 +408,11 @@
 #include <LiquidCrystal_I2C.h>
 #define LCD_I2C_ADDR 0x27
 #else
+#ifdef RGBLCD
+#define MCP23017 // Adafruit RGB LCD (PANELOLU2 is now supported without additional define)
+#else
+#define MCP23008 // Adafruit I2C Backpack
+#endif
 #include "./LiquidTWI2.h"
 #define LCD_I2C_ADDR 0x20 // for adafruit shield or backpack
 #endif // I2CLCD_PCF8574

@@ -1,4 +1,4 @@
-#include "LiquidTWI2.h"
+#include "open_evse.h"
 
 /*
   LiquidTWI2 High Performance i2c LCD driver for MCP23008 & MCP23017
@@ -644,7 +644,7 @@ void LiquidTWI2::burstBits8(uint8_t value) {
 }
 #endif // MCP23008
 
-#ifdef MCP23017
+#if defined(MCP23017) && !defined(OPEN_EVSE)
 //direct access to the registers for interrupt setting and reading, also the tone function using buzzer pin
 uint8_t LiquidTWI2::readRegister(uint8_t reg) {
   // read a register
@@ -695,4 +695,4 @@ void LiquidTWI2::buzz(long duration, uint16_t freq) {
     while((long)(ontime + cycletime - micros()) > 0);
    }
 }
-#endif //MCP23017
+#endif //MCP23017&&!OPEN_EVSE
