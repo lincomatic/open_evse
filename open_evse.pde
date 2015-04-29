@@ -45,9 +45,7 @@
 #include <pins_arduino.h>
 #include <Wire.h>
 #include "./RTClib.h"
-#include "./FlexiTimer2.h" // Required for RTC and Delay Timer
-#include "./Time.h"
-#include "./LiquidTWI2.h"
+#include "open_evse.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
 //#include <LiquidCrystal_I2C.h>
 #ifdef TEMPERATURE_MONITORING
@@ -58,7 +56,6 @@
   #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
   #endif 
 #endif // TEMPERATURE_MONITORING
-#include "open_evse.h"
 
 const char VERSTR[] PROGMEM = VERSION;
 void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
