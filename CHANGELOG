@@ -1,5 +1,8 @@
 Change Log
 
+vD3.7.4 SCL 20150429
+- enable SAMPLE_ACPINS by default
+	
 vD3.7.3 SCL 20150429
 - no substantial changes.. mainly reorganizing of the code to use the libraries
 	in place -> no more copying to Arduino libraries folder

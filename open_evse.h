@@ -37,7 +37,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.3"
+#define VERSION "D3.7.4"
 
 //-- begin features
 
@@ -120,7 +120,7 @@
 
 // valid only if ADVPWR defined - for rectified MID400 chips which block
 // half cycle (for ground check on both legs)
-//#define SAMPLE_ACPINS
+#define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
 // connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
 // select button of the Adafruit RGB LCD 
