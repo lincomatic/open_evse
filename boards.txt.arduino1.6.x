@@ -3,52 +3,27 @@
 menu.cpu=Processor
 
 ##############################################################
-## OpenEVSE with USBasp
+## OpenEVSE with Programmer selected from Tools->Programmer
 ## ---------------------------------------------
-openevseasp.name=[USBasp]OpenEVSE
-openevseasp.upload.using=usbasp
-openevseasp.upload.tool=avrdude
-openevseasp.upload.maximum_size=32768
-openevseasp.upload.maximum_data_size=2048
+openevse.name=[Programmer]OpenEVSE
+openevse.upload.tool=avrdude
+openevse.upload.maximum_size=32768
+openevse.upload.maximum_data_size=2048
 
-openevseasp.bootloader.tool=avrdude
-openevseasp.bootloader.low_fuses=0xFF
-openevseasp.bootloader.high_fuses=0xDE
-openevseasp.bootloader.extended_fuses=0x05
-openevseasp.bootloader.unlock_bits=0x3F
-openevseasp.bootloader.lock_bits=0x0F
-#openevseasp.bootloader.file=optiboot/optiboot_atmega328.hex
+openevse.bootloader.tool=avrdude
+openevse.bootloader.low_fuses=0xFF
+openevse.bootloader.high_fuses=0xDE
+openevse.bootloader.extended_fuses=0x05
+openevse.bootloader.unlock_bits=0x3F
+openevse.bootloader.lock_bits=0x0F
+#openevse.bootloader.file=optiboot/optiboot_atmega328.hex
 
-openevseasp.build.mcu=atmega328p
-openevseasp.build.f_cpu=16000000L
-openevseasp.build.board=AVR_DUEMILANOVE
-openevseasp.build.core=arduino
-openevseasp.build.variant=standard
-openevseasp.menu.cpu.atmega328=ATmega328
-
-##############################################################
-## OpenEVSE with USBtinyISP
-## ---------------------------------------------
-openevsetiny.name=[USBtinyISP]OpenEVSE
-openevsetiny.upload.using=usbtinyisp
-openevsetiny.upload.tool=avrdude
-openevsetiny.upload.maximum_size=32768
-openevsetiny.upload.maximum_data_size=2048
-
-openevsetiny.bootloader.tool=avrdude
-openevsetiny.bootloader.low_fuses=0xFF
-openevsetiny.bootloader.high_fuses=0xDE
-openevsetiny.bootloader.extended_fuses=0x05
-openevsetiny.bootloader.unlock_bits=0x3F
-openevsetiny.bootloader.lock_bits=0x0F
-#openevsetiny.bootloader.file=optiboot/optiboot_atmega328.hex
-
-openevsetiny.build.mcu=atmega328p
-openevsetiny.build.f_cpu=16000000L
-openevsetiny.build.board=AVR_DUEMILANOVE
-openevsetiny.build.core=arduino
-openevsetiny.build.variant=standard
-openevsetiny.menu.cpu.atmega328=ATmega328
+openevse.build.mcu=atmega328p
+openevse.build.f_cpu=16000000L
+openevse.build.board=AVR_DUEMILANOVE
+openevse.build.core=arduino
+openevse.build.variant=standard
+openevse.menu.cpu.atmega328=ATmega328
 
 ##############################################################
 
