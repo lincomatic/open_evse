@@ -13,6 +13,7 @@
   Written by Limor Fried/Ladyada for Adafruit Industries.  
   BSD license, all text above must be included in any redistribution
  ****************************************************/
+#pragma once
 
 #if (ARDUINO >= 100)
  #include "Arduino.h"

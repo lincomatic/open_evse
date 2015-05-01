@@ -89,7 +89,7 @@
 
 
 // Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
-//#define TEMPERATURE_MONITORING
+#define TEMPERATURE_MONITORING
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
