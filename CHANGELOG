@@ -3,6 +3,7 @@ Change Log
 vD3.7.8 SCL 20150506
 - code cleanup
 - remove sscanf() - save 2K (thanks to AndreE)
+- merge CraigK PR#33
 	
 vD3.7.4 SCL 20150429
 - enable SAMPLE_ACPINS by default
