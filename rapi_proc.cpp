@@ -36,10 +36,10 @@ extern OnboardDisplay g_OBD;
 const char RAPI_VER[] PROGMEM = RAPIVER;
 
 
-// convert 2-digit hex string to uint8
-uint8 htou8(const char *s)
+// convert 2-digit hex string to uint8_t
+uint8_t htou8(const char *s)
 {
-  uint8 u = 0;
+  uint8_t u = 0;
   for (int i=0;i < 2;i++) {
     if (i == 1) u <<= 4;
     char c = s[i];
@@ -53,10 +53,10 @@ uint8 htou8(const char *s)
   return u;
 }
 
-// convert decimal string to uint8
-uint8 dtou8(const char *s)
+// convert decimal string to uint8_t
+uint8_t dtou8(const char *s)
 {
-  uint8 u = 0;
+  uint8_t u = 0;
   while (*s) {
     u *= 10;
     u += *(s++) - '0';
@@ -71,7 +71,7 @@ EvseRapiProcessor::EvseRapiProcessor()
 }
 
 //extern HardwareSerial Serial;
-int EvseRapiProcessor::doCmd(int8 sendstatetrans)
+int EvseRapiProcessor::doCmd(int8_t sendstatetrans)
 {
   int rc = 1;
 
@@ -135,8 +135,8 @@ int EvseRapiProcessor::tokenize()
   tokens[0] = &buffer[1];
   char *s = &buffer[2];
   tokenCnt = 1;
-  uint8 chkSum = ESRAPI_SOC + buffer[1];
-  uint8 ichkSum = 0;
+  uint8_t chkSum = ESRAPI_SOC + buffer[1];
+  uint8_t ichkSum = 0;
   while (*s) {
     if (*s == ' ') {
       chkSum += *s;
@@ -161,7 +161,7 @@ int EvseRapiProcessor::processCmd()
   int rc = -1;
   unsigned u1,u2,u3;
   int i,i2;
-  uint8 x,y;
+  uint8_t x,y;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -225,7 +225,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef RTC      
     case '1': // set RTC
       if (tokenCnt == 7) {
-	extern void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s);
+	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
 	SetRTC(dtou8(tokens[1]),dtou8(tokens[2]),dtou8(tokens[3]),
 	       dtou8(tokens[4]),dtou8(tokens[5]),dtou8(tokens[6]));
 	rc = 0;
@@ -241,10 +241,8 @@ int EvseRapiProcessor::processCmd()
       break;
     case 'A':
       if (tokenCnt == 3) {
-	sscanf(tokens[1],"%d",&i);
-	g_EvseController.SetCurrentScaleFactor(i);
-	sscanf(tokens[2],"%d",&i);
-	g_EvseController.SetAmmeterCurrentOffset(i);
+	g_EvseController.SetCurrentScaleFactor(atoi(tokens[1]));
+	g_EvseController.SetAmmeterCurrentOffset(atoi(tokens[2]));
 	rc = 0;
       }
       break;
@@ -420,7 +418,7 @@ int EvseRapiProcessor::processCmd()
   return rc;
 }
 
-void EvseRapiProcessor::response(uint8 ok)
+void EvseRapiProcessor::response(uint8_t ok)
 {
   write(ESRAPI_SOC);
   write(ok ? "OK " : "NK ");

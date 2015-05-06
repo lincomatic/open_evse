@@ -135,13 +135,6 @@ GV - get version
  *
  */
 
-typedef int int32;
-typedef unsigned int uint32;
-typedef short int16;
-typedef unsigned short uint16;
-typedef char int8;
-typedef unsigned char uint8;
-
 #ifdef RAPI
 
 #define RAPIVER "1.0.2"
@@ -156,9 +149,9 @@ typedef unsigned char uint8;
 #define ESRAPI_MAX_ARGS 10
 class EvseRapiProcessor {
   char buffer[ESRAPI_BUFLEN]; // input buffer
-  int8 bufCnt; // # valid bytes in buffer
+  int8_t bufCnt; // # valid bytes in buffer
   char *tokens[ESRAPI_MAX_ARGS];
-  int8 tokenCnt;
+  int8_t tokenCnt;
   char echo;
 
   int available() { return Serial.available(); }
@@ -174,11 +167,11 @@ class EvseRapiProcessor {
   int tokenize();
   int processCmd();
 
-  void response(uint8 ok);
+  void response(uint8_t ok);
   
 public:
   EvseRapiProcessor();
-  int doCmd(int8 sendstatetrans=1);
+  int doCmd(int8_t sendstatetrans=1);
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
   

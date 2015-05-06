@@ -186,7 +186,7 @@ RTC_DS1307 g_RTC;
 DateTime g_CurrTime;
 
 #if defined(RAPI)
-void SetRTC(uint8 y,uint8 m,uint8 d,uint8 h,uint8 mn,uint8 s) {
+void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s) {
   g_RTC.adjust(DateTime(y,m,d,h,mn,s));
 }
 void GetRTC(char *buf) {
@@ -2829,7 +2829,7 @@ uint32_t MovingAverage(uint32_t samp)
   uint32_t tot = samp;
   samps[0] = samp;
 
-  for (int8 c=MA_PTS-1;c > 0;c--) {
+  for (int8_t c=MA_PTS-1;c > 0;c--) {
   samps[c] = samps[c-1];
   tot += samps[c];
   }
@@ -2844,7 +2844,7 @@ uint32_t MovingAverage(uint32_t samp)
 uint32_t MovingAverage(uint32_t samp)
 {
   static uint32_t tot = 0;
-  static int8 curidx = 0;
+  static int8_t curidx = 0;
   
   if (curidx == 0) {
     tot = 0;

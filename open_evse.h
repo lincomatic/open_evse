@@ -60,7 +60,7 @@
 
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
-//#define OPENEVSE_2
+#define OPENEVSE_2
 
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
@@ -146,15 +146,15 @@
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
-#ifndef TEMPERATURE_MONITORING
+//#ifndef TEMPERATURE_MONITORING
 // cannot define TEMPERATURE_MONITORING and DELAYTIMER at the same time due to code space restrictions
 #define DELAYTIMER
-#endif
+//#endif
 
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
 //#define AUTOSTART_MENU
 
-#if defined(DELAYTIMER) && defined(BTN_MENU) && !defined(RAPI)
+#if defined(DELAYTIMER) && defined(BTN_MENU)// && !defined(RAPI)
 #define DELAYTIMER_MENU
 #endif
 
