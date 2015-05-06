@@ -1,9 +1,13 @@
 Change Log
 
-vD3.7.8 SCL 20150506
+vD3.7.5 SCL 20150506
 - code cleanup
 - remove sscanf() - save 2K (thanks to AndreE)
 - merge CraigK PR#33
+- roll back version from .8 -> .5
+- change DelayTimer::CheckTime() delay from 1m to 1s
+- get rid of FlexiTimer2
+	
 	
 vD3.7.4 SCL 20150429
 - enable SAMPLE_ACPINS by default
@@ -30,7 +34,6 @@ vD3.7.1 SCL 20150427
 	-> add a 200ms delay after GFI test
 - during hard fault, disable Exit menu item
 - misc code cleanup
-- remove FlexiTimer2
 
 vD3.7.0 SCL 20150423
 - added avrstuff.h/cpp -> switch from Arduino digital pin functions to
