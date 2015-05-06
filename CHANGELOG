@@ -30,6 +30,7 @@ vD3.7.1 SCL 20150427
 	-> add a 200ms delay after GFI test
 - during hard fault, disable Exit menu item
 - misc code cleanup
+- remove FlexiTimer2
 
 vD3.7.0 SCL 20150423
 - added avrstuff.h/cpp -> switch from Arduino digital pin functions to

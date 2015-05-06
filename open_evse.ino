@@ -3913,9 +3913,7 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       }
       else { // exit
 #if defined(DELAYTIMER)
-        if (g_DelayTimer.IsTimerEnabled()){
-          g_DelayTimer.CheckNow();
-        } else {
+        if (!g_DelayTimer.IsTimerEnabled()){
           g_EvseController.Enable();
         }
 #else  
@@ -3989,13 +3987,12 @@ void DelayTimer::Init(){
   else {
     m_StopTimerMin = rtmp;
   }
-  
-  FlexiTimer2::set(60000, DelayTimerInterrupt); // Set 1 minute interrupt for Delay Timer handling
-  FlexiTimer2::start(); // Start interrupt
 }
+
 void DelayTimer::CheckTime()
 {
-  if (m_CheckNow == 1){
+  unsigned long curms = millis();
+  if ((curms - m_LastCheck) > (60ul * 1000ul)) {
     g_CurrTime = g_RTC.now();
     m_CurrHour = g_CurrTime.hour();
     m_CurrMin = g_CurrTime.minute();
@@ -4042,7 +4039,7 @@ void DelayTimer::CheckTime()
 	}
       }
     }
-    m_CheckNow = 0;
+    m_LastCheck = curms;
   }
 }
 void DelayTimer::Enable(){
@@ -4050,7 +4047,6 @@ void DelayTimer::Enable(){
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   g_EvseController.EnableAutoStart(0);
   SaveSettings();
-  CheckNow();
   CheckTime();
   g_OBD.Update(OBD_UPD_FORCE);
 }
@@ -4069,9 +4065,6 @@ void DelayTimer::PrintTimerIcon(){
     g_OBD.LcdWrite(0x0);
 #endif //#ifdef BTN_MENU
   }
-}
-void DelayTimerInterrupt(){
-  g_DelayTimer.CheckNow();
 }
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER

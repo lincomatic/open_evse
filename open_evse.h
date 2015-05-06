@@ -28,7 +28,6 @@
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include <Wire.h>
-#include "./FlexiTimer2.h" // Required for RTC and Delay Timer
 #include "./Time.h"
 #include "avrstuff.h"
 #if defined(ARDUINO) && (ARDUINO >= 100)
@@ -37,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.4"
+#define VERSION "D3.7.8"
 
 //-- begin features
 
@@ -146,15 +145,12 @@
 
 #ifdef RTC
 // Option for Delay Timer - GoldServe
-//#ifndef TEMPERATURE_MONITORING
-// cannot define TEMPERATURE_MONITORING and DELAYTIMER at the same time due to code space restrictions
 #define DELAYTIMER
-//#endif
 
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
 //#define AUTOSTART_MENU
 
-#if defined(DELAYTIMER) && defined(BTN_MENU)// && !defined(RAPI)
+#if defined(DELAYTIMER) && defined(BTN_MENU) && !defined(TEMPERATURE_MONITORING)
 #define DELAYTIMER_MENU
 #endif
 
@@ -1355,16 +1351,13 @@ class DelayTimer {
   uint8_t m_StopTimerMin;
   uint8_t m_CurrHour;
   uint8_t m_CurrMin;
-  uint8_t m_CheckNow;
+  unsigned long m_LastCheck;
 public:
   DelayTimer(){
-    m_CheckNow = 1; //Check as soon as the EVSE initializes
+    m_LastCheck = - (60ul * 1000ul);
   };
   void Init();
   void CheckTime();
-  void CheckNow(){
-    m_CheckNow = 1;
-  };
   void Enable();
   void Disable();
   uint8_t IsTimerEnabled(){
