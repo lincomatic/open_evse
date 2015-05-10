@@ -75,20 +75,18 @@ boolean Adafruit_MCP9808::begin(uint8_t addr) {
  
 /**************************************************************************/
 /*! 
-    @brief  Reads the 16-bit temperature register and returns the Centigrade
-            temperature as a float.
+    @brief  Reads the 16-bit temperature register and returns Centigrade*10
 
 */
 /**************************************************************************/
-float Adafruit_MCP9808::readTempC( void )
+int16_t Adafruit_MCP9808::readTempC10( void )
 {
   uint16_t t = read16(MCP9808_REG_AMBIENT_TEMP);
 
-  float temp = t & 0x0FFF;
-  temp /=  16.0;
+  uint32_t temp = ((t & 0x0FFF)*10)/16;
   if (t & 0x1000) temp -= 256;
 
-  return temp;
+  return (int16_t) temp;
 }
 
 /**************************************************************************/

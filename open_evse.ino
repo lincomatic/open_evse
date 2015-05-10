@@ -5,7 +5,7 @@
  * Copyright (c) 2011-2015 Sam C. Lin <lincomatic@gmail.com>
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
- * portions Copyright (c) 2014 Nick Sayer <nsayer@kfu.com>
+ * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
 
  Revised  Ver	By		Reason
@@ -325,10 +325,10 @@ void TempMonitor::Init()
 void TempMonitor::Read()
 {
 #ifdef TMP007_IS_ON_I2C
-  m_TMP007_temperature = 10 * m_tmp007.readObjTempC();   //  using the TI TMP007 IR sensor
+  m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
 #endif
 #ifdef MCP9808_IS_ON_I2C
-  m_MCP9808_temperature = 10 * m_tempSensor.readTempC();  // for the MCP9808
+  m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
 #endif
 
        
@@ -1296,10 +1296,14 @@ uint8_t Gfi::SelfTest()
   }
   while(pin.read());
 
+#ifndef OPENEVSE_2
   // sometimes getting spurious GFI faults when testing just before closing
   // relay.
   // wait a little more for everything to settle down
-  delay(200);
+  // this delay is needed only if 10uF cap is in the circuit, which makes the circuit
+  // temporarily overly sensitive to trips until it discharges
+  delay(1000);
+#endif // OPENEVSE_2
 
   m_GfiFault = 0;
   testInProgress = 0;

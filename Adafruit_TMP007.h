@@ -58,8 +58,8 @@ class Adafruit_TMP007  {
 
   int16_t readRawDieTemperature(void);
   int16_t readRawVoltage(void);
-  double readObjTempC(void);
-  double readDieTempC(void);
+  int16_t readObjTempC10(void);
+  int16_t readDieTempC(void);
 
  private:
   uint8_t _addr;

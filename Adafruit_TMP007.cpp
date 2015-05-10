@@ -43,32 +43,30 @@ boolean Adafruit_TMP007::begin(uint8_t samplerate) {
 }
 
 //////////////////////////////////////////////////////
-
-double Adafruit_TMP007::readDieTempC(void) {
-   double Tdie = readRawDieTemperature();
+/*
+int16_t Adafruit_TMP007::readDieTempC(void) {
+  double Tdie = readRawDieTemperature();
    Tdie *= 0.03125; // convert to celsius
 #ifdef TMP007_DEBUG
    Serial.print("Tdie = "); Serial.print(Tdie); Serial.println(" C");
 #endif
    return Tdie;
 }
+*/
 
-double Adafruit_TMP007::readObjTempC(void) {
+// return Celcius * 10
+int16_t Adafruit_TMP007::readObjTempC10(void) {
   int16_t raw = read16(TMP007_TOBJ);
-  // invalid
-  if (raw & 0x1) return NAN;
-  raw >>=2;
 
-  double Tobj = raw;
-  Tobj *= 0.03125; // convert to celsius
-#ifdef TMP007_DEBUG
-   Serial.print("Tobj = "); Serial.print(Tobj); Serial.println(" C");
-#endif
-   return Tobj;
+  if (raw & 0x1) return NAN;
+
+  uint32_t temp = ((int32_t)raw) * 78125;
+  return (int16_t) (temp / 1000000);
 }
 
 
 
+/*
 int16_t Adafruit_TMP007::readRawDieTemperature(void) {
   int16_t raw = read16(TMP007_TDIE);
 
@@ -108,7 +106,7 @@ int16_t Adafruit_TMP007::readRawVoltage(void) {
 #endif
   return raw; 
 }
-
+*/
 
 /*********************************************************************/
 
