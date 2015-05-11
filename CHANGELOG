@@ -1,8 +1,22 @@
 Change Log
 
+vD3.7.6 SCL 20150510
+* RELEASE CANDIDATE 1 *
+- added u2a()
+- code size reduction of DELAYTIMER_MENU and TEMPERATURE_MONITORING
+  -> now, RAPI, DELAYTIMER_MENU, and TEMPERATURE_MONITORING can all be enabled simultaneously
+- remove floats from Adafruit libraries (CraigK remove float from open_evse.ino)
+- merge CraigK PR#34,35
+- added more amp selections to L2 (CraigK)
+- change RTC year range from 12-20 -> 15->25
+- change RTC/DelayTimer menu behavior - keep leading + when adjusting a value
+
+Much gratitude to CraigK for his many contributions to coding and testing, including,
+but not limited to temperature monitoring and kWh logging
+	
 vD3.7.5 SCL 20150506
 - code cleanup
-- remove sscanf() - save 2K (thanks to AndreE)
+- remove sscanf() - save 2K (thanks to AndreE for the heads up)
 - merge CraigK PR#33
 - roll back version from .8 -> .5
 - change DelayTimer::CheckTime() delay from 1m to 1s

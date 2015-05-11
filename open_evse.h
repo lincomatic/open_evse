@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.5"
+#define VERSION "D3.7.6"
 
 //-- begin features
 
@@ -655,12 +655,7 @@ public:
   void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
   void LcdPrint_P(int y,const char PROGMEM *s);
-  void LcdPrint(int x,int y,const char *s) { 
-    if (LcdDetected()) {
-      m_Lcd.setCursor(x,y);
-      m_Lcd.print(s); 
-    }
-  }
+  void LcdPrint(int x,int y,const char *s);
   void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
     if (LcdDetected()) m_Lcd.print(i); 
@@ -671,6 +666,7 @@ public:
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
     if (LcdDetected()) m_Lcd.print(g_BlankLine);
+    m_Lcd.setCursor(0,y);
   }
   void LcdClear() { 
     if (LcdDetected()) m_Lcd.clear();
