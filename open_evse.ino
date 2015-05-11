@@ -375,9 +375,9 @@ void TempMonitor::Read()
   Wire.requestFrom(0x68, 2);
   m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
   m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
-  if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer
+  if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
   #ifdef OPENEVSE_2
-    m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer, OpenEVSE II does not use the DS3231
+    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
   #endif
 #endif // RTC
 }
@@ -1183,7 +1183,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
 
 #ifdef RTC	
-      if ( g_TempMonitor.m_DS3231_temperature != 0xffff) {   // it returns 0xffff if it is not present
+      if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
         sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
 	LcdPrint(5,1,g_sTmp);
       }
