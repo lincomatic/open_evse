@@ -345,7 +345,7 @@ void TempMonitor::Read()
       
   Wire.requestFrom(0x68, 2);
   m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + 2.5*(wirerecv()>>6);  // keep the reading like 235 meaning 23.5C
+  m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
   if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer
   #ifdef OPENEVSE_2
     m_DS3231_temperature = 0xffff;  // If the DS3231 is not present then return this negative integer, OpenEVSE II does not use the DS3231
@@ -3123,7 +3123,7 @@ Menu *SvcLevelMenu::Select()
 }
 
 uint8_t g_L1MaxAmps[] = {6,10,12,14,15,16,0};
-uint8_t g_L2MaxAmps[] = {10,16,20,24,30,35,40,45,50,55,60,65,70,75,80,0};
+uint8_t g_L2MaxAmps[] = {10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,0};
 MaxCurrentMenu::MaxCurrentMenu()
 {
   m_Title = g_psMaxCurrent;
