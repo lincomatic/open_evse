@@ -28,12 +28,20 @@ Fx - function
 Sx - set parameter
 Gx - get parameter
 
-command format
+command formats
+1. with XOR checksum (recommended)
+$cc pp pp ...^xk\r
+2. with additive checksum (legacy)
 $cc pp pp ...*ck\r
+3. no checksum (FOR TESTING ONLY! DON'T USE FOR APPS)
+$cc pp pp ...\r
 
+\r = carriage return = 13d = 0x0D
 cc = 2-letter command
 pp = parameters
+xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
+
 
 response format
 $OK [optional parameters]\r - success
@@ -89,6 +97,8 @@ SF 0|1 - disable/enable GFI self test
 SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
+SK - set accumulated kwh (v1.0.3+)
+ $SK 0*12 - set accumulated kwh to 0
 SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
@@ -120,6 +130,14 @@ GF - get fault counters
 GG - get charging current
  response: OK amps
  $GG*B2
+GP - get temPerature (v1.0.3+)
+ $GP*BB
+ response: OK ds3231temp mcp9808temp tmp007temp
+ ds3231temp - temperature from DS3231 RTC
+ mcp9808temp - temperature from MCP9808
+ tmp007temp - temperature from TMP007
+ all temperatures are in 10th's of a degree Celcius
+ if any temperature sensor is not installed, its return value will be 0
 GS - get state
  response: OK state elapsed
  state: EVSE_STATE_xxx
@@ -128,6 +146,11 @@ GS - get state
 GT - get time (RTC)
  response OK yr mo day hr min sec       yr=2-digit year
  $GT*BF
+GU - get energy usage (v1.0.3+)
+ $GU*C0
+ response OK wattseconds kwhacc
+ wattseconds - watt-seconds used this charging session
+ kwhacc - total kwh accumulated over all charging sessions
 GV - get version
  response: OK firmware_version protocol_version
  $GV*C1
@@ -137,7 +160,7 @@ GV - get version
 
 #ifdef RAPI
 
-#define RAPIVER "1.0.2"
+#define RAPIVER "1.0.3"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

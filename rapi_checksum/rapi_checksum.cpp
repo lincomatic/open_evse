@@ -44,6 +44,7 @@ typedef unsigned int uint32;
 
 
 char cmdBuf[80];
+char buf[80];
 uint8 calcChkSum()
 {
   char *s = cmdBuf;
@@ -64,6 +65,16 @@ void appendChkSum()
   sprintf(s,"*%02X%c",(unsigned)chkSum,ESRAPI_EOC);
 }
 
+void appendChkXor()
+{
+  char *s = cmdBuf;
+  uint8 chkXor = 0;
+  while (*s) {
+    chkXor ^= *(s++);
+  }
+  sprintf(s,"^%02X%c",(unsigned)chkXor,ESRAPI_EOC);
+}
+
 int main(int argc,char *argv[])
 {
   printf("Lincomatic OpenEVSE RAPI Checksum Generator V1.0 (%s %s)\n\n",__DATE__,__TIME__);
@@ -71,6 +82,10 @@ int main(int argc,char *argv[])
   for (;;) {
     gets(cmdBuf);
     if (cmdBuf[0] != '$') return 0;
+    strcpy(buf,cmdBuf);
+    appendChkXor();
+    printf("%s\n",cmdBuf);
+    strcpy(cmdBuf,buf);
     appendChkSum();
     printf("%s\n",cmdBuf);
   }

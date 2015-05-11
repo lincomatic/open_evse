@@ -253,7 +253,7 @@ TempMonitor g_TempMonitor;
 
 #ifdef KWH_RECORDING
 unsigned long g_WattHours_accumulated;
-unsigned long g_WattSeconds = 0;
+unsigned long g_WattSeconds;
 #endif // KWH_RECORDING
 
 #ifdef FT_ENDURANCE
@@ -282,7 +282,7 @@ static inline uint8_t wirerecv(void) {
 
 // if digits > 0, zero pad w/ to # digits
 // WARNING: This function uses the *end* of g_sTmp as its buffer
-char *u2a(unsigned x,int digits=0)
+char *u2a(unsigned long x,int digits)
 {
   int d = digits;
   char *s = g_sTmp + sizeof(g_sTmp);

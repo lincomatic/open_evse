@@ -53,10 +53,10 @@ uint8_t htou8(const char *s)
   return u;
 }
 
-// convert decimal string to uint8_t
-uint8_t dtou8(const char *s)
+// convert decimal string to uint32_t
+uint32_t dtou32(const char *s)
 {
-  uint8_t u = 0;
+  uint32_t u = 0;
   while (*s) {
     u *= 10;
     u += *(s++) - '0';
@@ -135,25 +135,34 @@ int EvseRapiProcessor::tokenize()
   tokens[0] = &buffer[1];
   char *s = &buffer[2];
   tokenCnt = 1;
-  uint8_t chkSum = ESRAPI_SOC + buffer[1];
-  uint8_t ichkSum = 0;
+  uint8_t achkSum = ESRAPI_SOC + buffer[1];
+  uint8_t xchkSum = ESRAPI_SOC ^ buffer[1];
+  uint8_t hchkSum;
+  uint8_t chktype=0; // 0=none,1=additive,2=xor
   while (*s) {
     if (*s == ' ') {
-      chkSum += *s;
+      achkSum += *s;
+      xchkSum ^= *s;
       *s = '\0';
       tokens[tokenCnt++] = ++s;
     }
-    else if (*s == '*') {
+    else if ((*s == '*') ||// additive checksum
+	     (*s == '^')) { // XOR checksum
+      if (*s == '*') chktype = 1;
+      else if (*s == '^') chktype = 2;
       *(s++) = '\0';
-      ichkSum = htou8(s);
-	  break;
+      hchkSum = htou8(s);
+      break;
     }
     else {
-      chkSum += *(s++);
+      achkSum += *s;
+      xchkSum ^= *(s++);
     }
   }
-
-  return (chkSum == ichkSum) ? 0 : 1;
+  
+  return ((chktype == 0) ||
+	  ((chktype == 1) && (hchkSum == achkSum)) ||
+	  ((chktype == 2) && (hchkSum == xchkSum))) ? 0 : 1;
 }
 
 int EvseRapiProcessor::processCmd()
@@ -172,7 +181,7 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
 #ifdef LCD16X2
     case 'B': // LCD backlight
-      g_OBD.LcdSetBacklightColor(dtou8(tokens[1]));
+      g_OBD.LcdSetBacklightColor(dtou32(tokens[1]));
       rc = 0;
       break;
 #endif // LCD16X2      
@@ -187,8 +196,8 @@ int EvseRapiProcessor::processCmd()
 #ifdef LCD16X2
     case 'P': // print to LCD
       {
-	u1 = dtou8(tokens[1]); // x
-	u2 = dtou8(tokens[2]); // y
+	u1 = dtou32(tokens[1]); // x
+	u2 = dtou32(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
 	for (i=4;i < tokenCnt;i++) {
 	  *(tokens[i]-1) = ' ';
@@ -226,8 +235,8 @@ int EvseRapiProcessor::processCmd()
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
-	SetRTC(dtou8(tokens[1]),dtou8(tokens[2]),dtou8(tokens[3]),
-	       dtou8(tokens[4]),dtou8(tokens[5]),dtou8(tokens[6]));
+	SetRTC(dtou32(tokens[1]),dtou32(tokens[2]),dtou32(tokens[3]),
+	       dtou32(tokens[4]),dtou32(tokens[5]),dtou32(tokens[6]));
 	rc = 0;
       }
       break;
@@ -249,7 +258,7 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER
     case 'C': // current capacity
       if (tokenCnt == 2) {
-	rc = g_EvseController.SetCurrentCapacity(dtou8(tokens[1]),1);
+	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1);
       }
       break;
     case 'D': // diode check
@@ -280,6 +289,13 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR
+#ifdef KWH_RECORDING
+    case 'K': // set accumulated kwh
+      g_WattHours_accumulated = dtou32(tokens[1]);
+      eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
+      rc = 0;
+      break;
+#endif //KWH_RECORDING
     case 'L': // service level
       if (tokenCnt == 2) {
 	switch(*tokens[1]) {
@@ -326,8 +342,8 @@ int EvseRapiProcessor::processCmd()
 	  g_DelayTimer.Disable();
 	}
 	else {
-	  g_DelayTimer.SetStartTimer(dtou8(tokens[1]),dtou8(tokens[2]));
-	  g_DelayTimer.SetStopTimer(dtou8(tokens[3]),dtou8(tokens[4]));
+	  g_DelayTimer.SetStartTimer(dtou32(tokens[1]),dtou32(tokens[2]));
+	  g_DelayTimer.SetStopTimer(dtou32(tokens[3]),dtou32(tokens[4]));
 	  g_DelayTimer.Enable();
 	}
 	rc = 0;
@@ -382,6 +398,22 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // AMMETER
+#ifdef TEMPERATURE_MONITORING
+    case 'P':
+      sprintf(buffer,"%d %d %d",(int)g_TempMonitor.m_DS3231_temperature,
+	      (int)g_TempMonitor.m_MCP9808_temperature,
+	      (int)g_TempMonitor.m_TMP007_temperature);
+      /* this is bigger than using sprintf
+      strcpy(buffer,u2a(g_TempMonitor.m_DS3231_temperature));
+      strcat(buffer,g_sSpace);
+      strcat(buffer,u2a(g_TempMonitor.m_MCP9808_temperature));
+      strcat(buffer,g_sSpace);
+      strcat(buffer,u2a(g_TempMonitor.m_TMP007_temperature));
+      */
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // TEMPERATURE_MONITORING
     case 'S': // get state
       sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
       bufCnt = 1; // flag response text output
@@ -395,6 +427,13 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // RTC
+#ifdef KWH_RECORDING
+    case 'U':
+      sprintf(buffer,"%lu %lu",g_WattSeconds,g_WattHours_accumulated);
+      bufCnt = 1;
+      rc = 0;
+      break;
+#endif // KWH_RECORDING
     case 'V': // get version
       extern void GetVerStr(char *buf);
       GetVerStr(buffer);

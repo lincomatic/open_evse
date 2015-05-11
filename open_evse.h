@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.6"
+#define VERSION "D3.7.7"
 
 //-- begin features
 
@@ -1403,5 +1403,21 @@ public:
 
 
 // -- end class definitions
+
+extern char g_sPlus[];
+extern char g_sSlash[];
+extern char g_sColon[];
+extern char g_sSpace[];
+char *u2a(unsigned long x,int digits=0);
+
+#ifdef KWH_RECORDING
+extern unsigned long g_WattHours_accumulated;
+extern unsigned long g_WattSeconds;
+#endif // KWH_RECORDING
+#ifdef TEMPERATURE_MONITORING
+extern TempMonitor g_TempMonitor;
+#endif // TEMPERATURE_MONITORING
+
+
 
 #include "rapi_proc.h"
