@@ -355,6 +355,8 @@ void TempMonitor::Read()
 #endif
 #ifdef MCP9808_IS_ON_I2C
   m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
+  if (m_MCP9808_temperature == 2303) {
+    m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
 #endif
 
        
