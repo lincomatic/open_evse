@@ -150,7 +150,7 @@
 // Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
 //#define AUTOSTART_MENU
 
-#if defined(DELAYTIMER) && defined(BTN_MENU)// && !defined(TEMPERATURE_MONITORING)
+#if defined(DELAYTIMER) && defined(BTN_MENU)
 #define DELAYTIMER_MENU
 #endif
 

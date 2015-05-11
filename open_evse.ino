@@ -65,6 +65,9 @@ char *g_BlankLine = "                ";
 #endif // LCD16X2
 
 char g_sPlus[] = "+";
+char g_sSlash[] = "/";
+char g_sColon[] = ":";
+char g_sSpace[] = " ";
 
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
 const char g_psSetup[] PROGMEM = "Setup";
@@ -275,6 +278,29 @@ static inline uint8_t wirerecv(void) {
 #else
   return Wire.receive();
 #endif
+}
+
+// if digits > 0, zero pad w/ to # digits
+char *u2a(unsigned x,int digits=0)
+{
+  int d = digits;
+  char *s = g_sTmp + sizeof(g_sTmp);
+  *--s = 0;
+  if (!x) {
+    *--s = '0';
+    d--;
+  }
+  else {
+    for (; x; x/=10) {
+      *--s = '0'+ x%10;
+      d--;
+    }
+  }
+  for (;d;d--) {
+    *--s = '0';
+  }
+  
+  return s;
 }
 
 void EvseReset();
@@ -3401,13 +3427,43 @@ void ResetMenu::Next()
 }
 
 #ifdef DELAYTIMER_MENU
-// Start Menu Definition for Date/Time, Delay, and AutoStart Menus
-char g_DateTimeStr[] = "%02d/%02d/%02d %02d:%02d";
-char g_DateTimeStr_Month[] = "+%02d/%02d/%02d %02d:%02d";
-char g_DateTimeStr_Day[] = "%02d/+%02d/%02d %02d:%02d";
-char g_DateTimeStr_Year[] = "%02d/%02d/+%02d %02d:%02d";
-char g_DateTimeStr_Hour[] = "%02d/%02d/%02d +%02d:%02d";
-char g_DateTimeStr_Min[] = "%02d/%02d/%02d %02d:+%02d";
+void DtsStrPrint1(uint16_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t s,int8_t pluspos=-1)
+{
+  *g_sTmp = 0;
+  if (pluspos == 0) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(m,2));
+  strcat(g_sTmp,g_sSlash);
+  if (pluspos == 1) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(d,2));
+  strcat(g_sTmp,g_sSlash);
+  if (pluspos == 2) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(y,2));
+  strcat(g_sTmp,g_sSpace);
+  if (pluspos == 3) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(h,2));
+  strcat(g_sTmp,g_sColon);
+  if (pluspos == 4) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(m,2));
+  g_OBD.LcdPrint(1,g_sTmp);
+  /*
+  if (pluspos == 0) g_OBD.LcdPrint(1,g_sPlus);
+  u2s(m,2);
+  // /
+  if (pluspos == 1) g_OBD.LcdPrint(1,g_sPlus);
+  g_OBD.LcdPrint(1,u2s(d,2));
+  // /
+  if (pluspos == 2) g_OBD.LcdPrint(1,g_sPlus);
+  g_OBD.LcdPrint(1,u2s(y,2));
+  // " "
+  if (pluspos == 3) g_OBD.LcdPrint(1,g_sPlus);
+  g_OBD.LcdPrint(1,u2s(h,2));
+  // :
+  if (pluspos == 4) g_OBD.LcdPrint(1,g_sPlus);
+  g_OBD.LcdPrint(1,u2s(m,2));
+  */
+}
+
+
 RTCMenu::RTCMenu()
 {
   m_Title = g_psRTC;
@@ -3454,8 +3510,7 @@ void RTCMenuMonth::Init()
   g_min = g_CurrTime.minute();
   m_CurIdx = g_month;
 
-  sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,g_hour,g_min,0);
 }
 void RTCMenuMonth::Next()
 {
@@ -3463,18 +3518,12 @@ void RTCMenuMonth::Next()
     m_CurIdx = 1;
   }
   g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_month) {
-    sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
-  } else {
-    sprintf(g_sTmp,g_DateTimeStr,m_CurIdx, g_day, g_year, g_hour, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,m_CurIdx,g_day,g_hour,g_min,(m_CurIdx == g_month) ? 0 : -1);
 }
 Menu *RTCMenuMonth::Select()
 {
   g_month = m_CurIdx;
-  sprintf(g_sTmp,g_DateTimeStr_Month,m_CurIdx, g_day, g_year, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,m_CurIdx,g_day,g_hour,g_min,0);
   delay(500);
   return &g_RTCMenuDay;
 }
@@ -3486,8 +3535,7 @@ void RTCMenuDay::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Day);
   m_CurIdx = g_day;
-  sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,m_CurIdx,g_hour,g_min,1);
 }
 void RTCMenuDay::Next()
 {
@@ -3495,19 +3543,12 @@ void RTCMenuDay::Next()
     m_CurIdx = 1;
   }
   g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_day) {
-    sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
-  } else {
-    sprintf(g_sTmp,g_DateTimeStr,g_month, m_CurIdx, g_year, g_hour, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,m_CurIdx,g_hour,g_min,(m_CurIdx == g_day) ? 1 : -1);
 }
 Menu *RTCMenuDay::Select()
 {
   g_day = m_CurIdx;
-  //g_OBD.LcdPrint(0,1,g_sPlus);
-  sprintf(g_sTmp,g_DateTimeStr_Day,g_month, m_CurIdx, g_year, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,m_CurIdx,g_hour,g_min,1);
   delay(500);
   return &g_RTCMenuYear;
 }
@@ -3523,8 +3564,7 @@ void RTCMenuYear::Init()
     m_CurIdx = 12;
     g_year = 12;
   }
-  sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
 }
 void RTCMenuYear::Next()
 {
@@ -3532,18 +3572,12 @@ void RTCMenuYear::Next()
     m_CurIdx = 12;
   }
   //g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_year) {
-    sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
-  } else {
-    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, m_CurIdx, g_hour, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,(m_CurIdx == g_year) ? 2 : -1);
 }
 Menu *RTCMenuYear::Select()
 {
   g_year = m_CurIdx;
-  sprintf(g_sTmp,g_DateTimeStr_Year,g_month, g_day, m_CurIdx, g_hour, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
   delay(500);
   return &g_RTCMenuHour;
 }
@@ -3555,8 +3589,7 @@ void RTCMenuHour::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Hour);
   m_CurIdx = g_hour;
-  sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,m_CurIdx,g_min,3);
 }
 void RTCMenuHour::Next()
 {
@@ -3564,18 +3597,12 @@ void RTCMenuHour::Next()
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_hour) {
-    sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
-  } else {
-    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, g_year, m_CurIdx, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,m_CurIdx,g_min,(m_CurIdx == g_hour) ? 3 : -1);
 }
 Menu *RTCMenuHour::Select()
 {
   g_hour = m_CurIdx;
-  sprintf(g_sTmp,g_DateTimeStr_Hour,g_month, g_day, g_year, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,m_CurIdx,g_min,3);
   delay(500);
   return &g_RTCMenuMinute;
 }
@@ -3587,8 +3614,7 @@ void RTCMenuMinute::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Minute);
   m_CurIdx = g_min;
-  sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,g_hour,m_CurIdx,4);
 }
 void RTCMenuMinute::Next()
 {
@@ -3596,25 +3622,31 @@ void RTCMenuMinute::Next()
     m_CurIdx = 0;
   }
   g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_hour) {
-    sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
-  } else {
-    sprintf(g_sTmp,g_DateTimeStr,g_month, g_day, g_year, g_hour, m_CurIdx);
-  }
+  DtsStrPrint1(g_year,g_month,g_day,g_hour,m_CurIdx,(m_CurIdx == g_min) ? 4 : -1);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 Menu *RTCMenuMinute::Select()
 {
   g_min = m_CurIdx;
-  sprintf(g_sTmp,g_DateTimeStr_Min,g_month, g_day, g_year, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  DtsStrPrint1(g_year,g_month,g_day,g_hour,m_CurIdx,4);
   g_RTC.adjust(DateTime(g_year, g_month, g_day, g_hour, g_min, 0));
   delay(500);
   return &g_SetupMenu;
 }
 char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
-char *g_sPHHMMfmt = "+%02d:%02d";
-char *g_sHHPMMfmt = "%02d:+%02d";
+
+void HsStrPrint1(uint8_t h,uint8_t m,int8_t pluspos=-1)
+{
+  *g_sTmp = 0;
+  if (pluspos == 0) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(h,2));
+  strcat(g_sTmp,g_sColon);
+  if (pluspos == 1) strcat(g_sTmp,g_sPlus);
+  strcat(g_sTmp,u2a(m,2));
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+
 DelayMenu::DelayMenu()
 {
   m_Title = g_psDelayTimer;
@@ -3622,7 +3654,6 @@ DelayMenu::DelayMenu()
 void DelayMenu::Init()
 {
   m_CurIdx = 0;
-  //g_OBD.LcdMsg("Delay Timer",g_DelayMenuItems[0]);
   g_OBD.LcdPrint_P(0,g_psDelayTimer);
   g_OBD.LcdPrint(1,g_DelayMenuItems[0]);
 }
@@ -3636,8 +3667,6 @@ void DelayMenu::Next()
 }
 Menu *DelayMenu::Select()
 {
-  //g_OBD.LcdPrint(0,1,g_sPlus);
-  //g_OBD.LcdPrint(g_DelayMenuItems[m_CurIdx]);
   delay(500);
   if (m_CurIdx == 0) {
     return &g_DelayMenuEnableDisable;
@@ -3694,8 +3723,7 @@ void DelayMenuStartHour::Init()
   g_hour = g_DelayTimer.GetStartTimerHour();
   g_min = g_DelayTimer.GetStartTimerMin();
   m_CurIdx = g_hour;
-  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,0);
 }
 
 void DelayMenuStartHour::Next()
@@ -3703,19 +3731,12 @@ void DelayMenuStartHour::Next()
   if (++m_CurIdx >= 24) {
     m_CurIdx = 0;
   }
-  //g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_hour) {
-    sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  } else {
-    sprintf(g_sTmp,g_sHHMMfmt, m_CurIdx, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,(m_CurIdx == g_hour) ? 0 : -1);
 }
 Menu *DelayMenuStartHour::Select()
 {
   g_hour = m_CurIdx;
-  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,0);
   delay(500);
   return &g_DelayMenuStartMin;
 }
@@ -3729,40 +3750,30 @@ void DelayMenuStopHour::Init()
   g_hour = g_DelayTimer.GetStopTimerHour();
   g_min = g_DelayTimer.GetStopTimerMin();
   m_CurIdx = g_hour;
-  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,0);
 }
 void DelayMenuStopHour::Next()
 {
   if (++m_CurIdx >= 24) {
     m_CurIdx = 0;
   }
-  //g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_hour) {
-    sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  } else {
-    sprintf(g_sTmp,g_sHHMMfmt, m_CurIdx, g_min);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,(m_CurIdx == g_hour) ? 0 : -1);
 }
 Menu *DelayMenuStopHour::Select()
 {
   g_hour = m_CurIdx;
-  sprintf(g_sTmp,g_sPHHMMfmt, m_CurIdx, g_min);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(m_CurIdx,g_min,0);
   delay(500);
   return &g_DelayMenuStopMin;
 }
 DelayMenuStartMin::DelayMenuStartMin()
 {
-  //m_Title = g_psDelayTimerStartMin;
 }
 void DelayMenuStartMin::Init()
 {
   g_OBD.LcdPrint_P(0,g_psDelayTimerStartMin);
   m_CurIdx = g_min;
-  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,1);
 }
 
 void DelayMenuStartMin::Next()
@@ -3770,33 +3781,24 @@ void DelayMenuStartMin::Next()
   if (++m_CurIdx >= 60) {
     m_CurIdx = 0;
   }
-  //g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_min) {
-    sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  } else {
-    sprintf(g_sTmp,g_sHHMMfmt, g_hour, m_CurIdx);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,(m_CurIdx == g_min) ? 1 : -1);
 }
 Menu *DelayMenuStartMin::Select()
 {
   g_min = m_CurIdx;
-  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,1);
   g_DelayTimer.SetStartTimer(g_hour, g_min);
   delay(500);
   return &g_SetupMenu;
 }
 DelayMenuStopMin::DelayMenuStopMin()
 {
-  //m_Title = g_psDelayTimerStopMin;
 }
 void DelayMenuStopMin::Init()
 {
   g_OBD.LcdPrint_P(0,g_psDelayTimerStopMin);
   m_CurIdx = g_min;
-  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,1);
 }
 
 void DelayMenuStopMin::Next()
@@ -3804,19 +3806,12 @@ void DelayMenuStopMin::Next()
   if (++m_CurIdx >= 60) {
     m_CurIdx = 0;
   }
-  //g_OBD.LcdClearLine(1);
-  if (m_CurIdx == g_min) {
-    sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  } else {
-    sprintf(g_sTmp,g_sHHMMfmt, g_hour, m_CurIdx);
-  }
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,(m_CurIdx == g_min) ? 1 : -1);
 }
 Menu *DelayMenuStopMin::Select()
 {
   g_min = m_CurIdx;
-  sprintf(g_sTmp,g_sHHPMMfmt, g_hour, m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
+  HsStrPrint1(g_hour,m_CurIdx,1);
   g_DelayTimer.SetStopTimer(g_hour, g_min);  // Set Timers
   delay(500);
   return &g_SetupMenu;
