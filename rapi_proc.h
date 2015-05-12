@@ -97,8 +97,8 @@ SF 0|1 - disable/enable GFI self test
 SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
-SK - set accumulated kwh (v1.0.3+)
- $SK 0*12 - set accumulated kwh to 0
+SK - set accumulated Wh (v1.0.3+)
+ $SK 0*12 - set accumulated Wh to 0
 SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
@@ -148,9 +148,9 @@ GT - get time (RTC)
  $GT*BF
 GU - get energy usage (v1.0.3+)
  $GU*C0
- response OK wattseconds kwhacc
- wattseconds - watt-seconds used this charging session
- kwhacc - total kwh accumulated over all charging sessions
+ response OK Wattseconds Whacc
+ Wattseconds - Watt-seconds used this charging session, note you'll divide Wattseconds by 3600 to get Wh
+ Whacc - total Wh accumulated over all charging sessions, note you'll divide Wh by 1000 to get kWh
 GV - get version
  response: OK firmware_version protocol_version
  $GV*C1
