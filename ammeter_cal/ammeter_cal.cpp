@@ -372,7 +372,9 @@ int main(int argc,char *argv[])
   rc = 0;
 
  bye:
-  printf("Restarting EVSE\n");
-  rapi.ResetEvse();
+  if (rc != 1) {
+    printf("Restarting EVSE\n");
+    rapi.ResetEvse();
+  };
   return rc;
 }
