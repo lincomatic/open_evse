@@ -63,11 +63,12 @@ void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 #ifdef LCD16X2
 char *g_BlankLine = "                ";
 #endif // LCD16X2
-
+/*
 char g_sPlus[] = "+";
 char g_sSlash[] = "/";
 char g_sColon[] = ":";
 char g_sSpace[] = " ";
+*/
 
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
 const char g_psSetup[] PROGMEM = "Setup";
@@ -1147,7 +1148,7 @@ void OnboardDisplay::Update(int8_t updmode)
    
     #ifdef KWH_RECORDING
       uint32_t current = g_EvseController.GetChargingCurrent();
-    #ifdef OPENEVSE_2
+    #ifdef VOLTMETER
       g_WattSeconds = g_WattSeconds + (g_EvseController.readVoltmeter() / 1000 * current / 1000);
     #else
     if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
@@ -1156,17 +1157,17 @@ void OnboardDisplay::Update(int8_t updmode)
     else {
       g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
     }
-    #endif // OPENEVSE_2   
+    #endif // VOLTMETER
     sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
     LcdPrint(0,1,g_sTmp);
 
-    #ifdef OPENEVSE_2
+    #ifdef VOLTMETER
       sprintf(g_sTmp," %3luV",(g_EvseController.readVoltmeter() / 1000));  // Display voltage from OpenEVSE II
       LcdPrint(11,1,g_sTmp);
     #else
       sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
-    #endif // OPENEVSE_2
+    #endif // VOLTMETER
     #else // ! KWH_RECORDING
       LcdPrint(0,1,g_BlankLine);
     #endif // KWH_RECORDING
@@ -2149,6 +2150,18 @@ void J1772EVSEController::Init()
   //  m_LastAmmeterReadMs = 0;
 #endif // AMMETER
 
+#ifdef VOLTMETER
+  m_VoltOffset = eeprom_read_word((uint16_t*)EOFS_VOLT_OFFSET);
+  m_VoltScaleFactor = eeprom_read_word((uint16_t*)EOFS_VOLT_SCALE_FACTOR);
+  
+  if (m_VoltOffset == 0xffff) {
+    m_VoltOffset = DEFAULT_VOLT_OFFSET;
+  }
+  if (m_VoltScaleFactor == 0xffff) {
+    m_VoltScaleFactor = DEFAULT_VOLT_SCALE_FACTOR;
+  }
+#endif // VOLTMETER
+
 #ifndef RGBLCD
   m_wFlags |= ECF_MONO_LCD;
 #endif
@@ -2785,14 +2798,15 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   return rc;
 }
 
-#ifdef OPENEVSE_2
-// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
-#define VOLTMETER_POLL_INTERVAL (35)
-// This is just a wild guess
-// #define VOLTMETER_SCALE_FACTOR (266)     // original guess
-#define VOLTMETER_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
-// #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
-#define VOLTMETER_OFFSET_FACTOR (46800)     // calibrated for Craig K OpenEVSE II build
+#ifdef VOLTMETER
+void J1772EvseController::SetVoltmeter(uint16_t scale,uint16_t offset)
+{
+  m_VoltScaleFactor = scale;
+  eeprom_write_word((uint16_t*)EOFS_VOLT_SCALE_FACTOR,scale);
+  m_VoltOffset = offset;
+  eeprom_write_word((uint16_t*)EOFS_VOLT_OFFSET,offset);
+}
+
 unsigned long J1772EVSEController::readVoltmeter()
 {
   unsigned int peak = 0;
@@ -2800,7 +2814,7 @@ unsigned long J1772EVSEController::readVoltmeter()
     unsigned int val = adcVoltMeter.read();
     if (val > peak) peak = val;
   }
-  return ((unsigned long)peak) * VOLTMETER_SCALE_FACTOR + VOLTMETER_OFFSET_FACTOR;
+  return ((unsigned long)peak) * ((unsigned long)m_VoltScaleFactor) + ((unsigned long)m_VoltOffset);
 }
 #endif
 

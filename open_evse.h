@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.7.7"
+#define VERSION "D3.7.8"
 
 //-- begin features
 
@@ -64,7 +64,15 @@
 #ifdef OPENEVSE_2
 // If the AC voltage is > 150,000 mV, then it's L2. Else, L1.
 #define L2_VOLTAGE_THRESHOLD (150000)
-#endif
+#define VOLTMETER
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+// This is just a wild guess
+// #define VOLTMETER_SCALE_FACTOR (266)     // original guess
+#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+// #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
+#define VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+#endif // OPENEVSE_2
 
 // GFI support
 #define GFI
@@ -345,6 +353,9 @@
 #define EOFS_GFI_TRIP_CNT      17 // 1 byte
 #define EOFS_NOGND_TRIP_CNT    18 // 1 byte
 #define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
+
+#define EOFS_VOLT_OFFSET 20 // 2 bytes
+#define EOFS_VOLT_SCALE_FACTOR 22 // 2 bytes
 
 
 // must stay within thresh for this time in ms before switching states
@@ -952,6 +963,10 @@ class J1772EVSEController {
 
   void readAmmeter();
 #endif // AMMETER
+#ifdef VOLTMETER
+  uint16_t m_VoltOffset;
+  uint16_t m_VoltScaleFactor;
+#endif // VOLTMETER
 
 public:
   J1772EVSEController();
@@ -1057,6 +1072,9 @@ public:
   int SetBacklightType(uint8_t t,uint8_t update=1); // BKL_TYPE_XXX
 #endif // RGBLCD
 
+#ifdef VOLTMETER
+  void SetVoltmeter(uint16_t scale,uint16_t offset);
+#endif // VOLTMETER
 #ifdef AMMETER
   int32_t GetChargingCurrent() { return m_ChargingCurrent; }
   int16_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
@@ -1404,10 +1422,18 @@ public:
 
 // -- end class definitions
 
+/*
 extern char g_sPlus[];
 extern char g_sSlash[];
 extern char g_sColon[];
 extern char g_sSpace[];
+*/
+#define g_sPlus "+"
+#define g_sSlash "/"
+#define g_sColon ":"
+#define g_sSpace " "
+
+
 char *u2a(unsigned long x,int digits=0);
 
 #ifdef KWH_RECORDING

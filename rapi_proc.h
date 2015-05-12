@@ -103,6 +103,7 @@ SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
  $SL A*24
+SM voltscalefactor voltoffset - set voltMeter settings
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A

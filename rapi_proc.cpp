@@ -298,7 +298,7 @@ int EvseRapiProcessor::processCmd()
 #endif //KWH_RECORDING
     case 'L': // service level
       if (tokenCnt == 2) {
-	switch(*tokens[1]) {
+      switch(*tokens[1]) {
 	case '1':
 	case '2':
 	  g_EvseController.SetSvcLevel(*tokens[1] - '0',1);
@@ -318,6 +318,13 @@ int EvseRapiProcessor::processCmd()
 	}
       }
       break;
+#ifdef VOLTMETER
+    case 'M':
+      if (tokenCnt == 3) {
+        g_EvseController.SetVoltmeter(atoi(tokens[1]),atoi(tokens[2]));
+	rc = 0;
+      }
+#endif // VOLTMETER
 #ifdef ADVPWR      
     case 'R': // stuck relay check
       if (tokenCnt == 2) {

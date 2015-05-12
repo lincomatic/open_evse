@@ -1,9 +1,15 @@
 Change Log
 
-vD3.7.7 SCL 20150510
+vD3.7.8 SCL 20150511
+* RELEASE CANDIDATE 3 *
+- added RAPI SM to set up voltmeter
+- EEPROM settings for voltmeter scale/offset
+	
+vD3.7.7 SCL 20150511
 * RELEASE CANDIDATE 2 *
 - added RAPI SK,GP,GU commands
-- added RAPI XOR checksum and no checksum support
+- added RAPI XOR checksum and no checksum support (kudos to AndreE for
+	suggesting XOR checksum support)
 
 vD3.7.6 SCL 20150510
 * RELEASE CANDIDATE 1 *
