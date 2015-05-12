@@ -354,8 +354,8 @@
 #define EOFS_NOGND_TRIP_CNT    18 // 1 byte
 #define EOFS_STUCK_RELAY_TRIP_CNT 19 // 1 byte
 
-#define EOFS_VOLT_OFFSET 20 // 2 bytes
-#define EOFS_VOLT_SCALE_FACTOR 22 // 2 bytes
+#define EOFS_VOLT_OFFSET 20 // 4 bytes
+#define EOFS_VOLT_SCALE_FACTOR 24 // 2 bytes
 
 
 // must stay within thresh for this time in ms before switching states
@@ -964,8 +964,9 @@ class J1772EVSEController {
   void readAmmeter();
 #endif // AMMETER
 #ifdef VOLTMETER
-  uint16_t m_VoltOffset;
   uint16_t m_VoltScaleFactor;
+  uint32_t m_VoltOffset;
+  uint32_t m_Voltage; // mV
 #endif // VOLTMETER
 
 public:
@@ -1071,9 +1072,12 @@ public:
 
 #ifdef VOLTMETER
   uint16_t GetVoltScaleFactor() { return m_VoltScaleFactor; }
-  uint16_t GetVoltOffset() { return m_VoltOffset; }
-  void SetVoltmeter(uint16_t scale,uint16_t offset);
+  uint32_t GetVoltOffset() { return m_VoltOffset; }
+  void SetVoltmeter(uint16_t scale,uint32_t offset);
   uint32_t ReadVoltmeter();
+  int32_t GetVoltage() { return m_Voltage; }
+#else
+  uint32_t GetVoltage() { return (uint32_t)-1; }
 #endif // VOLTMETER
 #ifdef AMMETER
   int32_t GetChargingCurrent() { return m_ChargingCurrent; }
@@ -1098,7 +1102,8 @@ public:
       m_bVFlags &= ~ECVF_AMMETER_CAL;
     }
   }
-
+#else
+  int32_t GetChargingCurrent() { return -1; }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
   void ProcessInputs(uint8_t nosleeptoggle);

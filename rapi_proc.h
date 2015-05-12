@@ -91,6 +91,9 @@ SD 0|1 - disable/enable diode check
 SE 0|1 - disable/enable command echo
  $SE 0*0C
  $SE 1*0D
+ use this for interactive terminal sessions with RAPI.
+ RAPI will echo back characters as they are typed, and add a <LF> character
+ after its replies
 SF 0|1 - disable/enable GFI self test
  $SF 0*0D
  $SF 1*0E
@@ -128,8 +131,10 @@ GE - get current settings
 GF - get fault counters
  response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
  $GF*B1
-GG - get charging current
- response: OK amps
+GG - get charging current and voltage
+ response: OK amps volts
+ AMMETER must be defined in order to get amps, otherwise returns 0 amps
+ VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
  $GG*B2
 GM - get voltMeter settings
  response: OK voltcalefactor voltoffset

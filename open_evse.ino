@@ -1149,7 +1149,7 @@ void OnboardDisplay::Update(int8_t updmode)
     #ifdef KWH_RECORDING
       uint32_t current = g_EvseController.GetChargingCurrent();
     #ifdef VOLTMETER
-      g_WattSeconds = g_WattSeconds + (g_EvseController.ReadVoltmeter() / 1000 * current / 1000);
+      g_WattSeconds = g_WattSeconds + (g_EvseController.GetVoltage() / 1000 * current / 1000);
     #else
     if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
       g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
@@ -1162,7 +1162,7 @@ void OnboardDisplay::Update(int8_t updmode)
     LcdPrint(0,1,g_sTmp);
 
     #ifdef VOLTMETER
-      sprintf(g_sTmp," %3luV",(g_EvseController.ReadVoltmeter() / 1000));  // Display voltage from OpenEVSE II
+      sprintf(g_sTmp," %3luV",(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
       LcdPrint(11,1,g_sTmp);
     #else
       sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
@@ -1895,7 +1895,7 @@ uint8_t J1772EVSEController::doPost()
   if (AutoSvcLevelEnabled()) {
 #ifdef OPENEVSE_2
     // For OpenEVSE II, there is a voltmeter for auto L1/L2.
-    unsigned long ac_volts = ReadVoltmeter();
+    uint32_t long ac_volts = ReadVoltmeter();
     if (ac_volts > L2_VOLTAGE_THRESHOLD) {
       svcState = L2;
     } else {
@@ -2151,10 +2151,10 @@ void J1772EVSEController::Init()
 #endif // AMMETER
 
 #ifdef VOLTMETER
-  m_VoltOffset = eeprom_read_word((uint16_t*)EOFS_VOLT_OFFSET);
+  m_VoltOffset = eeprom_read_dword((uint32_t*)EOFS_VOLT_OFFSET);
   m_VoltScaleFactor = eeprom_read_word((uint16_t*)EOFS_VOLT_SCALE_FACTOR);
   
-  if (m_VoltOffset == 0xffff) {
+  if (m_VoltOffset == 0xffffffff) {
     m_VoltOffset = DEFAULT_VOLT_OFFSET;
   }
   if (m_VoltScaleFactor == 0xffff) {
@@ -2654,6 +2654,9 @@ void J1772EVSEController::Update()
 
   m_PrevEvseState = prevevsestate;
 
+#ifdef VOLTMETER
+  ReadVoltmeter();
+#endif // VOLTMETER
 #ifdef AMMETER
   if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
     
@@ -2799,22 +2802,23 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
 }
 
 #ifdef VOLTMETER
-void J1772EVSEController::SetVoltmeter(uint16_t scale,uint16_t offset)
+void J1772EVSEController::SetVoltmeter(uint16_t scale,uint32_t offset)
 {
   m_VoltScaleFactor = scale;
   eeprom_write_word((uint16_t*)EOFS_VOLT_SCALE_FACTOR,scale);
   m_VoltOffset = offset;
-  eeprom_write_word((uint16_t*)EOFS_VOLT_OFFSET,offset);
+  eeprom_write_dword((uint32_t*)EOFS_VOLT_OFFSET,offset);
 }
 
-unsigned long J1772EVSEController::ReadVoltmeter()
+uint32_t J1772EVSEController::ReadVoltmeter()
 {
   unsigned int peak = 0;
-  for(unsigned long start_time = millis(); (millis() - start_time) < VOLTMETER_POLL_INTERVAL; ) {
+  for(uint32_t start_time = millis(); (millis() - start_time) < VOLTMETER_POLL_INTERVAL; ) {
     unsigned int val = adcVoltMeter.read();
     if (val > peak) peak = val;
   }
-  return ((unsigned long)peak) * ((unsigned long)m_VoltScaleFactor) + ((unsigned long)m_VoltOffset);
+  m_Voltage = ((uint32_t)peak) * ((uint32_t)m_VoltScaleFactor) + m_VoltOffset;
+  return m_Voltage;
 }
 #endif
 

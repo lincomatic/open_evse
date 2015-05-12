@@ -1,9 +1,12 @@
 Change Log
 
-vD3.7.8 SCL 20150511
+vD3.7.8 SCL 20150511-12
 * RELEASE CANDIDATE 3 *
 - added RAPI SM,GM to set/get voltmeter
 - EEPROM settings for voltmeter scale/offset
+- RAPI $GG now returns voltage as well
+- read voltmeter in J1772EVSEController::Update() instead of on demand
+	(added GetVoltage())
 	
 vD3.7.7 SCL 20150511
 * RELEASE CANDIDATE 2 *

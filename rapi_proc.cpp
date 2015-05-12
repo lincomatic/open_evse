@@ -170,6 +170,7 @@ int EvseRapiProcessor::processCmd()
   int rc = -1;
   unsigned u1,u2,u3;
   int i,i2;
+  int32_t i32;
   uint8_t x,y;
 
   // we use bufCnt as a flag in response() to signify data to write
@@ -321,7 +322,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef VOLTMETER
     case 'M':
       if (tokenCnt == 3) {
-        g_EvseController.SetVoltmeter(atoi(tokens[1]),atoi(tokens[2]));
+        g_EvseController.SetVoltmeter(atoi(tokens[1]),atol(tokens[2]));
 	rc = 0;
       }
 #endif // VOLTMETER
@@ -397,19 +398,20 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
-#ifdef AMMETER
+#if defined(AMMETER)||defined(VOLTMETER)
     case 'G':
-      u1 = g_EvseController.GetChargingCurrent();
-      sprintf(buffer,"%u",u1);
+      i = g_EvseController.GetChargingCurrent();
+      i32 = (int)g_EvseController.GetVoltage();
+      sprintf(buffer,"%d %ld",i,i32);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
-#endif // AMMETER
+#endif // AMMETER || VOLTMETER
 #ifdef VOLTMETER
     case 'M':
       i = g_EvseController.GetVoltScaleFactor();
-      i2 = g_EvseController.GetVoltOffset();
-      sprintf(buffer,"%d %d",i,i2);
+      i32 = g_EvseController.GetVoltOffset();
+      sprintf(buffer,"%d %ld",i,i32);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
@@ -482,6 +484,7 @@ void EvseRapiProcessor::response(uint8_t ok)
     write(buffer);
   }
   write(ESRAPI_EOC);
+  if (echo) write('\n');
 }
 
 
