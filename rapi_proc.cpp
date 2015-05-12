@@ -405,6 +405,15 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // AMMETER
+#ifdef VOLTMETER
+    case 'M':
+      i = g_EvseController.GetVoltScaleFactor();
+      i2 = g_EvseController.GetVoltOffset();
+      sprintf(buffer,"%d %d",i,i2);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // VOLTMETER
 #ifdef TEMPERATURE_MONITORING
     case 'P':
       sprintf(buffer,"%d %d %d",(int)g_TempMonitor.m_DS3231_temperature,

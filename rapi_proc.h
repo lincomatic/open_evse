@@ -131,6 +131,9 @@ GF - get fault counters
 GG - get charging current
  response: OK amps
  $GG*B2
+GM - get voltMeter settings
+ response: OK voltcalefactor voltoffset
+ $GM^2E
 GP - get temPerature (v1.0.3+)
  $GP*BB
  response: OK ds3231temp mcp9808temp tmp007temp
