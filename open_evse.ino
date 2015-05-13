@@ -81,7 +81,7 @@ const char g_psBklType[] PROGMEM = "Backlight Type";
 #endif
 #ifdef ADVPWR
 const char g_psGndChk[] PROGMEM = "Ground Check";
-const char g_psRlyChk[] PROGMEM = "Relay Check";
+const char g_psRlyChk[] PROGMEM = "Stuck Relay Chk";
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
 const char g_psGfiTest[] PROGMEM = "GFI Self Test";
