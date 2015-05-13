@@ -24,7 +24,6 @@
  #include "WProgram.h"
 #endif
 
-
 #ifdef __AVR_ATtiny85__
  #include "TinyWireM.h"
  #define Wire TinyWireM
