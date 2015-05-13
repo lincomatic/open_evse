@@ -200,10 +200,8 @@
 #endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(RTC) && defined(LCD16X2)
-#if defined(SERIALCLI)
-#error INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
-#endif
+#if defined(SERIALCLI) && defined(DELAYTIMER)
+#error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
 #endif
 
 #if defined(RAPI) && defined(SERIALCLI)
@@ -582,164 +580,9 @@ typedef union union4b {
 #define WDT_ENABLE()
 #endif // WATCHDOG
 
-#ifdef SERIALCLI
-#define CLI_BUFLEN 20
-class CLI {
-  char m_CLIinstr[CLI_BUFLEN]; // CLI byte being read in
-  int m_CLIstrCount; //CLI string counter
-  char *m_strBuf;
-  int m_strBufLen;
+#include "serialcli.h"
+#include "obd.h"
 
-  void info();
-public:
-  CLI();
-  void Init();
-  void println(char *s) { 
-    Serial.println(s); 
-  }
-  void println_P(const char PROGMEM *s);
-  void print(char *s) { 
-    Serial.print(s); 
-  }
-  void print_P(const char PROGMEM *s);
-  void printlnn();
-  void flush() { 
-    Serial.flush(); 
-  }
-  void getInput();
-  uint8_t getInt();
-};
-#endif // SERIALCLI
-
-
-#ifdef LCD16X2
-extern char *g_BlankLine;
-#endif // LCD16X2
-
-// OnboardDisplay.m_bFlags
-#define OBDF_MONO_BACKLIGHT 0x01
-#define OBDF_AMMETER_DIRTY  0x80
-#define OBDF_UPDATE_DISABLED 0x40
-
-// OnboardDisplay::Update()
-#define OBD_UPD_NORMAL    0
-#define OBD_UPD_FORCE     1 // update even if no state transition
-#define OBD_UPD_HARDFAULT 2 // update w/ hard fault
-class OnboardDisplay 
-{
-#ifdef RED_LED_REG
-  DigitalPin pinRedLed;
-#endif
-#ifdef GREEN_LED_REG
-  DigitalPin pinGreenLed;
-#endif
-#if defined(RGBLCD) || defined(I2CLCD)
-#ifdef I2CLCD_PCF8574
-#include <LiquidCrystal_I2C.h>
-  LiquidCrystal_I2C m_Lcd;  
-#else
-  LiquidTWI2 m_Lcd;
-#endif // I2CLCD_PCF8574
-#endif // defined(RGBLCD) || defined(I2CLCD)
-  uint8_t m_bFlags;
-  char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
-  uint8_t m_strBufLen;
-
-  int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
-
-public:
-  OnboardDisplay();
-  void Init();
-
-  void SetGreenLed(uint8_t state);
-  void SetRedLed(uint8_t state);
-#ifdef LCD16X2
-  void LcdBegin(int x,int y) { 
-#ifdef I2CLCD
-#ifndef I2CLCD_PCF8574
-    m_Lcd.setMCPType(LTI_TYPE_MCP23008);
-#endif
-    m_Lcd.begin(x,y); 
-    m_Lcd.setBacklight(HIGH);
-#elif defined(RGBLCD)
-    m_Lcd.setMCPType(LTI_TYPE_MCP23017);
-    m_Lcd.begin(x,y,2); 
-    m_Lcd.setBacklight(WHITE);
-#endif // I2CLCD
-  }
-#ifdef I2CLCD_PCF8574
-  uint8_t LcdDetected() { return 1; }
-#else
-  uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
-#endif 
-  void LcdPrint(const char *s) {
-    if (LcdDetected()) m_Lcd.print(s); 
-  }
-  void LcdPrint_P(const char PROGMEM *s);
-  void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const char PROGMEM *s);
-  void LcdPrint(int x,int y,const char *s);
-  void LcdPrint_P(int x,int y,const char PROGMEM *s);
-  void LcdPrint(int i) { 
-    if (LcdDetected()) m_Lcd.print(i); 
-  }
-  void LcdSetCursor(int x,int y) { 
-    m_Lcd.setCursor(x,y); 
-  }
-  void LcdClearLine(int y) {
-    m_Lcd.setCursor(0,y);
-    if (LcdDetected()) m_Lcd.print(g_BlankLine);
-    m_Lcd.setCursor(0,y);
-  }
-  void LcdClear() { 
-    if (LcdDetected()) m_Lcd.clear();
-  }
-  void LcdWrite(uint8_t data) { 
-    if (LcdDetected()) m_Lcd.write(data);
-  }
-  void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
-  void LcdSetBacklightType(uint8_t t,uint8_t update=OBD_UPD_FORCE) { // BKL_TYPE_XXX
-#ifdef RGBLCD
-    if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
-    else m_bFlags |= OBDF_MONO_BACKLIGHT;
-    Update(update);
-#endif // RGBLCD
-  }
-  uint8_t IsLcdBacklightMono() {
-#ifdef RGBLCD
-    return (m_bFlags & OBDF_MONO_BACKLIGHT) ? 1 : 0;
-#else
-    return 1;
-#endif // RGBLCD
-  }
-  void LcdSetBacklightColor(uint8_t c) {
-#ifdef RGBLCD
-    if (IsLcdBacklightMono()) {
-      if (c) c = WHITE;
-    }
-    m_Lcd.setBacklight(c);
-#endif // RGBLCD
-  }
-#ifdef RGBLCD
-  uint8_t readButtons() { return m_Lcd.readButtons(); }
-#endif // RGBLCD
-#endif // LCD16X2
-
-#ifdef AMMETER
-  void SetAmmeterDirty(uint8_t tf) {
-    if (tf) m_bFlags |= OBDF_AMMETER_DIRTY;
-    else m_bFlags &= ~OBDF_AMMETER_DIRTY;
-  }
-  int8_t AmmeterIsDirty() { return (m_bFlags & OBDF_AMMETER_DIRTY) ? 1 : 0; }
-#endif // AMMETER
-
-  void DisableUpdate(int8_t on) {
-    if (on) m_bFlags |= OBDF_UPDATE_DISABLED;
-    else m_bFlags &= ~OBDF_UPDATE_DISABLED;
-  }
-  void Update(int8_t updmode=OBD_UPD_NORMAL); // OBD_UPD_xxx
-};
 
 #ifdef GFI
 class Gfi {
@@ -1451,6 +1294,10 @@ extern char g_sSpace[];
 #define g_sSpace " "
 
 
+extern J1772EVSEController g_EvseController;
+extern OnboardDisplay g_OBD;
+extern char g_sTmp[64];
+
 char *u2a(unsigned long x,int digits=0);
 
 #ifdef KWH_RECORDING
@@ -1461,6 +1308,7 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
-
+extern const char VERSTR[] PROGMEM;
+inline void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #include "rapi_proc.h"

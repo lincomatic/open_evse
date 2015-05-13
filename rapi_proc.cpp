@@ -30,9 +30,6 @@
 #include "open_evse.h"
 
 #ifdef RAPI
-extern J1772EVSEController g_EvseController;
-extern OnboardDisplay g_OBD;
-
 const char RAPI_VER[] PROGMEM = RAPIVER;
 
 
@@ -450,7 +447,6 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // KWH_RECORDING
     case 'V': // get version
-      extern void GetVerStr(char *buf);
       GetVerStr(buffer);
       strcat(buffer," ");
       strcat_P(buffer,RAPI_VER);

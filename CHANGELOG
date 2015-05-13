@@ -1,5 +1,8 @@
 Change Log
 
+SCL 20150513
+- cleanup, move SERIALCLI to serialcli.cpp/h
+
 v3.7.8 SCL 20150512
 * promoted to official release
 - Special thanks to CraigK for his hard work in making this release possible,
