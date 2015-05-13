@@ -1,5 +1,10 @@
 Change Log
 
+v3.7.8 SCL 20150512
+* promoted to official release
+- Special thanks to CraigK for his hard work in making this release possible,
+  with his numerous enhancements, and invaluable testing.
+
 vD3.7.8 SCL 20150511-12
 * RELEASE CANDIDATE 3 *
 - added RAPI SM,GM to set/get voltmeter
