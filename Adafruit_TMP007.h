@@ -66,4 +66,3 @@ class Adafruit_TMP007  {
   uint16_t read16(uint8_t addr);
   void write16(uint8_t addr, uint16_t data);
 };
-

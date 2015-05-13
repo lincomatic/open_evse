@@ -150,4 +150,3 @@ void Adafruit_TMP007::write16(uint8_t a, uint16_t d) {
 #endif
   Wire.endTransmission(); // end transmission
 }
-
