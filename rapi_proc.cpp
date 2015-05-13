@@ -167,11 +167,8 @@ int EvseRapiProcessor::tokenize()
 
 int EvseRapiProcessor::processCmd()
 {
+  UNION4B u1,u2,u3;
   int rc = -1;
-  unsigned u1,u2,u3;
-  int i,i2;
-  int32_t i32;
-  uint8_t x,y;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -197,13 +194,13 @@ int EvseRapiProcessor::processCmd()
 #ifdef LCD16X2
     case 'P': // print to LCD
       {
-	u1 = dtou32(tokens[1]); // x
-	u2 = dtou32(tokens[2]); // y
+	u1.u = dtou32(tokens[1]); // x
+	u2.u = dtou32(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
-	for (i=4;i < tokenCnt;i++) {
-	  *(tokens[i]-1) = ' ';
+	for (u3.i=4;u3.i < tokenCnt;u3.i++) {
+	  *(tokens[u3.i]-1) = ' ';
 	}
-	g_OBD.LcdPrint(u1,u2,tokens[3]);
+	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
       }
       rc = 0;
       break;
@@ -371,9 +368,9 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
 #ifdef AMMETER
     case 'A':
-      i = g_EvseController.GetCurrentScaleFactor();
-      i2 = g_EvseController.GetAmmeterCurrentOffset();
-      sprintf(buffer,"%d %d",i,i2);
+      u1.i = g_EvseController.GetCurrentScaleFactor();
+      u2.i = g_EvseController.GetAmmeterCurrentOffset();
+      sprintf(buffer,"%d %d",u1.i,u2.i);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
@@ -384,34 +381,34 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
     case 'E': // get settings
-      u1 = g_EvseController.GetCurrentCapacity();
-      u2 = g_EvseController.GetFlags();
-      sprintf(buffer,"%d %04x",u1,u2);
+      u1.u = g_EvseController.GetCurrentCapacity();
+      u2.u = g_EvseController.GetFlags();
+      sprintf(buffer,"%d %04x",u1.u,u2.u);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
     case 'F': // get fault counters
-      u1 = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
-      u2 = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
-      u3 = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
-      sprintf(buffer,"%x %x %x",u1,u2,u3);
+      u1.u = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
+      u2.u = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
+      u3.u = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
+      sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
 #if defined(AMMETER)||defined(VOLTMETER)
     case 'G':
-      i = g_EvseController.GetChargingCurrent();
-      i32 = (int)g_EvseController.GetVoltage();
-      sprintf(buffer,"%d %ld",i,i32);
+      u1.i32 = g_EvseController.GetChargingCurrent();
+      u2.i32 = (int32_t)g_EvseController.GetVoltage();
+      sprintf(buffer,"%ld %ld",u1.i32,u2.i32);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
 #endif // AMMETER || VOLTMETER
 #ifdef VOLTMETER
     case 'M':
-      i = g_EvseController.GetVoltScaleFactor();
-      i32 = g_EvseController.GetVoltOffset();
-      sprintf(buffer,"%d %ld",i,i32);
+      u1.i = g_EvseController.GetVoltScaleFactor();
+      u2.i32 = g_EvseController.GetVoltOffset();
+      sprintf(buffer,"%d %ld",u1.i,u2.i32);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

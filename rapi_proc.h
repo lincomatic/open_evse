@@ -132,7 +132,7 @@ GF - get fault counters
  response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
  $GF*B1
 GG - get charging current and voltage
- response: OK amps volts
+ response: OK milliamps millivolts
  AMMETER must be defined in order to get amps, otherwise returns 0 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
  $GG*B2

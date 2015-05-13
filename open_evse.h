@@ -560,6 +560,18 @@
 
 //-- end configuration
 
+typedef union union4b {
+  int8_t i8;
+  uint8_t u8;
+  int16_t i16;
+  uint16_t u16;
+  int32_t i32;
+  uint32_t u32;
+  unsigned u;
+  int i;
+} UNION4B,*PUNION4B;
+
+
 //-- begin class definitions
 
 #ifdef WATCHDOG
