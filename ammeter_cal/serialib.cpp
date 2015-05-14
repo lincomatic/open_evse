@@ -153,11 +153,27 @@ char serialib::Open(const char *Device,const unsigned int Bauds)
         return -2;                                                      // Error while opening the device
     }
 
+	SetupComm(hSerial,50,50);
+
     // Set parameters
     DCB dcbSerialParams = {0};                                          // Structure for the port parameters
     dcbSerialParams.DCBlength=sizeof(dcbSerialParams);
     if (!GetCommState(hSerial, &dcbSerialParams))                       // Get the port parameters
         return -3;                                                      // Error while getting port parameters
+
+	dcbSerialParams.fBinary = TRUE;
+	dcbSerialParams.fDtrControl = DTR_CONTROL_DISABLE;
+	dcbSerialParams.fDsrSensitivity = FALSE;
+	dcbSerialParams.fTXContinueOnXoff = FALSE;
+	dcbSerialParams.fOutX = FALSE;
+	dcbSerialParams.fInX = FALSE;
+	dcbSerialParams.fErrorChar = FALSE;
+	dcbSerialParams.fNull = FALSE;
+	dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
+	dcbSerialParams.fAbortOnError = FALSE;
+	dcbSerialParams.fOutxCtsFlow = FALSE;
+	dcbSerialParams.fOutxDsrFlow = FALSE;
+
     switch (Bauds)                                                      // Set the speed (Bauds)
     {
     case 110  :     dcbSerialParams.BaudRate=CBR_110; break;
@@ -172,11 +188,13 @@ char serialib::Open(const char *Device,const unsigned int Bauds)
     case 38400 :    dcbSerialParams.BaudRate=CBR_38400; break;
     case 56000 :    dcbSerialParams.BaudRate=CBR_56000; break;
     case 57600 :    dcbSerialParams.BaudRate=CBR_57600; break;
-    case 115200 :   dcbSerialParams.BaudRate=CBR_115200; break;
+    case 115200 :
+		dcbSerialParams.BaudRate=CBR_115200; break;
     case 128000 :   dcbSerialParams.BaudRate=CBR_128000; break;
     case 256000 :   dcbSerialParams.BaudRate=CBR_256000; break;
     default : return -4;
 }    
+
     dcbSerialParams.ByteSize=8;                                         // 8 bit data
     dcbSerialParams.StopBits=ONESTOPBIT;                                // One stop bit
     dcbSerialParams.Parity=NOPARITY;                                    // No parity
@@ -191,7 +209,8 @@ char serialib::Open(const char *Device,const unsigned int Bauds)
     timeouts.WriteTotalTimeoutMultiplier=0;
     if(!SetCommTimeouts(hSerial, &timeouts))                            // Write the parameters
         return -6;                                                      // Error while writting the parameters
-    return 1;                                                           // Opening successfull
+	Sleep(250);
+	return 1;                                                           // Opening successfull
 
 #endif
 #ifdef __linux__    
@@ -300,6 +319,7 @@ char serialib::WriteString(const char *String)
     DWORD dwBytesWritten;                                               // Number of bytes written
     if(!WriteFile(hSerial,String,strlen(String),&dwBytesWritten,NULL))  // Write the string
         return -1;                                                      // Error while writing
+    FlushFileBuffers(hSerial);
     return 1;                                                           // Write operation successfull
 #endif
 #ifdef __linux__
