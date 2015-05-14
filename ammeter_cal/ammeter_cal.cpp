@@ -62,7 +62,7 @@ int8 EvseRapiLink::ReadResp(char *buf,int8 buflen,int8 nowait)
   int rc = -1;
   char src;
   do {
-    src= m_serial.ReadChar(buf,nowait ? 1 : 250);
+    src= m_serial.ReadChar(buf,nowait ? 1 : 2500);
   } while ((src == 1) && (buf[0] != '$'));
   
   if (src == 1) {
@@ -254,7 +254,7 @@ int main(int argc,char *argv[])
     goto bye;
   }
 
-  sprintf(s,"%s:",argv[1]);
+  sprintf(s,"\\\\.\\%s",argv[1]);
   if (rapi.OpenLink(s)) {
     printf("ERROR opening %s\n",argv[1]);
     rc = 2;
