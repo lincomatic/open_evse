@@ -1143,17 +1143,27 @@ public:
   virtual Menu *Select() = 0;
 };
 
-class SetupMenu : public Menu {
+class SettingsMenu : public Menu {
   uint8_t m_menuCnt;
   uint8_t m_noExit;
 public:
-  SetupMenu();
+  SettingsMenu();
   void Init();
   void Next();
   Menu *Select();
   void EnableExitItem(uint8_t tf) {
     m_noExit = !tf;
   }
+  uint8_t ExitItemDisabled() { return m_noExit; }
+};
+
+class SetupMenu : public Menu {
+  uint8_t m_menuCnt;
+public:
+  SetupMenu();
+  void Init();
+  void Next();
+  Menu *Select();
 };
 
 class SvcLevelMenu : public Menu {

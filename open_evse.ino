@@ -61,6 +61,7 @@ const char VERSTR[] PROGMEM = VERSION;
 
 
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
+const char g_psSettings[] PROGMEM = "Settings";
 const char g_psSetup[] PROGMEM = "Setup";
 const char g_psSvcLevel[] PROGMEM = "Service Level";
 const char g_psMaxCurrent[] PROGMEM = "Max Current";
@@ -102,6 +103,7 @@ const char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
 const char g_psChargeLimit[] PROGMEM = "Charge Limit";
 #endif // CHARGE_LIMIT
 
+SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
@@ -140,17 +142,25 @@ DelayMenuStopMin g_DelayMenuStopMin;
 ChargeLimitMenu g_ChargeLimitMenu;
 #endif // CHARGE_LIMIT
 
-Menu *g_MenuList[] = {
+Menu *g_SettingsMenuList[] = {
 #ifdef CHARGE_LIMIT
   &g_ChargeLimitMenu,
 #endif // CHARGE_LIMIT
 #ifdef DELAYTIMER_MENU
-  &g_RTCMenu,
   &g_DelayMenu,
 #endif // DELAYTIMER_MENU
 #ifdef AUTOSTART_MENU
   &g_AutoStartMenu,
 #endif // AUTOSTART_MENU
+  &g_SetupMenu,
+  &g_ResetMenu,
+  NULL
+};
+
+Menu *g_SetupMenuList[] = {
+#ifdef DELAYTIMER_MENU
+  &g_RTCMenu,
+#endif // DELAYTIMER_MENU
 #ifdef RGBLCD
   &g_BklTypeMenu,
 #endif // RGBLCD
@@ -165,7 +175,6 @@ Menu *g_MenuList[] = {
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
 #endif // GFI_SELFTEST
-  &g_ResetMenu,
   NULL
 };
 
@@ -1184,7 +1193,7 @@ void J1772EVSEController::chargingOff()
 
 void J1772EVSEController::HardFault()
 {
-  g_SetupMenu.EnableExitItem(0);
+  g_SettingsMenu.EnableExitItem(0);
   g_OBD.Update(OBD_UPD_HARDFAULT);
   while (1) ProcessInputs(1); // spin forever or until user resets via menu
 }
@@ -1809,7 +1818,7 @@ void J1772EVSEController::Init()
   ShowDisabledTests();
 #endif
  
-  g_SetupMenu.EnableExitItem(0);
+  g_SettingsMenu.EnableExitItem(0);
   uint8_t fault; 
   do {
     fault = 0; // reset post fault
@@ -1838,7 +1847,7 @@ void J1772EVSEController::Init()
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
 
-  g_SetupMenu.EnableExitItem(1);
+  g_SettingsMenu.EnableExitItem(1);
 
   SetSvcLevel(svclvl);
 
@@ -2628,24 +2637,24 @@ void Menu::init(const char *firstitem)
   g_OBD.LcdPrint(1,firstitem);
 }
 
-SetupMenu::SetupMenu()
+SettingsMenu::SettingsMenu()
 {
-  m_Title = g_psSetup;
+  m_Title = g_psSettings;
 
   m_menuCnt = 0;
-  while (g_MenuList[m_menuCnt]) {
+  while (g_SettingsMenuList[m_menuCnt]) {
     m_menuCnt++;
   }
 }
 
-void SetupMenu::Init()
+void SettingsMenu::Init()
 {
   m_CurIdx = 0;
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,g_MenuList[0]->m_Title);
+  g_OBD.LcdPrint_P(1,g_SettingsMenuList[0]->m_Title);
 }
 
-void SetupMenu::Next()
+void SettingsMenu::Next()
 {
   if ((++m_CurIdx > m_menuCnt) ||
       (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
@@ -2654,7 +2663,52 @@ void SetupMenu::Next()
 
   const char PROGMEM *title;
   if (m_CurIdx < m_menuCnt) {
-    title = g_MenuList[m_CurIdx]->m_Title;
+    title = g_SettingsMenuList[m_CurIdx]->m_Title;
+  }
+  else {
+    title = g_psExit;
+  }
+
+  g_OBD.LcdPrint_P(1,title);
+}
+
+Menu *SettingsMenu::Select()
+{
+  if (m_CurIdx < m_menuCnt) {
+    return g_SettingsMenuList[m_CurIdx];
+  }
+  else {
+    g_OBD.LcdClear();
+    return NULL;
+  }
+}
+
+SetupMenu::SetupMenu()
+{
+  m_Title = g_psSetup;
+
+  m_menuCnt = 0;
+  while (g_SetupMenuList[m_menuCnt]) {
+    m_menuCnt++;
+  }
+}
+
+void SetupMenu::Init()
+{
+  m_CurIdx = 0;
+  g_OBD.LcdPrint_P(0,m_Title);
+  g_OBD.LcdPrint_P(1,g_SetupMenuList[0]->m_Title);
+}
+
+void SetupMenu::Next()
+{
+  if (++m_CurIdx > m_menuCnt) {
+    m_CurIdx = 0;
+  }
+
+  const char PROGMEM *title;
+  if (m_CurIdx < m_menuCnt) {
+    title = g_SetupMenuList[m_CurIdx]->m_Title;
   }
   else {
     title = g_psExit;
@@ -2666,11 +2720,10 @@ void SetupMenu::Next()
 Menu *SetupMenu::Select()
 {
   if (m_CurIdx < m_menuCnt) {
-    return g_MenuList[m_CurIdx];
+    return g_SetupMenuList[m_CurIdx];
   }
   else {
-    g_OBD.LcdClear();
-    return NULL;
+    return &g_SettingsMenu;
   }
 }
 
@@ -3329,7 +3382,7 @@ Menu *DelayMenuEnableDisable::Select()
   } else {
     g_DelayTimer.Disable();
   }
-  return &g_SetupMenu;
+  return &g_SettingsMenu;
 }
 DelayMenuStartHour::DelayMenuStartHour()
 {
@@ -3405,7 +3458,7 @@ Menu *DelayMenuStartMin::Select()
   HsStrPrint1(g_hour,m_CurIdx,1);
   g_DelayTimer.SetStartTimer(g_hour, g_min);
   delay(500);
-  return &g_SetupMenu;
+  return &g_SettingsMenu;
 }
 DelayMenuStopMin::DelayMenuStopMin()
 {
@@ -3430,7 +3483,7 @@ Menu *DelayMenuStopMin::Select()
   HsStrPrint1(g_hour,m_CurIdx,1);
   g_DelayTimer.SetStopTimer(g_hour, g_min);  // Set Timers
   delay(500);
-  return &g_SetupMenu;
+  return &g_SettingsMenu;
 }
 #endif // DELAYTIMER_MENU
 #ifdef AUTOSTART_MENU
@@ -3468,7 +3521,7 @@ Menu *AutoStartMenu::Select()
   g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
   SaveEvseFlags();
   delay(500);
-  return &g_SetupMenu;
+  return &g_SettingsMenu;
 }
 #endif //#ifdef AUTOSTART_MENU
 
@@ -3532,7 +3585,7 @@ Menu *ChargeLimitMenu::Select()
   showCurSel(1);
   g_EvseController.SetChargeLimit(g_ChargeLimitList[m_CurIdx]);
   delay(500);
-  return &g_SetupMenu;
+  return &g_SettingsMenu;
 }
 
 #endif // CHARGE_LIMIT
@@ -3581,14 +3634,14 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
 	uint8_t curidx;
-	if (m_CurMenu == &g_SetupMenu) {
-	  curidx = g_SetupMenu.m_CurIdx;
+	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
+	  curidx = m_CurMenu->m_CurIdx;
 	}
 	m_CurMenu->Init();
-	if (m_CurMenu == &g_SetupMenu) {
+	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
 	  // restore prev menu item
-	  g_SetupMenu.m_CurIdx = curidx-1;
-	  g_SetupMenu.Next();
+	  m_CurMenu->m_CurIdx = curidx-1;
+	  m_CurMenu->Next();
 	}
       }
       else { // exit
@@ -3613,8 +3666,8 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 	g_OBD.DisableUpdate(1);
 	m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
 	g_OBD.LcdSetBacklightColor(WHITE);
-	g_SetupMenu.Init();
-	m_CurMenu = &g_SetupMenu;
+	g_SettingsMenu.Init();
+	m_CurMenu = &g_SettingsMenu;
 #ifndef BTN_ENABLE_TOGGLE
       }
 #endif // !BTN_ENABLE_TOGGLE

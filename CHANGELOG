@@ -3,6 +3,8 @@ Change Log
 v3.7.9 SCL 20150515
 - fix bug in u2a() when digits=0
 - added CHARGE_LIMIT - charge to a certain kWh and then go to sleep
+- move all setup menus to separate "Setup" submenu. Top level menu now
+  called "Settings"
 	
 SCL 20150513
 - cleanup, move SERIALCLI to serialcli.cpp/h
