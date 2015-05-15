@@ -1146,6 +1146,9 @@ public:
 class SettingsMenu : public Menu {
   uint8_t m_menuCnt;
   uint8_t m_noExit;
+#ifdef CHARGE_LIMIT
+  uint8_t m_skipChargeLimit;
+#endif // CHARGE_LIMIT
 public:
   SettingsMenu();
   void Init();
@@ -1154,7 +1157,9 @@ public:
   void EnableExitItem(uint8_t tf) {
     m_noExit = !tf;
   }
-  uint8_t ExitItemDisabled() { return m_noExit; }
+#ifdef CHARGE_LIMIT
+  void CheckSkipChargeLimit();
+#endif
 };
 
 class SetupMenu : public Menu {

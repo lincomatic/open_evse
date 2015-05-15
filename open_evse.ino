@@ -2647,19 +2647,35 @@ SettingsMenu::SettingsMenu()
   }
 }
 
+#ifdef CHARGE_LIMIT
+void SettingsMenu::CheckSkipChargeLimit()
+{
+  // only allow Charge Limit menu item if car connected and no error
+  m_skipChargeLimit = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
+}
+#endif // CHARGE_LIMIT
+
 void SettingsMenu::Init()
 {
   m_CurIdx = 0;
+#ifdef CHARGE_LIMIT
+  if (m_skipChargeLimit && (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu))
+    m_CurIdx++;
+#endif // CHARGE_LIMIT
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,g_SettingsMenuList[0]->m_Title);
+  g_OBD.LcdPrint_P(1,g_SettingsMenuList[m_CurIdx]->m_Title);
 }
 
 void SettingsMenu::Next()
 {
   if ((++m_CurIdx > m_menuCnt) ||
-      (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
+       (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
     m_CurIdx = 0;
   }
+#ifdef CHARGE_LIMIT
+  if (m_skipChargeLimit && (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu))
+      m_CurIdx++;
+#endif // CHARGE_LIMIT
 
   const char PROGMEM *title;
   if (m_CurIdx < m_menuCnt) {
@@ -3662,6 +3678,9 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       uint8_t curstate = g_EvseController.GetState();
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
+#ifdef CHARGE_LIMIT
+	g_SettingsMenu.CheckSkipChargeLimit();
+#endif // CHARGE_LIMIT
 	g_EvseController.Sleep();
 	g_OBD.DisableUpdate(1);
 	m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
