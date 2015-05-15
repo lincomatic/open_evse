@@ -2327,7 +2327,7 @@ void J1772EVSEController::Update()
     }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
-    if (m_chargeLimit && (g_WattSeconds >= 3600 * (uint32_t)m_chargeLimit)) {
+    if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
       SetChargeLimit(0); // reset charge limit
       Sleep();
     }
