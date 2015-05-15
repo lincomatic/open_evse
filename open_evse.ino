@@ -60,16 +60,6 @@
 const char VERSTR[] PROGMEM = VERSION;
 
 
-#ifdef LCD16X2
-char *g_BlankLine = "                ";
-#endif // LCD16X2
-/*
-char g_sPlus[] = "+";
-char g_sSlash[] = "/";
-char g_sColon[] = ":";
-char g_sSpace[] = " ";
-*/
-
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
 const char g_psSetup[] PROGMEM = "Setup";
 const char g_psSvcLevel[] PROGMEM = "Service Level";
@@ -108,6 +98,9 @@ const char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
 const char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
 const char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
 #endif // DELAYTIMER_MENU
+#ifdef CHARGE_LIMIT
+const char g_psChargeLimit[] PROGMEM = "Charge Limit";
+#endif // CHARGE_LIMIT
 
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
@@ -143,8 +136,21 @@ DelayMenuStopHour g_DelayMenuStopHour;
 DelayMenuStartMin g_DelayMenuStartMin;
 DelayMenuStopMin g_DelayMenuStopMin;
 #endif // DELAYTIMER_MENU
+#ifdef CHARGE_LIMIT
+ChargeLimitMenu g_ChargeLimitMenu;
+#endif // CHARGE_LIMIT
 
 Menu *g_MenuList[] = {
+#ifdef CHARGE_LIMIT
+  &g_ChargeLimitMenu,
+#endif // CHARGE_LIMIT
+#ifdef DELAYTIMER_MENU
+  &g_RTCMenu,
+  &g_DelayMenu,
+#endif // DELAYTIMER_MENU
+#ifdef AUTOSTART_MENU
+  &g_AutoStartMenu,
+#endif // AUTOSTART_MENU
 #ifdef RGBLCD
   &g_BklTypeMenu,
 #endif // RGBLCD
@@ -159,13 +165,6 @@ Menu *g_MenuList[] = {
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
 #endif // GFI_SELFTEST
-#ifdef DELAYTIMER_MENU
-  &g_RTCMenu,
-  &g_DelayMenu,
-#endif // DELAYTIMER_MENU
-#ifdef AUTOSTART_MENU
-  &g_AutoStartMenu,
-#endif // AUTOSTART_MENU
   &g_ResetMenu,
   NULL
 };
@@ -2133,13 +2132,16 @@ void J1772EVSEController::Update()
   
   // state transition
   if (m_EvseState != prevevsestate) {
-    if (m_EvseState == EVSE_STATE_A) { // connected, not ready to charge
+    if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
       #ifdef KWH_RECORDING
         g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
         eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
       #endif // KWH_RECORDING
+#ifdef CHARGE_LIMIT
+	SetChargeLimit(0);
+#endif // CHARGE_LIMIT
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
@@ -2315,6 +2317,13 @@ void J1772EVSEController::Update()
       }    
     }
 #endif // TEMPERATURE_MONITORING
+#ifdef CHARGE_LIMIT
+    if (m_chargeLimit && (g_WattSeconds >= 3600 * (uint32_t)m_chargeLimit)) {
+      SetChargeLimit(0); // reset charge limit
+      Sleep();
+    }
+#endif
+
   }
 }
 
@@ -3462,6 +3471,71 @@ Menu *AutoStartMenu::Select()
   return &g_SetupMenu;
 }
 #endif //#ifdef AUTOSTART_MENU
+
+#ifdef CHARGE_LIMIT
+uint8_t g_ChargeLimitList[] = {0,1,2,3,4,5,10,15,20,30,0};
+
+ChargeLimitMenu::ChargeLimitMenu()
+{
+  m_Title = g_psChargeLimit;
+}
+
+void ChargeLimitMenu::showCurSel(uint8_t plus)
+{
+  *g_sTmp = 0;
+  if (plus) strcpy(g_sTmp,g_sPlus);
+  if (g_ChargeLimitList[m_CurIdx] == 0) {
+    strcat(g_sTmp,"(none)");
+  }
+  else {
+    strcat(g_sTmp,u2a(g_ChargeLimitList[m_CurIdx]));
+    strcat(g_sTmp," kWh");
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+
+void ChargeLimitMenu::Init()
+{
+  m_CurIdx = 0;
+  m_kwhLimit = g_EvseController.GetChargeLimit();
+
+  for (m_MaxIdx=1;g_ChargeLimitList[m_MaxIdx] != 0;m_MaxIdx++);
+
+  if (m_kwhLimit) {
+    for (uint8_t i=0;i <= m_MaxIdx;i++) {
+      if (g_ChargeLimitList[i] == m_kwhLimit) {
+	m_CurIdx = i;
+	break;
+      }
+    }
+  }
+  else {
+    m_CurIdx = 0;
+    m_kwhLimit = 0;
+  }
+  
+  g_OBD.LcdPrint_P(0,g_psChargeLimit);
+  showCurSel(1);
+}
+
+void ChargeLimitMenu::Next()
+{
+  if (++m_CurIdx > m_MaxIdx) {
+    m_CurIdx = 0;
+  }
+  showCurSel((m_kwhLimit == g_ChargeLimitList[m_CurIdx]) ? 0 : 1);
+}
+
+Menu *ChargeLimitMenu::Select()
+{
+  showCurSel(1);
+  g_EvseController.SetChargeLimit(g_ChargeLimitList[m_CurIdx]);
+  delay(500);
+  return &g_SetupMenu;
+}
+
+#endif // CHARGE_LIMIT
 
 Menu *ResetMenu::Select()
 {

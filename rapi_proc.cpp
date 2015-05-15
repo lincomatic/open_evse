@@ -284,6 +284,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR
+#ifdef CHARGE_LIMIT
+    case 'H': // cHarge limit
+      if (tokenCnt == 2) {
+	g_EvseController.SetChargeLimit(atoi(tokens[1]));
+	rc = 0;
+      }
+      break;
+#endif // CHARGE_LIMIT
 #ifdef KWH_RECORDING
     case 'K': // set accumulated kwh
       g_WattHours_accumulated = dtou32(tokens[1]);
@@ -401,6 +409,13 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // AMMETER || VOLTMETER
+#ifdef CHARGE_LIMIT
+    case 'H': // get cHarge limit
+      sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimit());
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // CHARGE_LIMIT
 #ifdef VOLTMETER
     case 'M':
       u1.i = g_EvseController.GetVoltScaleFactor();

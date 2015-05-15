@@ -100,6 +100,7 @@ SF 0|1 - disable/enable GFI self test
 SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
+SH kWh - set cHarge limit to kWh
 SK - set accumulated Wh (v1.0.3+)
  $SK 0*12 - set accumulated Wh to 0
 SL 1|2|A  - set service level L1/L2/Auto
@@ -136,6 +137,9 @@ GG - get charging current and voltage
  AMMETER must be defined in order to get amps, otherwise returns 0 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
  $GG*B2
+GH - set cHarge limit
+ response: OK kWh
+ kWh = 0 = no charge limit
 GM - get voltMeter settings
  response: OK voltcalefactor voltoffset
  $GM^2E
