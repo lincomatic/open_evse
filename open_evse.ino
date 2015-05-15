@@ -291,7 +291,7 @@ char *u2a(unsigned long x,int digits)
       d--;
     }
   }
-  for (;d;d--) {
+  for (;d > 0;d--) {
     *--s = '0';
   }
   
