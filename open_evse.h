@@ -70,8 +70,10 @@
 // This is just a wild guess
 // #define VOLTMETER_SCALE_FACTOR (266)     // original guess
 #define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+//#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
 // #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
 #define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+//#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // OPENEVSE_2
 
 // GFI support
