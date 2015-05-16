@@ -115,14 +115,12 @@ int EvseRapiProcessor::doCmd(int8_t sendstatetrans)
 
 void EvseRapiProcessor::sendEvseState()
 {
-  extern char g_sTmp[64];
   sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
   write(g_sTmp);
 }
 
 void EvseRapiProcessor::setWifiMode(uint8_t mode)
 {
-  extern char g_sTmp[64];
   sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
   write(g_sTmp);
 }

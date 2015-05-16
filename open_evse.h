@@ -272,6 +272,14 @@
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
+#ifdef SERIALCLI
+#define TMP_BUF_SIZE 64
+#else
+#define TMP_BUF_SIZE (LCD_MAX_CHARS_PER_LINE*2)
+#endif // SERIALCLI
+
+
+
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
 #define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
 
@@ -1465,7 +1473,7 @@ extern char g_sSpace[];
 
 extern J1772EVSEController g_EvseController;
 extern OnboardDisplay g_OBD;
-extern char g_sTmp[64];
+extern char g_sTmp[TMP_BUF_SIZE];
 
 char *u2a(unsigned long x,int digits=0);
 

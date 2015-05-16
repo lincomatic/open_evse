@@ -186,7 +186,7 @@ char *g_sHHMMfmt = "%02d:%02d";
 
 //-- begin global variables
 
-char g_sTmp[64];
+char g_sTmp[TMP_BUF_SIZE];
 
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 J1772EVSEController g_EvseController;
@@ -778,7 +778,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(7,1,g_sTmp);
     #endif // VOLTMETER
     #else // ! KWH_RECORDING
-      LcdPrint(0,1,g_BlankLine);
+      LcdClearLine(0);
     #endif // KWH_RECORDING
 
 #ifdef TEMPERATURE_MONITORING
