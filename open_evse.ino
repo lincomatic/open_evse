@@ -102,6 +102,9 @@ const char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
 #ifdef CHARGE_LIMIT
 const char g_psChargeLimit[] PROGMEM = "Charge Limit";
 #endif // CHARGE_LIMIT
+#ifdef TIME_LIMIT
+const char g_psTimeLimit[] PROGMEM = "Time Limit";
+#endif // TIME_LIMIT
 
 SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
@@ -141,8 +144,14 @@ DelayMenuStopMin g_DelayMenuStopMin;
 #ifdef CHARGE_LIMIT
 ChargeLimitMenu g_ChargeLimitMenu;
 #endif // CHARGE_LIMIT
+#ifdef TIME_LIMIT
+TimeLimitMenu g_TimeLimitMenu;
+#endif // TIME_LIMIT
 
 Menu *g_SettingsMenuList[] = {
+#ifdef TIME_LIMIT
+  &g_TimeLimitMenu,
+#endif // TIME_LIMIT
 #ifdef CHARGE_LIMIT
   &g_ChargeLimitMenu,
 #endif // CHARGE_LIMIT
@@ -2183,12 +2192,12 @@ void J1772EVSEController::Update()
       }
 #endif // UL_GFI_SELFTEST
 
+      chargingOn(); // turn on charging current
       #ifdef KWH_RECORDING
         if (prevevsestate == EVSE_STATE_A) {
           g_WattSeconds = 0;
         }
       #endif
-      chargingOn(); // turn on charging current
     }
     else if (m_EvseState == EVSE_STATE_D) {
       // vent required not supported
@@ -2329,6 +2338,12 @@ void J1772EVSEController::Update()
 #ifdef CHARGE_LIMIT
     if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
       SetChargeLimit(0); // reset charge limit
+      Sleep();
+    }
+#endif
+#ifdef TIME_LIMIT
+    if (m_timeLimit && ((curms - m_ChargeOnTimeMS) >= (60000lu * (unsigned long)m_timeLimit))) {
+      SetTimeLimit(0); // reset time limit
       Sleep();
     }
 #endif
@@ -2647,39 +2662,60 @@ SettingsMenu::SettingsMenu()
   }
 }
 
-#ifdef CHARGE_LIMIT
-void SettingsMenu::CheckSkipChargeLimit()
+#if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
+void SettingsMenu::CheckSkipLimits()
 {
   // only allow Charge Limit menu item if car connected and no error
-  m_skipChargeLimit = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
+  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
 }
 #endif // CHARGE_LIMIT
 
 void SettingsMenu::Init()
 {
+  Menu *menu = g_SettingsMenuList[m_CurIdx];
   m_CurIdx = 0;
-#ifdef CHARGE_LIMIT
-  if (m_skipChargeLimit && (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu))
+
+#if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
+  if (m_skipLimits
+#if defined(CHARGE_LIMIT)
+      && (menu == &g_ChargeLimitMenu)
+#endif
+#if defined(TIME_LIMIT)
+      && (menu == &g_TimeLimitMenu)
+#endif
+      ) {
     m_CurIdx++;
-#endif // CHARGE_LIMIT
+  }
+#endif // CHARGE_LIMIT || TIME_LIMIT
+
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,g_SettingsMenuList[m_CurIdx]->m_Title);
+  g_OBD.LcdPrint_P(1,menu->m_Title);
 }
 
 void SettingsMenu::Next()
 {
+  Menu *menu = g_SettingsMenuList[m_CurIdx];
   if ((++m_CurIdx > m_menuCnt) ||
        (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
     m_CurIdx = 0;
   }
-#ifdef CHARGE_LIMIT
-  if (m_skipChargeLimit && (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu))
-      m_CurIdx++;
-#endif // CHARGE_LIMIT
+
+#if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
+  if (m_skipLimits
+#if defined(CHARGE_LIMIT)
+      && (menu == &g_ChargeLimitMenu)
+#endif
+#if defined(TIME_LIMIT)
+      && (menu == &g_TimeLimitMenu)
+#endif
+#endif // CHARGE_LIMIT || TIME_LIMIT
+      ) {
+    m_CurIdx++;
+  }
 
   const char PROGMEM *title;
   if (m_CurIdx < m_menuCnt) {
-    title = g_SettingsMenuList[m_CurIdx]->m_Title;
+    title = menu->m_Title;
   }
   else {
     title = g_psExit;
@@ -3554,7 +3590,7 @@ void ChargeLimitMenu::showCurSel(uint8_t plus)
   *g_sTmp = 0;
   if (plus) strcpy(g_sTmp,g_sPlus);
   if (g_ChargeLimitList[m_CurIdx] == 0) {
-    strcat(g_sTmp,"(none)");
+    strcat(g_sTmp,"off");
   }
   else {
     strcat(g_sTmp,u2a(g_ChargeLimitList[m_CurIdx]));
@@ -3598,13 +3634,102 @@ void ChargeLimitMenu::Next()
 
 Menu *ChargeLimitMenu::Select()
 {
+  uint8_t limit = g_ChargeLimitList[m_CurIdx];
   showCurSel(1);
-  g_EvseController.SetChargeLimit(g_ChargeLimitList[m_CurIdx]);
+  g_EvseController.SetChargeLimit(limit);
+#ifdef CHARGE_LIMIT
+  if (limit) {
+    g_EvseController.SetTimeLimit(0);
+  }
+#endif // CHARGE_LIMIT
   delay(500);
   return &g_SettingsMenu;
 }
 
 #endif // CHARGE_LIMIT
+
+
+#ifdef TIME_LIMIT
+// above 60min must be in half hour increments < 256min
+uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240}; // minutes
+
+TimeLimitMenu::TimeLimitMenu()
+{
+  m_Title = g_psTimeLimit;
+}
+
+void TimeLimitMenu::showCurSel(uint8_t plus)
+{
+  int8_t limit = g_TimeLimitList[m_CurIdx];
+  *g_sTmp = 0;
+  if (plus) strcpy(g_sTmp,g_sPlus);
+  if (limit == 0) {
+    strcat(g_sTmp,"off");
+  }
+  else {
+    if (limit < 60) {
+      strcat(g_sTmp,u2a(limit));
+      strcat(g_sTmp," min");
+    }
+    else {
+      strcat(g_sTmp,u2a(limit / 60));
+      if (limit % 60) { // assume == 30
+	strcat(g_sTmp,".5");
+      }
+      strcat(g_sTmp," hr");
+    }
+  }
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+
+void TimeLimitMenu::Init()
+{
+  m_CurIdx = 0;
+  m_timeLimit = g_EvseController.GetTimeLimit();
+
+  for (m_MaxIdx=1;g_TimeLimitList[m_MaxIdx] != 0;m_MaxIdx++);
+
+  if (m_timeLimit) {
+    for (uint8_t i=0;i <= m_MaxIdx;i++) {
+      if (g_TimeLimitList[i] == m_timeLimit) {
+	m_CurIdx = i;
+	break;
+      }
+    }
+  }
+  else {
+    m_CurIdx = 0;
+    m_timeLimit = 0;
+  }
+  
+  g_OBD.LcdPrint_P(0,g_psTimeLimit);
+  showCurSel(1);
+}
+
+void TimeLimitMenu::Next()
+{
+  if (++m_CurIdx > m_MaxIdx) {
+    m_CurIdx = 0;
+  }
+  showCurSel((m_timeLimit == g_TimeLimitList[m_CurIdx]) ? 0 : 1);
+}
+
+Menu *TimeLimitMenu::Select()
+{
+  uint8_t limit = g_TimeLimitList[m_CurIdx];
+  showCurSel(1);
+  g_EvseController.SetTimeLimit(limit);
+#ifdef CHARGE_LIMIT
+  if (limit) {
+    g_EvseController.SetChargeLimit(0);
+  }
+#endif // CHARGE_LIMIT
+  delay(500);
+  return &g_SettingsMenu;
+}
+
+#endif // TIME_LIMIT
 
 Menu *ResetMenu::Select()
 {
@@ -3678,8 +3803,8 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       uint8_t curstate = g_EvseController.GetState();
       if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
 #endif // !BTN_ENABLE_TOGGLE
-#ifdef CHARGE_LIMIT
-	g_SettingsMenu.CheckSkipChargeLimit();
+#if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
+	g_SettingsMenu.CheckSkipLimits();
 #endif // CHARGE_LIMIT
 	g_EvseController.Sleep();
 	g_OBD.DisableUpdate(1);

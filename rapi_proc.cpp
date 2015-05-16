@@ -163,7 +163,7 @@ int EvseRapiProcessor::tokenize()
 int EvseRapiProcessor::processCmd()
 {
   UNION4B u1,u2,u3;
-  int rc = -1;
+  int rc = 0;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -175,16 +175,13 @@ int EvseRapiProcessor::processCmd()
 #ifdef LCD16X2
     case 'B': // LCD backlight
       g_OBD.LcdSetBacklightColor(dtou32(tokens[1]));
-      rc = 0;
       break;
 #endif // LCD16X2      
     case 'D': // disable EVSE
       g_EvseController.Disable();
-      rc = 0;
       break;
     case 'E': // enable EVSE
       g_EvseController.Enable();
-      rc = 0;
       break;
 #ifdef LCD16X2
     case 'P': // print to LCD
@@ -197,19 +194,16 @@ int EvseRapiProcessor::processCmd()
 	}
 	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
       }
-      rc = 0;
       break;
 #endif // LCD16X2      
     case 'R': // reset EVSE
       g_EvseController.Reboot();
-      rc = 0;
       break;
     case 'S': // sleep
       g_EvseController.Sleep();
-      rc = 0;
       break;
     default:
-      ; // do nothing
+      rc = -1; // unknown
     }
     break;
 
@@ -230,7 +224,6 @@ int EvseRapiProcessor::processCmd()
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
 	SetRTC(dtou32(tokens[1]),dtou32(tokens[2]),dtou32(tokens[3]),
 	       dtou32(tokens[4]),dtou32(tokens[5]),dtou32(tokens[6]));
-	rc = 0;
       }
       break;
 #endif // RTC      
@@ -238,14 +231,19 @@ int EvseRapiProcessor::processCmd()
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
 	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
-	rc = 0;
       }
       break;
+#ifdef TIME_LIMIT
+    case '3': // set time limit
+      if (tokenCnt == 2) {
+	g_EvseController.SetChargeLimit(atoi(tokens[1]));
+      }
+      break;
+#endif // TIME_LIMIT
     case 'A':
       if (tokenCnt == 3) {
 	g_EvseController.SetCurrentScaleFactor(atoi(tokens[1]));
 	g_EvseController.SetAmmeterCurrentOffset(atoi(tokens[2]));
-	rc = 0;
       }
       break;
 #endif // AMMETER
@@ -257,20 +255,17 @@ int EvseRapiProcessor::processCmd()
     case 'D': // diode check
       if (tokenCnt == 2) {
 	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
-	rc = 0;
       }
       break;
     case 'E': // echo
       if (tokenCnt == 2) {
 	echo = ((*tokens[1] == '0') ? 0 : 1);
-	rc = 0;
       }
       break;
 #ifdef GFI_SELFTEST
     case 'F': // GFI self test
       if (tokenCnt == 2) {
 	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
       }
       break;
 #endif // GFI_SELFTEST
@@ -278,7 +273,6 @@ int EvseRapiProcessor::processCmd()
     case 'G': // ground check
       if (tokenCnt == 2) {
 	g_EvseController.EnableGndChk(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
       }
       break;
 #endif // ADVPWR
@@ -286,7 +280,6 @@ int EvseRapiProcessor::processCmd()
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
 	g_EvseController.SetChargeLimit(atoi(tokens[1]));
-	rc = 0;
       }
       break;
 #endif // CHARGE_LIMIT
@@ -294,7 +287,6 @@ int EvseRapiProcessor::processCmd()
     case 'K': // set accumulated kwh
       g_WattHours_accumulated = dtou32(tokens[1]);
       eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
-      rc = 0;
       break;
 #endif //KWH_RECORDING
     case 'L': // service level
@@ -306,16 +298,14 @@ int EvseRapiProcessor::processCmd()
 #ifdef ADVPWR
 	  g_EvseController.EnableAutoSvcLevel(0);
 #endif
-	  rc = 0;
 	  break;
 #ifdef ADVPWR
 	case 'A':
 	  g_EvseController.EnableAutoSvcLevel(1);
-	  rc = 0;
 	  break;
 #endif // ADVPWR
 	default:
-	  ;
+	  rc = -1; // unknown
 	}
       }
       break;
@@ -323,14 +313,12 @@ int EvseRapiProcessor::processCmd()
     case 'M':
       if (tokenCnt == 3) {
         g_EvseController.SetVoltmeter(atoi(tokens[1]),atol(tokens[2]));
-	rc = 0;
       }
 #endif // VOLTMETER
 #ifdef ADVPWR      
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
 	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
       }
       break;
 #endif // ADVPWR      
@@ -338,7 +326,6 @@ int EvseRapiProcessor::processCmd()
     case 'S': // GFI self-test
       if (tokenCnt == 2) {
 	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
       }
       break;
 #endif // GFI_SELFTEST   
@@ -354,14 +341,12 @@ int EvseRapiProcessor::processCmd()
 	  g_DelayTimer.SetStopTimer(dtou32(tokens[3]),dtou32(tokens[4]));
 	  g_DelayTimer.Enable();
 	}
-	rc = 0;
       }
       break;
 #endif // DELAYTIMER      
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
       }
       break;
     }
@@ -369,26 +354,29 @@ int EvseRapiProcessor::processCmd()
 
   case 'G': // get parameter
     switch(*s) {
+#ifdef TIME_LIMIT
+    case '3': // get time limit
+      sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit());
+      bufCnt = 1; // flag response text output
+      break;
+#endif // TIME_LIMIT
 #ifdef AMMETER
     case 'A':
       u1.i = g_EvseController.GetCurrentScaleFactor();
       u2.i = g_EvseController.GetAmmeterCurrentOffset();
       sprintf(buffer,"%d %d",u1.i,u2.i);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #endif // AMMETER
     case 'C': // get current capacity range
       sprintf(buffer,"%d %d",MIN_CURRENT_CAPACITY,(g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
     case 'E': // get settings
       u1.u = g_EvseController.GetCurrentCapacity();
       u2.u = g_EvseController.GetFlags();
       sprintf(buffer,"%d %04x",u1.u,u2.u);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
     case 'F': // get fault counters
       u1.u = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
@@ -396,7 +384,6 @@ int EvseRapiProcessor::processCmd()
       u3.u = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #if defined(AMMETER)||defined(VOLTMETER)
     case 'G':
@@ -404,14 +391,12 @@ int EvseRapiProcessor::processCmd()
       u2.i32 = (int32_t)g_EvseController.GetVoltage();
       sprintf(buffer,"%ld %ld",u1.i32,u2.i32);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #endif // AMMETER || VOLTMETER
 #ifdef CHARGE_LIMIT
     case 'H': // get cHarge limit
       sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimit());
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #endif // CHARGE_LIMIT
 #ifdef VOLTMETER
@@ -420,7 +405,6 @@ int EvseRapiProcessor::processCmd()
       u2.i32 = g_EvseController.GetVoltOffset();
       sprintf(buffer,"%d %ld",u1.i,u2.i32);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #endif // VOLTMETER
 #ifdef TEMPERATURE_MONITORING
@@ -436,27 +420,25 @@ int EvseRapiProcessor::processCmd()
       strcat(buffer,u2a(g_TempMonitor.m_TMP007_temperature));
       */
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
 #endif // TEMPERATURE_MONITORING
     case 'S': // get state
       sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
       bufCnt = 1; // flag response text output
-      rc = 0;
+
       break;
 #ifdef RTC
     case 'T': // get time
       extern void GetRTC(char *buf);
       GetRTC(buffer);
       bufCnt = 1; // flag response text output
-      rc = 0;
+
       break;
 #endif // RTC
 #ifdef KWH_RECORDING
     case 'U':
       sprintf(buffer,"%lu %lu",g_WattSeconds,g_WattHours_accumulated);
       bufCnt = 1;
-      rc = 0;
       break;
 #endif // KWH_RECORDING
     case 'V': // get version
@@ -464,14 +446,13 @@ int EvseRapiProcessor::processCmd()
       strcat(buffer," ");
       strcat_P(buffer,RAPI_VER);
       bufCnt = 1; // flag response text output
-      rc = 0;
       break;
     default:
-      ; //do nothing
+      rc = -1; // unknown
     }
 
   default:
-    ; // do nothing
+    rc = -1; // unknown
   }
 
   response((rc == 0) ? 1 : 0);

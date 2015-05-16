@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.7.9"
+#define VERSION "3.8.0"
 
 //-- begin features
 
@@ -56,6 +56,9 @@
 
 // enable watchdog timer
 #define WATCHDOG
+
+// charge for a specified amount of time and then stop
+#define TIME_LIMIT
 
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
@@ -960,6 +963,9 @@ class J1772EVSEController {
 #ifdef CHARGE_LIMIT
   uint8_t m_chargeLimit; // kWh
 #endif
+#ifdef TIME_LIMIT
+  uint8_t m_timeLimit; // minutes 
+#endif
 
   void readAmmeter();
 #endif // AMMETER
@@ -1106,6 +1112,10 @@ public:
   void SetChargeLimit(uint8_t ws) { m_chargeLimit = ws; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
 #endif // CHARGE_LIMIT
+#ifdef TIME_LIMIT
+  uint8_t SetTimeLimit(uint8_t minutes) { m_timeLimit = minutes; }
+  uint8_t GetTimeLimit() { return m_timeLimit; }
+#endif // TIME_LIMIT
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif
@@ -1156,9 +1166,9 @@ public:
 class SettingsMenu : public Menu {
   uint8_t m_menuCnt;
   uint8_t m_noExit;
-#ifdef CHARGE_LIMIT
-  uint8_t m_skipChargeLimit;
-#endif // CHARGE_LIMIT
+#if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
+  uint8_t m_skipLimits;
+#endif
 public:
   SettingsMenu();
   void Init();
@@ -1167,8 +1177,8 @@ public:
   void EnableExitItem(uint8_t tf) {
     m_noExit = !tf;
   }
-#ifdef CHARGE_LIMIT
-  void CheckSkipChargeLimit();
+#if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
+  void CheckSkipLimits();
 #endif
 };
 
@@ -1374,6 +1384,19 @@ public:
   Menu *Select();
 };
 #endif // CHARGE_LIMIT
+
+#ifdef TIME_LIMIT
+class TimeLimitMenu  : public Menu {
+  uint8_t m_timeLimit;
+  uint8_t m_MaxIdx;
+  void showCurSel(uint8_t plus=0);
+public:
+  TimeLimitMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif // TIME_LIMIT
 
 class BtnHandler {
   Btn m_Btn;

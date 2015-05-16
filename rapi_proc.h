@@ -83,6 +83,7 @@ S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
 S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not charging
  $S2 0*F9
  $S2 1*FA
+S3 minutes - set charge time limit to minutes (0=disable, max=256)
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
@@ -120,6 +121,9 @@ SV 0|1 - disable/enable vent required
  $SV 0*1D
  $SV 1*1E
 
+G3 - get time limit
+ response: OK minutes
+ minutes = 0 = no time limit
 GA - get ammeter settings
  response: OK currentscalefactor currentoffset
  $GA*AC
@@ -137,7 +141,7 @@ GG - get charging current and voltage
  AMMETER must be defined in order to get amps, otherwise returns 0 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
  $GG*B2
-GH - set cHarge limit
+GH - get cHarge limit
  response: OK kWh
  kWh = 0 = no charge limit
 GM - get voltMeter settings
