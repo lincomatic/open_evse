@@ -2160,6 +2160,9 @@ void J1772EVSEController::Update()
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0);
 #endif // CHARGE_LIMIT
+#ifdef TIME_LIMIT
+	SetTimeLimit(0);
+#endif // TIME_LIMIT
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
@@ -3651,7 +3654,7 @@ Menu *ChargeLimitMenu::Select()
 
 #ifdef TIME_LIMIT
 // above 60min must be in half hour increments < 256min
-uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240}; // minutes
+uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240,0}; // minutes
 
 TimeLimitMenu::TimeLimitMenu()
 {
