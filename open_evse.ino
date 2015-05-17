@@ -2345,12 +2345,15 @@ void J1772EVSEController::Update()
     }
 #endif
 #ifdef TIME_LIMIT
-    if (m_timeLimit && ((curms - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit))) {
-      SetTimeLimit(0); // reset time limit
-      Sleep();
+    if (m_timeLimit) {
+      // must call millis() below because curms is sampled before transition to
+      // to State C, so m_ChargeOnTimeMS will be > curms from the start
+      if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
+	SetTimeLimit(0); // reset time limit
+	Sleep();
+      }
     }
 #endif
-
   }
 }
 
@@ -3643,11 +3646,11 @@ Menu *ChargeLimitMenu::Select()
   uint8_t limit = g_ChargeLimitList[m_CurIdx];
   showCurSel(1);
   g_EvseController.SetChargeLimit(limit);
-#ifdef CHARGE_LIMIT
+#ifdef TIME_LIMIT
   if (limit) {
     g_EvseController.SetTimeLimit(0);
   }
-#endif // CHARGE_LIMIT
+#endif // TIME_LIMIT
   delay(500);
   return &g_SettingsMenu;
 }
