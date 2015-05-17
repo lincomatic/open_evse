@@ -719,27 +719,7 @@ void OnboardDisplay::Update(int8_t updmode)
 
   uint32_t current = g_EvseController.GetChargingCurrent();
 
-  /*      int ma;
-	  if (current < 1000) {
-	  // nnnmA
-	  ma = (int)current;
-	  sprintf(g_sTmp,"%4dmA",ma);
-	  }
-	  else {
-	  // nn.nA
-	  int a = current / 1000;
-	  ma = ((current % 1000) + 50) / 100;
-	  sprintf(g_sTmp,"%3d.%dA",a,ma);
-	  }
-	  LcdPrint(10,0,g_sTmp);
-  */
-  //      sprintf(g_sTmp,"%lu ",current);
-  //      Serial.print(g_sTmp);
   if (current >= 1000) { // display only if > 1000
-    // nnA
-    //int a = (current + 500) / 1000;
-	
-    // nn.nA
     int a = current / 1000;
     int ma = (current % 1000) / 100;
     if (ma > 9) {
@@ -3888,10 +3868,6 @@ void DelayTimer::CheckTime()
       uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
       uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
       uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
-      
-      //Serial.println(m_StartTimerSeconds);
-      //Serial.println(m_StopTimerSeconds);
-      //Serial.println(m_CurrTimeSeconds);
       
       if (stopTimerMinutes < startTimerMinutes) {
 	//End time is for next day 

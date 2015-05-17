@@ -215,23 +215,6 @@ public:
   int doCmd(int8_t sendstatetrans=1);
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
-  
-  /*
-  void Init();
-  void println(char *s) { 
-    Serial.println(s); 
-  }
-  void println_P(prog_char *s);
-  void print(char *s) { 
-    Serial.print(s); 
-  }
-  void print_P(prog_char *s);
-  void printlnn();
-  void flush() { 
-    Serial.flush(); 
-  }
-  uint8_t getInt();
-  */
 };
 
 extern EvseRapiProcessor g_ERP;
