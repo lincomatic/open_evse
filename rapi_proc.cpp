@@ -236,14 +236,14 @@ int EvseRapiProcessor::processCmd()
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
-	g_EvseController.SetChargeLimit(atoi(tokens[1]));
+	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
       }
       break;
 #endif // TIME_LIMIT
     case 'A':
       if (tokenCnt == 3) {
-	g_EvseController.SetCurrentScaleFactor(atoi(tokens[1]));
-	g_EvseController.SetAmmeterCurrentOffset(atoi(tokens[2]));
+	g_EvseController.SetCurrentScaleFactor(dtou32(tokens[1]));
+	g_EvseController.SetAmmeterCurrentOffset(dtou32(tokens[2]));
       }
       break;
 #endif // AMMETER
@@ -279,7 +279,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
-	g_EvseController.SetChargeLimit(atoi(tokens[1]));
+	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
       }
       break;
 #endif // CHARGE_LIMIT
@@ -312,7 +312,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef VOLTMETER
     case 'M':
       if (tokenCnt == 3) {
-        g_EvseController.SetVoltmeter(atoi(tokens[1]),atol(tokens[2]));
+        g_EvseController.SetVoltmeter(dtou32(tokens[1]),dtou32(tokens[2]));
       }
 #endif // VOLTMETER
 #ifdef ADVPWR      
