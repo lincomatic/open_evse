@@ -636,8 +636,17 @@ public:
   OnboardDisplay();
   void Init();
 
-  void SetGreenLed(uint8_t state);
-  void SetRedLed(uint8_t state);
+  void SetGreenLed(uint8_t state) {
+#ifdef GREEN_LED_REG
+    pinGreenLed.write(state);
+#endif
+  }
+
+  void SetRedLed(uint8_t state) {
+#ifdef RED_LED_REG
+  pinRedLed.write(state);
+#endif
+  }
 #ifdef LCD16X2
   void LcdBegin(int x,int y) { 
 #ifdef I2CLCD

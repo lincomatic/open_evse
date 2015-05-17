@@ -406,7 +406,6 @@ OnboardDisplay::OnboardDisplay()
 #endif // I2CLCD_PCF8574
 #endif // defined(I2CLCD) || defined(RGBLCD)
 {
-  m_strBufLen = LCD_MAX_CHARS_PER_LINE+1;
 }
 
 
@@ -463,20 +462,6 @@ void OnboardDisplay::Init()
 }
 
 
-void OnboardDisplay::SetGreenLed(uint8_t state)
-{
-#ifdef GREEN_LED_REG
-  pinGreenLed.write(state);
-#endif
-}
-
-void OnboardDisplay::SetRedLed(uint8_t state)
-{
-#ifdef RED_LED_REG
-  pinRedLed.write(state);
-#endif
-}
-
 #ifdef LCD16X2
 void OnboardDisplay::LcdPrint(int x,int y,const char *s)
 { 
@@ -489,23 +474,23 @@ void OnboardDisplay::LcdPrint(int x,int y,const char *s)
 void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
 {
   if (LcdDetected()) {
-    strncpy_P(m_strBuf,s,m_strBufLen);
-    m_strBuf[m_strBufLen-1] = 0;
+    strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
+    m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
     m_Lcd.print(m_strBuf);
   }
 }
 
 void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
 {
-  strncpy_P(m_strBuf,s,m_strBufLen);
-  m_strBuf[m_strBufLen-1] = 0;
+  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
+  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   LcdPrint(y,m_strBuf);
 }
 
 void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
 {
-  strncpy_P(m_strBuf,s,m_strBufLen);
-  m_strBuf[m_strBufLen-1] = 0;
+  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
+  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   m_Lcd.setCursor(x,y);
   m_Lcd.print(m_strBuf);
 }
