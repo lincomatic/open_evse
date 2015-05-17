@@ -964,7 +964,7 @@ class J1772EVSEController {
   uint8_t m_chargeLimit; // kWh
 #endif
 #ifdef TIME_LIMIT
-  uint8_t m_timeLimit; // minutes 
+  uint8_t m_timeLimit; // minutes * 15
 #endif
 
   void readAmmeter();

@@ -2345,7 +2345,7 @@ void J1772EVSEController::Update()
     }
 #endif
 #ifdef TIME_LIMIT
-    if (m_timeLimit && ((curms - m_ChargeOnTimeMS) >= (60000lu * (unsigned long)m_timeLimit))) {
+    if (m_timeLimit && ((curms - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit))) {
       SetTimeLimit(0); // reset time limit
       Sleep();
     }
@@ -2669,56 +2669,59 @@ SettingsMenu::SettingsMenu()
 void SettingsMenu::CheckSkipLimits()
 {
   // only allow Charge Limit menu item if car connected and no error
-  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
+  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 0;
 }
 #endif // CHARGE_LIMIT
 
 void SettingsMenu::Init()
 {
-  Menu *menu = g_SettingsMenuList[m_CurIdx];
   m_CurIdx = 0;
+  ;
 
 #if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
-  if (m_skipLimits
+  while (m_skipLimits && (
 #if defined(CHARGE_LIMIT)
-      && (menu == &g_ChargeLimitMenu)
+	 (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu) ||
 #endif
 #if defined(TIME_LIMIT)
-      && (menu == &g_TimeLimitMenu)
+	 (g_SettingsMenuList[m_CurIdx] == &g_TimeLimitMenu)
+#else
+	 0
 #endif
-      ) {
+			  )) {
     m_CurIdx++;
   }
 #endif // CHARGE_LIMIT || TIME_LIMIT
 
   g_OBD.LcdPrint_P(0,m_Title);
-  g_OBD.LcdPrint_P(1,menu->m_Title);
+  g_OBD.LcdPrint_P(1,g_SettingsMenuList[m_CurIdx]->m_Title);
 }
 
 void SettingsMenu::Next()
 {
-  Menu *menu = g_SettingsMenuList[m_CurIdx];
   if ((++m_CurIdx > m_menuCnt) ||
        (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
     m_CurIdx = 0;
   }
 
 #if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
-  if (m_skipLimits
+  while (m_skipLimits && (
 #if defined(CHARGE_LIMIT)
-      && (menu == &g_ChargeLimitMenu)
+	 (g_SettingsMenuList[m_CurIdx] == &g_ChargeLimitMenu) ||
 #endif
 #if defined(TIME_LIMIT)
-      && (menu == &g_TimeLimitMenu)
+	 (g_SettingsMenuList[m_CurIdx] == &g_TimeLimitMenu)
+#else
+	 0
 #endif
-#endif // CHARGE_LIMIT || TIME_LIMIT
-      ) {
+			  )) {
     m_CurIdx++;
   }
+#endif // CHARGE_LIMIT || TIME_LIMIT
 
   const char PROGMEM *title;
   if (m_CurIdx < m_menuCnt) {
-    title = menu->m_Title;
+    title = g_SettingsMenuList[m_CurIdx]->m_Title;
   }
   else {
     title = g_psExit;
@@ -3632,7 +3635,7 @@ void ChargeLimitMenu::Next()
   if (++m_CurIdx > m_MaxIdx) {
     m_CurIdx = 0;
   }
-  showCurSel((m_kwhLimit == g_ChargeLimitList[m_CurIdx]) ? 0 : 1);
+  showCurSel((m_kwhLimit == g_ChargeLimitList[m_CurIdx]) ? 1 : 0);
 }
 
 Menu *ChargeLimitMenu::Select()
@@ -3654,7 +3657,8 @@ Menu *ChargeLimitMenu::Select()
 
 #ifdef TIME_LIMIT
 // above 60min must be in half hour increments < 256min
-uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240,0}; // minutes
+// uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240,300,360,420,480,0}; // minutes
+uint8_t g_TimeLimitList[] = {0,1,2,4,6,8,10,12,16,20,24,28,32,0}; // 15 min increments
 
 TimeLimitMenu::TimeLimitMenu()
 {
@@ -3663,7 +3667,7 @@ TimeLimitMenu::TimeLimitMenu()
 
 void TimeLimitMenu::showCurSel(uint8_t plus)
 {
-  int8_t limit = g_TimeLimitList[m_CurIdx];
+  uint16_t limit = g_TimeLimitList[m_CurIdx] * 15;
   *g_sTmp = 0;
   if (plus) strcpy(g_sTmp,g_sPlus);
   if (limit == 0) {
@@ -3715,7 +3719,7 @@ void TimeLimitMenu::Next()
   if (++m_CurIdx > m_MaxIdx) {
     m_CurIdx = 0;
   }
-  showCurSel((m_timeLimit == g_TimeLimitList[m_CurIdx]) ? 0 : 1);
+  showCurSel((m_timeLimit == g_TimeLimitList[m_CurIdx]) ? 1 : 0);
 }
 
 Menu *TimeLimitMenu::Select()
