@@ -1,5 +1,11 @@
 Change Log
 
+v3.8.1 SCL 20150516
+- fix bug in settings menu - charge & time limit should only display when EV connected
+- when charge or time limit set, exit directly out of menus
+- display clock icon when time limit set, lightning bolt icon when charge limit set
+- code compaction
+	
 v3.8.0 SCL 20150516
 - added TIME_LIMIT - charge for a specified time and stop
 	

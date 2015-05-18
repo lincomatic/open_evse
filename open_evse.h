@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.8.0"
+#define VERSION "3.8.1"
 
 //-- begin features
 
@@ -597,10 +597,6 @@ typedef union union4b {
 
 #include "serialcli.h"
 
-#ifdef LCD16X2
-#define g_BlankLine "                "
-#endif // LCD16X2
-
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
 #define OBDF_AMMETER_DIRTY  0x80
@@ -628,7 +624,6 @@ class OnboardDisplay
 #endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
-  uint8_t m_strBufLen;
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
@@ -669,11 +664,13 @@ public:
   void LcdPrint(const char *s) {
     if (LcdDetected()) m_Lcd.print(s); 
   }
-  void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const char PROGMEM *s);
-  void LcdPrint(int x,int y,const char *s);
+  void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint_P(int x,int y,const char PROGMEM *s);
+  void LcdPrint_P(int y,const char PROGMEM *s) {
+    LcdPrint_P(0,y,s);
+  }
+  void LcdPrint(int x,int y,const char *s);
   void LcdPrint(int i) { 
     if (LcdDetected()) m_Lcd.print(i); 
   }
@@ -682,7 +679,9 @@ public:
   }
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
-    if (LcdDetected()) m_Lcd.print(g_BlankLine);
+    for (uint8_t i=0;i < LCD_MAX_CHARS_PER_LINE;i++) {
+      m_Lcd.write(' ');
+    }
     m_Lcd.setCursor(0,y);
   }
   void LcdClear() { 
@@ -691,8 +690,15 @@ public:
   void LcdWrite(uint8_t data) { 
     if (LcdDetected()) m_Lcd.write(data);
   }
-  void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
+
+  void LcdMsg(const char *l1,const char *l2) {
+    LcdPrint(0,l1);
+    LcdPrint(1,l2);
+  }
+  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2) {
+    LcdPrint_P(0,l1);
+    LcdPrint_P(1,l2);
+  }
   void LcdSetBacklightType(uint8_t t,uint8_t update=OBD_UPD_FORCE) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;

@@ -409,12 +409,17 @@ OnboardDisplay::OnboardDisplay()
 }
 
 
+#if defined(DELAYTIMER)||defined(TIME_LIMIT)
+const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0}; // clock
+#endif
 #ifdef DELAYTIMER
-// custom icons - GoldServe
-const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0};
-const char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0};
-const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0};
+const char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0}; // stop (cube)
+const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play 
 #endif // DELAYTIMER
+#if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
+const char CustomChar_3[8] PROGMEM = {0x07, 0x0e, 0x0c, 0x1f, 0x03, 0x06, 0x0c, 0x08}; // lightning
+#endif
+
 void OnboardDisplay::Init()
 {
   WDT_RESET();
@@ -438,15 +443,20 @@ void OnboardDisplay::Init()
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
   LcdSetBacklightColor(WHITE);
 
-#ifdef DELAYTIMER
+#if defined(DELAYTIMER)||defined(TIME_LIMIT)
   memcpy_P(g_sTmp,CustomChar_0,8);
   m_Lcd.createChar(0, (uint8_t*)g_sTmp);
+#endif
+#ifdef DELAYTIMER
   memcpy_P(g_sTmp,CustomChar_1,8);
   m_Lcd.createChar(1, (uint8_t*)g_sTmp);
   memcpy_P(g_sTmp,CustomChar_2,8);
   m_Lcd.createChar(2, (uint8_t*)g_sTmp);
 #endif //#ifdef DELAYTIMER
-
+#if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
+  memcpy_P(g_sTmp,CustomChar_3,8);
+  m_Lcd.createChar(3, (uint8_t*)g_sTmp);
+#endif
   m_Lcd.clear();
 
 #ifdef OPENEVSE_2
@@ -460,7 +470,6 @@ void OnboardDisplay::Init()
   WDT_RESET();
 #endif //#ifdef LCD16X2
 }
-
 
 #ifdef LCD16X2
 void OnboardDisplay::LcdPrint(int x,int y,const char *s)
@@ -480,12 +489,6 @@ void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
   }
 }
 
-void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
-{
-  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
-  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
-  LcdPrint(y,m_strBuf);
-}
 
 void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
 {
@@ -495,11 +498,6 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
-{
-  LcdPrint_P(0,l1);
-  LcdPrint_P(1,l2);
-}
 
 
 // print at (0,y), filling out the line with trailing spaces
@@ -519,11 +517,6 @@ void OnboardDisplay::LcdPrint(int y,const char *s)
   }
 }
 
-void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
-{
-  LcdPrint(0,l1);
-  LcdPrint(1,l2);
-}
 #endif // LCD16X2
 
 
@@ -575,6 +568,16 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(YELLOW);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef CHARGE_LIMIT
+      if (g_EvseController.GetChargeLimit()) {
+	LcdWrite(3); // lightning
+      }
+#endif
+#ifdef TIME_LIMIT
+      if (g_EvseController.GetTimeLimit()) {
+	LcdWrite(0); // clock
+      }
+#endif
       // Display Timer and Stop Icon - GoldServe
 #ifdef DELAYTIMER
       g_DelayTimer.PrintTimerIcon();
@@ -601,6 +604,16 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdClear();
       LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
+#ifdef CHARGE_LIMIT
+      if (g_EvseController.GetChargeLimit()) {
+	LcdWrite(3); // lightning
+      }
+#endif
+#ifdef TIME_LIMIT
+      if (g_EvseController.GetTimeLimit()) {
+	LcdWrite(0); // clock
+      }
+#endif
 #ifdef DELAYTIMER
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
@@ -714,7 +727,7 @@ void OnboardDisplay::Update(int8_t updmode)
     sprintf(g_sTmp,"%3d.%dA",a,ma);
   }
   else {
-    strcpy(g_sTmp,"    0A");
+    strcpy_P(g_sTmp,PSTR("    0A"));
   }
   LcdPrint(10,0,g_sTmp);
  }
@@ -2637,7 +2650,7 @@ SettingsMenu::SettingsMenu()
 void SettingsMenu::CheckSkipLimits()
 {
   // only allow Charge Limit menu item if car connected and no error
-  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 0;
+  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
 }
 #endif // CHARGE_LIMIT
 
@@ -3148,7 +3161,13 @@ void ResetMenu::Next()
 // pluspos = -1 = suppress "+"
 void DtsStrPrint1(uint16_t y,uint8_t mo,uint8_t d,uint8_t h,uint8_t mn,int8_t pluspos)
 {
-  *g_sTmp = 0;
+  sprintf(g_sTmp,"%s%02/%s%02/%s%02 %s%02:%s%02",
+	  (pluspos == 0) ? "" : g_sPlus,mo,
+	  (pluspos == 1) ? "" : g_sPlus,d,
+	  (pluspos == 2) ? "" : g_sPlus,y,
+	  (pluspos == 3) ? "" : g_sPlus,h,
+	  (pluspos == 4) ? "" : g_sPlus,mn);
+/*
   if (pluspos == 0) strcat(g_sTmp,g_sPlus);
   strcat(g_sTmp,u2a(mo,2));
   strcat(g_sTmp,g_sSlash);
@@ -3163,6 +3182,7 @@ void DtsStrPrint1(uint16_t y,uint8_t mo,uint8_t d,uint8_t h,uint8_t mn,int8_t pl
   strcat(g_sTmp,g_sColon);
   if (pluspos == 4) strcat(g_sTmp,g_sPlus);
   strcat(g_sTmp,u2a(mn,2));
+*/
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
@@ -3617,7 +3637,7 @@ Menu *ChargeLimitMenu::Select()
   }
 #endif // TIME_LIMIT
   delay(500);
-  return &g_SettingsMenu;
+  return limit ? NULL : &g_SettingsMenu;
 }
 
 #endif // CHARGE_LIMIT
@@ -3701,7 +3721,7 @@ Menu *TimeLimitMenu::Select()
   }
 #endif // CHARGE_LIMIT
   delay(500);
-  return &g_SettingsMenu;
+  return limit ? NULL : &g_SettingsMenu;
 }
 
 #endif // TIME_LIMIT
