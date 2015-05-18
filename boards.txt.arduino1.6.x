@@ -12,7 +12,7 @@ openevse.upload.maximum_data_size=2048
 
 openevse.bootloader.tool=avrdude
 openevse.bootloader.low_fuses=0xFF
-openevse.bootloader.high_fuses=0xDE
+openevse.bootloader.high_fuses=0xDF
 openevse.bootloader.extended_fuses=0x05
 openevse.bootloader.unlock_bits=0x3F
 openevse.bootloader.lock_bits=0x0F
