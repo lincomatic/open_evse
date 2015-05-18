@@ -93,7 +93,6 @@ const char g_psRTC_Year[] PROGMEM = "Set Year";
 const char g_psRTC_Hour[] PROGMEM = "Set Hour";
 const char g_psRTC_Minute[] PROGMEM = "Set Minute";
 const char g_psDelayTimer[] PROGMEM = "Delay Timer";
-//const char g_psDelayTimerEnableDisable[] PROGMEM = "Enable/Disable Timer?";
 const char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
 const char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
 const char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
@@ -190,7 +189,7 @@ Menu *g_SetupMenuList[] = {
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
 #ifdef DELAYTIMER
-char *g_sHHMMfmt = "%02d:%02d";
+#define g_sHHMMfmt "%02d:%02d"
 #endif// DELAYTIMER
 
 //-- begin global variables
@@ -1313,7 +1312,6 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
   if (t == BKL_TYPE_MONO) m_wFlags |= ECF_MONO_LCD;
   else m_wFlags &= ~ECF_MONO_LCD;
   SaveEvseFlags();
-  Serial.print("wflags");Serial.print(m_wFlags,HEX);
 #endif // RGBLCD
   return 0;
 }
@@ -2270,12 +2268,7 @@ void J1772EVSEController::Update()
 	m_ChargingCurrent = 0;
       }
       g_OBD.SetAmmeterDirty(1);
-      //	sprintf(g_sTmp,"*%lu %lu %lu*",ma,m_CurrentScaleFactor,m_ChargingCurrent);
-      //	sprintf(g_sTmp,"%lu ",m_ChargingCurrent);
-      //	sprintf(g_sTmp,"ma %lu ",ma);
-      //	Serial.print(g_sTmp);
     }
-    //    }
   }
 #endif // AMMETER
   if (m_EvseState == EVSE_STATE_C) {
@@ -3752,7 +3745,6 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       m_CurMenu->Next();
     }
     else {
-#ifdef BTN_ENABLE_TOGGLE
       if (!nosleeptoggle) {
 	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
 	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
@@ -3762,7 +3754,6 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 	  g_EvseController.Sleep();
 	}
       }
-#endif // BTN_ENABLE_TOGGLE
     }
   }
   else if (m_Btn.longPress()) {
@@ -3794,10 +3785,6 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       }
     }
     else {
-#ifndef BTN_ENABLE_TOGGLE
-      uint8_t curstate = g_EvseController.GetState();
-      if ((curstate != EVSE_STATE_B) && (curstate != EVSE_STATE_C)) {
-#endif // !BTN_ENABLE_TOGGLE
 #if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
 	g_SettingsMenu.CheckSkipLimits();
 #endif // CHARGE_LIMIT
@@ -3807,9 +3794,6 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 	g_OBD.LcdSetBacklightColor(WHITE);
 	g_SettingsMenu.Init();
 	m_CurMenu = &g_SettingsMenu;
-#ifndef BTN_ENABLE_TOGGLE
-      }
-#endif // !BTN_ENABLE_TOGGLE
     }
   }
 }
@@ -3817,17 +3801,17 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 
 // Start Delay Timer Functions - GoldServe
 #ifdef DELAYTIMER
-void DelayTimer::Init(){
+void DelayTimer::Init() {
   //Read EEPROM settings
-  uint8_t rflgs = eeprom_read_byte((uint8_t*)EOFS_TIMER_FLAGS);
-  if (rflgs == 0xff) { // uninitialized EEPROM
+  uint8_t rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_FLAGS);
+  if (rtmp == 0xff) { // uninitialized EEPROM
     m_DelayTimerEnabled = 0x00;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   }
   else {
-    m_DelayTimerEnabled = rflgs;
+    m_DelayTimerEnabled = rtmp;
   }
-  uint8_t rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
+  rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerHour = DEFAULT_START_HOUR;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
