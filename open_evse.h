@@ -664,13 +664,11 @@ public:
   void LcdPrint(const char *s) {
     if (LcdDetected()) m_Lcd.print(s); 
   }
-  void LcdPrint(int y,const char *s);
   void LcdPrint_P(const char PROGMEM *s);
-  void LcdPrint_P(int x,int y,const char PROGMEM *s);
-  void LcdPrint_P(int y,const char PROGMEM *s) {
-    LcdPrint_P(0,y,s);
-  }
+  void LcdPrint(int y,const char *s);
+  void LcdPrint_P(int y,const char PROGMEM *s);
   void LcdPrint(int x,int y,const char *s);
+  void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
     if (LcdDetected()) m_Lcd.print(i); 
   }
@@ -690,15 +688,8 @@ public:
   void LcdWrite(uint8_t data) { 
     if (LcdDetected()) m_Lcd.write(data);
   }
-
-  void LcdMsg(const char *l1,const char *l2) {
-    LcdPrint(0,l1);
-    LcdPrint(1,l2);
-  }
-  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2) {
-    LcdPrint_P(0,l1);
-    LcdPrint_P(1,l2);
-  }
+  void LcdMsg(const char *l1,const char *l2);
+  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=OBD_UPD_FORCE) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
@@ -1513,7 +1504,7 @@ extern J1772EVSEController g_EvseController;
 extern OnboardDisplay g_OBD;
 extern char g_sTmp[TMP_BUF_SIZE];
 
-char *u2a(unsigned long x,int digits=0);
+char *u2a(unsigned long x,int8_t digits=0);
 
 #ifdef KWH_RECORDING
 extern unsigned long g_WattHours_accumulated;

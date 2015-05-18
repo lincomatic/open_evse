@@ -236,7 +236,7 @@ int EvseRapiProcessor::processCmd()
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
-	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
+	g_EvseController.SetTimeLimit(dtou32(tokens[1]));
       }
       break;
 #endif // TIME_LIMIT

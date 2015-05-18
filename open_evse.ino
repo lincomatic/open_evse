@@ -87,16 +87,16 @@ const char g_psAutoStart[] PROGMEM = "Auto Start";
 #endif //#ifdef AUTOSTART_MENU
 #ifdef DELAYTIMER_MENU
 const char g_psRTC[] PROGMEM = "Date/Time";
-const char g_psRTC_Month[] PROGMEM = "Set Month";
-const char g_psRTC_Day[] PROGMEM = "Set Day";
-const char g_psRTC_Year[] PROGMEM = "Set Year";
-const char g_psRTC_Hour[] PROGMEM = "Set Hour";
-const char g_psRTC_Minute[] PROGMEM = "Set Minute";
+const char g_psRTC_Month[] PROGMEM = "Month";
+const char g_psRTC_Day[] PROGMEM = "Day";
+const char g_psRTC_Year[] PROGMEM = "Year";
+const char g_psRTC_Hour[] PROGMEM = "Hour";
+const char g_psRTC_Minute[] PROGMEM = "Minute";
 const char g_psDelayTimer[] PROGMEM = "Delay Timer";
-const char g_psDelayTimerStartHour[] PROGMEM = "Set Start Hour";
-const char g_psDelayTimerStartMin[] PROGMEM = "Set Start Min";
-const char g_psDelayTimerStopHour[] PROGMEM = "Set Stop Hour";
-const char g_psDelayTimerStopMin[] PROGMEM = "Set Stop Min";
+const char g_psDelayTimerStartHour[] PROGMEM = "Start Hour";
+const char g_psDelayTimerStartMin[] PROGMEM = "Start Min";
+const char g_psDelayTimerStopHour[] PROGMEM = "Stop Hour";
+const char g_psDelayTimerStopMin[] PROGMEM = "Stop Min";
 #endif // DELAYTIMER_MENU
 #ifdef CHARGE_LIMIT
 const char g_psChargeLimit[] PROGMEM = "Charge Limit";
@@ -292,9 +292,9 @@ static inline uint8_t wirerecv(void) {
 
 // if digits > 0, zero pad w/ to # digits
 // WARNING: This function uses the *end* of g_sTmp as its buffer
-char *u2a(unsigned long x,int digits)
+char *u2a(unsigned long x,int8_t digits)
 {
-  int d = digits;
+  int8_t d = digits;
   char *s = g_sTmp + sizeof(g_sTmp);
   *--s = 0;
   if (!x) {
@@ -488,6 +488,12 @@ void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
   }
 }
 
+void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
+{
+  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
+  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
+  LcdPrint(y,m_strBuf);
+}
 
 void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
 {
@@ -497,6 +503,11 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
   m_Lcd.print(m_strBuf);
 }
 
+void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
+{
+  LcdPrint_P(0,l1);
+  LcdPrint_P(1,l2);
+}
 
 
 // print at (0,y), filling out the line with trailing spaces
@@ -516,6 +527,11 @@ void OnboardDisplay::LcdPrint(int y,const char *s)
   }
 }
 
+void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
+{
+  LcdPrint(0,l1);
+  LcdPrint(1,l2);
+}
 #endif // LCD16X2
 
 
@@ -3154,13 +3170,7 @@ void ResetMenu::Next()
 // pluspos = -1 = suppress "+"
 void DtsStrPrint1(uint16_t y,uint8_t mo,uint8_t d,uint8_t h,uint8_t mn,int8_t pluspos)
 {
-  sprintf(g_sTmp,"%s%02/%s%02/%s%02 %s%02:%s%02",
-	  (pluspos == 0) ? "" : g_sPlus,mo,
-	  (pluspos == 1) ? "" : g_sPlus,d,
-	  (pluspos == 2) ? "" : g_sPlus,y,
-	  (pluspos == 3) ? "" : g_sPlus,h,
-	  (pluspos == 4) ? "" : g_sPlus,mn);
-/*
+  *g_sTmp = 0;
   if (pluspos == 0) strcat(g_sTmp,g_sPlus);
   strcat(g_sTmp,u2a(mo,2));
   strcat(g_sTmp,g_sSlash);
@@ -3175,7 +3185,7 @@ void DtsStrPrint1(uint16_t y,uint8_t mo,uint8_t d,uint8_t h,uint8_t mn,int8_t pl
   strcat(g_sTmp,g_sColon);
   if (pluspos == 4) strcat(g_sTmp,g_sPlus);
   strcat(g_sTmp,u2a(mn,2));
-*/
+
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
