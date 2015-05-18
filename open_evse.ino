@@ -416,7 +416,7 @@ const char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0}; // stop 
 const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play 
 #endif // DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
-const char CustomChar_3[8] PROGMEM = {0x07, 0x0e, 0x0c, 0x1f, 0x03, 0x06, 0x0c, 0x08}; // lightning
+const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
 void OnboardDisplay::Init()
@@ -473,19 +473,15 @@ void OnboardDisplay::Init()
 #ifdef LCD16X2
 void OnboardDisplay::LcdPrint(int x,int y,const char *s)
 { 
-  if (LcdDetected()) {
-    m_Lcd.setCursor(x,y);
-    m_Lcd.print(s); 
-  }
+  m_Lcd.setCursor(x,y);
+  m_Lcd.print(s); 
 }
 
 void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
 {
-  if (LcdDetected()) {
-    strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
-    m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
-    m_Lcd.print(m_strBuf);
-  }
+  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
+  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
+  m_Lcd.print(m_strBuf);
 }
 
 void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
@@ -513,17 +509,15 @@ void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
 // print at (0,y), filling out the line with trailing spaces
 void OnboardDisplay::LcdPrint(int y,const char *s)
 {
-  if (LcdDetected()) {
-    m_Lcd.setCursor(0,y);
-    uint8_t i,len = strlen(s);
-    if (len > LCD_MAX_CHARS_PER_LINE)
-      len = LCD_MAX_CHARS_PER_LINE;
-    for (i=0;i < len;i++) {
-      m_Lcd.write(s[i]);
-    }
-    for (i=len;i < LCD_MAX_CHARS_PER_LINE;i++) {
-      m_Lcd.write(' ');
-    }
+  m_Lcd.setCursor(0,y);
+  uint8_t i,len = strlen(s);
+  if (len > LCD_MAX_CHARS_PER_LINE)
+    len = LCD_MAX_CHARS_PER_LINE;
+  for (i=0;i < len;i++) {
+    m_Lcd.write(s[i]);
+  }
+  for (i=len;i < LCD_MAX_CHARS_PER_LINE;i++) {
+    m_Lcd.write(' ');
   }
 }
 

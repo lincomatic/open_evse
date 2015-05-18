@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.8.1"
+#define VERSION "3.8.2"
 
 //-- begin features
 
@@ -656,13 +656,8 @@ public:
     m_Lcd.setBacklight(WHITE);
 #endif // I2CLCD
   }
-#ifdef I2CLCD_PCF8574
-  uint8_t LcdDetected() { return 1; }
-#else
-  uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
-#endif 
   void LcdPrint(const char *s) {
-    if (LcdDetected()) m_Lcd.print(s); 
+    m_Lcd.print(s); 
   }
   void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
@@ -670,7 +665,7 @@ public:
   void LcdPrint(int x,int y,const char *s);
   void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
-    if (LcdDetected()) m_Lcd.print(i); 
+    m_Lcd.print(i); 
   }
   void LcdSetCursor(int x,int y) { 
     m_Lcd.setCursor(x,y); 
@@ -683,10 +678,10 @@ public:
     m_Lcd.setCursor(0,y);
   }
   void LcdClear() { 
-    if (LcdDetected()) m_Lcd.clear();
+    m_Lcd.clear();
   }
   void LcdWrite(uint8_t data) { 
-    if (LcdDetected()) m_Lcd.write(data);
+    m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
@@ -731,9 +726,6 @@ public:
   }
   void Update(int8_t updmode=OBD_UPD_NORMAL); // OBD_UPD_xxx
 };
-
-
-
 
 #ifdef GFI
 class Gfi {

@@ -1,5 +1,8 @@
 Change Log
 
+v3.8.2 SCL 20150518
+- got rid of LcdDetected() .. superfluous, since LiquidTWI2 handles it
+	
 v3.8.1 SCL 20150516
 - fix bug in settings menu - charge & time limit should only display when EV connected
 - when charge or time limit set, exit directly out of menus

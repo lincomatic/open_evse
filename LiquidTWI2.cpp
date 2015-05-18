@@ -331,6 +331,9 @@ void LiquidTWI2::clear()
 
 void LiquidTWI2::home()
 {
+#ifdef DETECT_DEVICE
+  if (!_deviceDetected) return;
+#endif
   command(LCD_RETURNHOME);  // set cursor position to zero
   delayMicroseconds(2000);  // this command takes a long time!
 }
