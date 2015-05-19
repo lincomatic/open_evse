@@ -1,5 +1,9 @@
 Change Log
 
+v3.8.3 SCL 20150518
+- fix RAPI bug caused by code compaction in 3.8.x
+- have Setup menu exit out of menus instead of back to Settings
+	
 v3.8.2 SCL 20150518
 - got rid of LcdDetected() .. superfluous, since LiquidTWI2 handles it
 	

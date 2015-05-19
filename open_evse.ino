@@ -2765,7 +2765,7 @@ Menu *SetupMenu::Select()
     return g_SetupMenuList[m_CurIdx];
   }
   else {
-    return &g_SettingsMenu;
+    return NULL;
   }
 }
 

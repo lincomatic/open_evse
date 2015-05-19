@@ -131,7 +131,7 @@ GA - get ammeter settings
 GC - get current capacity range in amps
  response: OK minamps maxamps
  $GC*AE
-GE - get current settings
+GE - get settings
  response: OK amps(decimal) flags(hex)
  $GE*B0
 GF - get fault counters

@@ -314,6 +314,7 @@ int EvseRapiProcessor::processCmd()
       if (tokenCnt == 3) {
         g_EvseController.SetVoltmeter(dtou32(tokens[1]),dtou32(tokens[2]));
       }
+      break;
 #endif // VOLTMETER
 #ifdef ADVPWR      
     case 'R': // stuck relay check
@@ -450,6 +451,7 @@ int EvseRapiProcessor::processCmd()
     default:
       rc = -1; // unknown
     }
+    break;
 
   default:
     rc = -1; // unknown
