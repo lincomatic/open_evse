@@ -1107,7 +1107,7 @@ public:
     }
   }
 #ifdef CHARGE_LIMIT
-  void SetChargeLimit(uint8_t ws) { m_chargeLimit = ws; }
+  void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwhx; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
 #endif // CHARGE_LIMIT
 #ifdef TIME_LIMIT
