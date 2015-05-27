@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.7.8"
+#define VERSION "3.8.4"
 
 //-- begin features
 
@@ -57,6 +57,9 @@
 // enable watchdog timer
 #define WATCHDOG
 
+// charge for a specified amount of time and then stop
+#define TIME_LIMIT
+
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -70,8 +73,10 @@
 // This is just a wild guess
 // #define VOLTMETER_SCALE_FACTOR (266)     // original guess
 #define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+//#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
 // #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
 #define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+//#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // OPENEVSE_2
 
 // GFI support
@@ -101,6 +106,8 @@
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
 #define KWH_RECORDING
+// stop charging after a certain kWh reached
+#define CHARGE_LIMIT
 #endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
@@ -200,10 +207,8 @@
 #endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(RTC) && defined(LCD16X2)
-#if defined(SERIALCLI)
-#error INVALID CONFIG - CANNOT enable SERIALCLI with RTC together - too much RAM USE
-#endif
+#if defined(SERIALCLI) && defined(DELAYTIMER)
+#error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
 #endif
 
 #if defined(RAPI) && defined(SERIALCLI)
@@ -269,6 +274,14 @@
 #define WATCHDOG_TIMEOUT WDTO_2S
 
 #define LCD_MAX_CHARS_PER_LINE 16
+
+#ifdef SERIALCLI
+#define TMP_BUF_SIZE 64
+#else
+#define TMP_BUF_SIZE (LCD_MAX_CHARS_PER_LINE*2)
+#endif // SERIALCLI
+
+
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
 #define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
@@ -582,39 +595,7 @@ typedef union union4b {
 #define WDT_ENABLE()
 #endif // WATCHDOG
 
-#ifdef SERIALCLI
-#define CLI_BUFLEN 20
-class CLI {
-  char m_CLIinstr[CLI_BUFLEN]; // CLI byte being read in
-  int m_CLIstrCount; //CLI string counter
-  char *m_strBuf;
-  int m_strBufLen;
-
-  void info();
-public:
-  CLI();
-  void Init();
-  void println(char *s) { 
-    Serial.println(s); 
-  }
-  void println_P(const char PROGMEM *s);
-  void print(char *s) { 
-    Serial.print(s); 
-  }
-  void print_P(const char PROGMEM *s);
-  void printlnn();
-  void flush() { 
-    Serial.flush(); 
-  }
-  void getInput();
-  uint8_t getInt();
-};
-#endif // SERIALCLI
-
-
-#ifdef LCD16X2
-extern char *g_BlankLine;
-#endif // LCD16X2
+#include "serialcli.h"
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
@@ -643,7 +624,6 @@ class OnboardDisplay
 #endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
-  uint8_t m_strBufLen;
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
@@ -651,8 +631,17 @@ public:
   OnboardDisplay();
   void Init();
 
-  void SetGreenLed(uint8_t state);
-  void SetRedLed(uint8_t state);
+  void SetGreenLed(uint8_t state) {
+#ifdef GREEN_LED_REG
+    pinGreenLed.write(state);
+#endif
+  }
+
+  void SetRedLed(uint8_t state) {
+#ifdef RED_LED_REG
+  pinRedLed.write(state);
+#endif
+  }
 #ifdef LCD16X2
   void LcdBegin(int x,int y) { 
 #ifdef I2CLCD
@@ -667,13 +656,8 @@ public:
     m_Lcd.setBacklight(WHITE);
 #endif // I2CLCD
   }
-#ifdef I2CLCD_PCF8574
-  uint8_t LcdDetected() { return 1; }
-#else
-  uint8_t LcdDetected() { return m_Lcd.LcdDetected(); }
-#endif 
   void LcdPrint(const char *s) {
-    if (LcdDetected()) m_Lcd.print(s); 
+    m_Lcd.print(s); 
   }
   void LcdPrint_P(const char PROGMEM *s);
   void LcdPrint(int y,const char *s);
@@ -681,21 +665,23 @@ public:
   void LcdPrint(int x,int y,const char *s);
   void LcdPrint_P(int x,int y,const char PROGMEM *s);
   void LcdPrint(int i) { 
-    if (LcdDetected()) m_Lcd.print(i); 
+    m_Lcd.print(i); 
   }
   void LcdSetCursor(int x,int y) { 
     m_Lcd.setCursor(x,y); 
   }
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
-    if (LcdDetected()) m_Lcd.print(g_BlankLine);
+    for (uint8_t i=0;i < LCD_MAX_CHARS_PER_LINE;i++) {
+      m_Lcd.write(' ');
+    }
     m_Lcd.setCursor(0,y);
   }
   void LcdClear() { 
-    if (LcdDetected()) m_Lcd.clear();
+    m_Lcd.clear();
   }
   void LcdWrite(uint8_t data) { 
-    if (LcdDetected()) m_Lcd.write(data);
+    m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
   void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
@@ -972,6 +958,12 @@ class J1772EVSEController {
   int32_t m_ChargingCurrent;
   int16_t m_AmmeterCurrentOffset;
   int16_t m_CurrentScaleFactor;
+#ifdef CHARGE_LIMIT
+  uint8_t m_chargeLimit; // kWh
+#endif
+#ifdef TIME_LIMIT
+  uint8_t m_timeLimit; // minutes * 15
+#endif
 
   void readAmmeter();
 #endif // AMMETER
@@ -1114,7 +1106,15 @@ public:
       m_bVFlags &= ~ECVF_AMMETER_CAL;
     }
   }
-#else
+#ifdef CHARGE_LIMIT
+  void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
+  uint8_t GetChargeLimit() { return m_chargeLimit; }
+#endif // CHARGE_LIMIT
+#ifdef TIME_LIMIT
+  uint8_t SetTimeLimit(uint8_t minutes) { m_timeLimit = minutes; }
+  uint8_t GetTimeLimit() { return m_timeLimit; }
+#endif // TIME_LIMIT
+#else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
@@ -1161,17 +1161,32 @@ public:
   virtual Menu *Select() = 0;
 };
 
-class SetupMenu : public Menu {
+class SettingsMenu : public Menu {
   uint8_t m_menuCnt;
   uint8_t m_noExit;
+#if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
+  uint8_t m_skipLimits;
+#endif
 public:
-  SetupMenu();
+  SettingsMenu();
   void Init();
   void Next();
   Menu *Select();
   void EnableExitItem(uint8_t tf) {
     m_noExit = !tf;
   }
+#if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
+  void CheckSkipLimits();
+#endif
+};
+
+class SetupMenu : public Menu {
+  uint8_t m_menuCnt;
+public:
+  SetupMenu();
+  void Init();
+  void Next();
+  Menu *Select();
 };
 
 class SvcLevelMenu : public Menu {
@@ -1355,6 +1370,32 @@ public:
 };
 #endif // DELAYTIMER
 
+#ifdef CHARGE_LIMIT
+class ChargeLimitMenu  : public Menu {
+  uint8_t m_kwhLimit;
+  uint8_t m_MaxIdx;
+  void showCurSel(uint8_t plus=0);
+public:
+  ChargeLimitMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif // CHARGE_LIMIT
+
+#ifdef TIME_LIMIT
+class TimeLimitMenu  : public Menu {
+  uint8_t m_timeLimit;
+  uint8_t m_MaxIdx;
+  void showCurSel(uint8_t plus=0);
+public:
+  TimeLimitMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif // TIME_LIMIT
+
 class BtnHandler {
   Btn m_Btn;
   Menu *m_CurMenu;
@@ -1451,7 +1492,11 @@ extern char g_sSpace[];
 #define g_sSpace " "
 
 
-char *u2a(unsigned long x,int digits=0);
+extern J1772EVSEController g_EvseController;
+extern OnboardDisplay g_OBD;
+extern char g_sTmp[TMP_BUF_SIZE];
+
+char *u2a(unsigned long x,int8_t digits=0);
 
 #ifdef KWH_RECORDING
 extern unsigned long g_WattHours_accumulated;
@@ -1461,6 +1506,7 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
-
+extern const char VERSTR[] PROGMEM;
+inline void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
 
 #include "rapi_proc.h"

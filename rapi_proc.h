@@ -83,6 +83,7 @@ S1 yr mo day hr min sec - set clock (RTC) yr=2-digit year
 S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not charging
  $S2 0*F9
  $S2 1*FA
+S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps - set current capacity
 SD 0|1 - disable/enable diode check
@@ -100,6 +101,7 @@ SF 0|1 - disable/enable GFI self test
 SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
+SH kWh - set cHarge limit to kWh
 SK - set accumulated Wh (v1.0.3+)
  $SK 0*12 - set accumulated Wh to 0
 SL 1|2|A  - set service level L1/L2/Auto
@@ -119,13 +121,17 @@ SV 0|1 - disable/enable vent required
  $SV 0*1D
  $SV 1*1E
 
+G3 - get time limit
+ response: OK cnt
+ cnt*15 = minutes
+        = 0 = no time limit
 GA - get ammeter settings
  response: OK currentscalefactor currentoffset
  $GA*AC
 GC - get current capacity range in amps
  response: OK minamps maxamps
  $GC*AE
-GE - get current settings
+GE - get settings
  response: OK amps(decimal) flags(hex)
  $GE*B0
 GF - get fault counters
@@ -136,6 +142,9 @@ GG - get charging current and voltage
  AMMETER must be defined in order to get amps, otherwise returns 0 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
  $GG*B2
+GH - get cHarge limit
+ response: OK kWh
+ kWh = 0 = no charge limit
 GM - get voltMeter settings
  response: OK voltcalefactor voltoffset
  $GM^2E
@@ -203,26 +212,9 @@ class EvseRapiProcessor {
   
 public:
   EvseRapiProcessor();
-  int doCmd(int8_t sendstatetrans=1);
+  int doCmd();
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
-  
-  /*
-  void Init();
-  void println(char *s) { 
-    Serial.println(s); 
-  }
-  void println_P(prog_char *s);
-  void print(char *s) { 
-    Serial.print(s); 
-  }
-  void print_P(prog_char *s);
-  void printlnn();
-  void flush() { 
-    Serial.flush(); 
-  }
-  uint8_t getInt();
-  */
 };
 
 extern EvseRapiProcessor g_ERP;
