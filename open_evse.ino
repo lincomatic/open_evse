@@ -248,7 +248,7 @@ const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
 #endif
 const char g_psNoGround[] PROGMEM = "NO GROUND";
 const char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
-const char g_psStopped[] PROGMEM =  "Stopped";
+const char g_psDisabled[] PROGMEM =  "Disabled";
 const char g_psWaiting[] PROGMEM =  "Waiting";
 const char g_psSleeping[] PROGMEM = "Sleeping";
 const char g_psEvConnected[] PROGMEM = "Connected";
@@ -692,7 +692,7 @@ void OnboardDisplay::Update(int8_t updmode)
     LcdSetBacklightColor(VIOLET);
     LcdClear();
     LcdSetCursor(0,0);
-    LcdPrint_P(g_psStopped);
+    LcdPrint_P(g_psDisabled);
     LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
     break;
@@ -1328,15 +1328,18 @@ int J1772EVSEController::SetBacklightType(uint8_t t,uint8_t update)
 #endif // RGBLCD
 void J1772EVSEController::Enable()
 {
+  if ((m_EvseState == EVSE_STATE_DISABLED)||
+      (m_EvseState == EVSE_STATE_SLEEPING)) {
 #ifdef SLEEP_STATUS_REG
-  if (m_EvseState == EVSE_STATE_SLEEPING) {
-    pinSleepStatus.write(0);
-  }
+    if (m_EvseState == EVSE_STATE_SLEEPING) {
+      pinSleepStatus.write(0);
+    }
 #endif // SLEEP_STATUS_REG
-
-  m_PrevEvseState = EVSE_STATE_DISABLED;
-  m_EvseState = EVSE_STATE_UNKNOWN;
-  m_Pilot.SetState(PILOT_STATE_P12);
+    
+    m_PrevEvseState = EVSE_STATE_DISABLED;
+    m_EvseState = EVSE_STATE_UNKNOWN;
+    m_Pilot.SetState(PILOT_STATE_P12);
+  }
 }
 
 void J1772EVSEController::Disable()
@@ -1348,12 +1351,8 @@ void J1772EVSEController::Disable()
     chargingOff();
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    if (StateTransition()) {
-      g_ERP.sendEvseState();
-    }
+    g_ERP.sendEvseState();
 #endif // RAPI
-    // cancel state transition so g_OBD doesn't keep updating
-    m_PrevEvseState = EVSE_STATE_DISABLED;
   }
 }
 
@@ -1369,12 +1368,8 @@ void J1772EVSEController::Sleep()
 
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    if (StateTransition()) {
-      g_ERP.sendEvseState();
-    }
+    g_ERP.sendEvseState();
 #endif // RAPI
-    // cancel state transition so g_OBD doesn't keep updating
-    m_PrevEvseState = EVSE_STATE_SLEEPING;
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
     // when to open the contacts in Update()
@@ -1672,7 +1667,7 @@ uint8_t J1772EVSEController::doPost()
 void J1772EVSEController::ProcessInputs(uint8_t nosleeptoggle)
 {
 #ifdef RAPI
-  g_ERP.doCmd(0);
+  g_ERP.doCmd();
 #endif
 #ifdef SERIALCLI
   g_CLI.getInput();
@@ -1896,10 +1891,7 @@ void J1772EVSEController::Update()
   unsigned long curms = millis();
 
   if (m_EvseState == EVSE_STATE_DISABLED) {
-    // n.b. don't know why, but if we don't have the delay below
-    // then doEnableEvse will always have packetBuf[2] == 0
-    // so we can't re-enable the EVSE
-    delay(5);
+    m_PrevEvseState = m_EvseState; // cancel state transition
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
@@ -1919,6 +1911,7 @@ void J1772EVSEController::Update()
 #endif
       }
     }
+    m_PrevEvseState = m_EvseState; // cancel state transition
     return;
   }
 
@@ -2238,6 +2231,9 @@ void J1772EVSEController::Update()
       chargingOff(); // turn off charging current
     }
 
+#ifdef RAPI
+    g_ERP.sendEvseState();
+#endif // RAPI
 #ifdef SERIALCLI
     if (SerDbgEnabled()) {
       g_CLI.print_P(PSTR("state: "));
@@ -2251,7 +2247,7 @@ void J1772EVSEController::Update()
     }
 #endif //#ifdef SERIALCLI
 
-  }
+  } // state transition
 
 #ifdef UL_COMPLIANT
   if (!nofault && (prevevsestate == EVSE_STATE_C)) {

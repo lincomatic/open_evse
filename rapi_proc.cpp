@@ -68,14 +68,9 @@ EvseRapiProcessor::EvseRapiProcessor()
 }
 
 //extern HardwareSerial Serial;
-int EvseRapiProcessor::doCmd(int8_t sendstatetrans)
+int EvseRapiProcessor::doCmd()
 {
   int rc = 1;
-
-  // chk for state transition and send async notification
-  if (sendstatetrans && g_EvseController.StateTransition()) {
-    sendEvseState();
-  }
 
   int bcnt = available();
   if (bcnt) {

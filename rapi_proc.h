@@ -212,7 +212,7 @@ class EvseRapiProcessor {
   
 public:
   EvseRapiProcessor();
-  int doCmd(int8_t sendstatetrans=1);
+  int doCmd();
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
 };

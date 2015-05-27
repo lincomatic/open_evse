@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.8.3"
+#define VERSION "D3.8.4"
 
 //-- begin features
 
