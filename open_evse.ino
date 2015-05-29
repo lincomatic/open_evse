@@ -1135,6 +1135,7 @@ void J1772EVSEController::ShowDisabledTests()
       g_OBD.LcdMsg_P(g_psDisabledTests,g_psVentReqChk);
       delay(SHOW_DISABLED_DELAY);
     }
+#ifdef ADVPWR
     if (!GndChkEnabled()) {
       g_OBD.LcdMsg_P(g_psDisabledTests,g_psGndChk);
       delay(SHOW_DISABLED_DELAY);
@@ -1143,10 +1144,13 @@ void J1772EVSEController::ShowDisabledTests()
       g_OBD.LcdMsg_P(g_psDisabledTests,g_psRlyChk);
       delay(SHOW_DISABLED_DELAY);
     }
+#endif // ADVPWR
+#ifdef GFI_SELFTEST
     if (!GfiSelfTestEnabled()) {
       g_OBD.LcdMsg_P(g_psDisabledTests,g_psGfiTest);
       delay(SHOW_DISABLED_DELAY);
     }
+#endif // GFI_SELFTEST
 
     g_OBD.LcdSetBacklightColor(WHITE);
   }
