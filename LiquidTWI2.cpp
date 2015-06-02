@@ -111,9 +111,11 @@ void LiquidTWI2::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
   // SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
   // according to datasheet, we need at least 40ms after power rises above 2.7V
   // before sending commands. Arduino can turn on way befer 4.5V so we'll wait 50
+  /* don't need - open_evse.ino does it
   delay(50);
 
   Wire.begin();
+  */
 
   uint8_t result;
 #if defined(MCP23017)&&defined(MCP23008)

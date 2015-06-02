@@ -3927,8 +3927,9 @@ void DelayTimer::PrintTimerIcon(){
 
 void EvseReset()
 {
-#ifdef RTC
   Wire.begin();
+
+#ifdef RTC
   g_RTC.begin();
 #ifdef DELAYTIMER
   g_DelayTimer.Init();
@@ -3972,6 +3973,9 @@ void setup()
       g_WattHours_accumulated = eeprom_read_dword((uint32_t*)EOFS_KWH_ACCUMULATED);        // get the stored value for the kWh from eeprom
 #endif // KWH_RECORDING
 
+  // need I2C speed last because Wire.begin(), which might be called by
+  // libraries, sets it to TWI_FREQ
+  Wire.setClock(I2C_FREQ);
 }  // setup()
 
 
