@@ -19,13 +19,6 @@
 #include "open_evse.h"
 
 
-void J1772EVSEController::SaveSettings()
-{
-  // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  eeprom_write_byte((uint8_t *)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)GetCurrentCapacity());
-  SaveEvseFlags();
-}
-
 
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 
@@ -139,6 +132,15 @@ J1772EVSEController::J1772EVSEController() :
 #endif
 {
 }
+
+void J1772EVSEController::SaveSettings()
+{
+  // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
+  eeprom_write_byte((uint8_t *)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)GetCurrentCapacity());
+  SaveEvseFlags();
+}
+
+
 
 // use watchdog to perform a reset
 void J1772EVSEController::Reboot()
