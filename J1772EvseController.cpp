@@ -239,9 +239,6 @@ void J1772EVSEController::chargingOff()
 
 void J1772EVSEController::HardFault()
 {
-#ifdef BTN_MENU
-  g_SettingsMenu.EnableExitItem(0);
-#endif
   g_OBD.Update(OBD_UPD_HARDFAULT);
   while (1) ProcessInputs(1); // spin forever or until user resets via menu
 }
@@ -860,9 +857,6 @@ void J1772EVSEController::Init()
   ShowDisabledTests();
 #endif
  
-#ifdef BTN_MENU
-  g_SettingsMenu.EnableExitItem(0);
-#endif // BTN_MENU
   uint8_t fault; 
   do {
     fault = 0; // reset post fault
@@ -890,10 +884,6 @@ void J1772EVSEController::Init()
     }
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
 #endif // ADVPWR  
-
-#ifdef BTN_MENU
-  g_SettingsMenu.EnableExitItem(1);
-#endif // BTN_MENU
 
   SetSvcLevel(svclvl);
 

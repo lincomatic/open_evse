@@ -1009,8 +1009,7 @@ void SettingsMenu::Init()
 
 void SettingsMenu::Next()
 {
-  if ((++m_CurIdx > m_menuCnt) ||
-       (m_noExit && (m_CurIdx == m_menuCnt))) { // skip exit item
+  if (++m_CurIdx > m_menuCnt) {
     m_CurIdx = 0;
   }
 
