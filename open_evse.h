@@ -841,7 +841,6 @@ public:
 
 class SettingsMenu : public Menu {
   uint8_t m_menuCnt;
-  uint8_t m_noExit;
 #if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
   uint8_t m_skipLimits;
 #endif
@@ -850,9 +849,6 @@ public:
   void Init();
   void Next();
   Menu *Select();
-  void EnableExitItem(uint8_t tf) {
-    m_noExit = !tf;
-  }
 #if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
   void CheckSkipLimits();
 #endif
