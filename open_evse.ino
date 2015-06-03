@@ -1091,6 +1091,7 @@ Menu *SetupMenu::Select()
     return g_SetupMenuList[m_CurIdx];
   }
   else {
+    m_CurIdx = 0;
     return NULL;
   }
 }
@@ -2096,25 +2097,38 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 	}
 	m_CurMenu->Init();
 	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
-	  // restore prev menu item
-	  m_CurMenu->m_CurIdx = curidx-1;
-	  m_CurMenu->Next();
+	  if (curidx > 0) {
+	    // restore prev menu item
+	    m_CurMenu->m_CurIdx = curidx-1;
+	    m_CurMenu->Next();
+	  }
 	}
+
       }
       else { // exit
+	if (nosleeptoggle) {
+	  g_EvseController.Reboot();
+	}
+	else {
 #if defined(DELAYTIMER)
-        if (!g_DelayTimer.IsTimerEnabled()){
-          g_EvseController.Enable();
-        }
+	  if (!g_DelayTimer.IsTimerEnabled()){
+	    g_EvseController.Enable();
+	  }
 #else  
-	g_EvseController.Enable();
+	  g_EvseController.Enable();
 #endif        
-	g_OBD.DisableUpdate(0);
-	g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
-	g_OBD.Update(OBD_UPD_FORCE);
+	  g_OBD.DisableUpdate(0);
+	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
+	  g_OBD.Update(OBD_UPD_FORCE);
+	}
       }
     }
     else {
+      if (nosleeptoggle) {
+	g_SetupMenu.Init();
+	m_CurMenu = &g_SetupMenu;
+      }
+      else {
 #if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
 	g_SettingsMenu.CheckSkipLimits();
 #endif // CHARGE_LIMIT
@@ -2124,6 +2138,7 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 	g_OBD.LcdSetBacklightColor(WHITE);
 	g_SettingsMenu.Init();
 	m_CurMenu = &g_SettingsMenu;
+      }
     }
   }
 }
