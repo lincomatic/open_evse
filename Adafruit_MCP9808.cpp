@@ -28,7 +28,7 @@
  #include "TinyWireM.h"
  #define Wire TinyWireM
 #else
- #include <Wire.h>
+ #include "./Wire.h"
 #endif
 
 static inline void wiresend(uint8_t x) {

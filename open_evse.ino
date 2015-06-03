@@ -43,7 +43,7 @@
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
 #include <pins_arduino.h>
-#include <Wire.h>
+#include "./Wire.h"
 #include "./RTClib.h"
 #include "open_evse.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
@@ -987,7 +987,6 @@ void SettingsMenu::CheckSkipLimits()
 void SettingsMenu::Init()
 {
   m_CurIdx = 0;
-  ;
 
 #if defined(CHARGE_LIMIT)||defined(TIME_LIMIT)
   while (m_skipLimits && (
@@ -2299,10 +2298,6 @@ void setup()
 
       g_WattHours_accumulated = eeprom_read_dword((uint32_t*)EOFS_KWH_ACCUMULATED);        // get the stored value for the kWh from eeprom
 #endif // KWH_RECORDING
-
-  // need I2C speed last because Wire.begin(), which might be called by
-  // libraries, sets it to TWI_FREQ
-  Wire.setClock(I2C_FREQ);
 }  // setup()
 
 

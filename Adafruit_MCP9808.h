@@ -27,7 +27,7 @@
  #include "TinyWireM.h"
  #define Wire TinyWireM
 #else
- #include <Wire.h>
+ #include "./Wire.h"
 #endif
 
 #define MCP9808_I2CADDR_DEFAULT        0x18

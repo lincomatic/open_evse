@@ -1,8 +1,9 @@
 Change Log
 
-vD3.8.5 SCL 20150602
+vD3.9.0 SCL 20150602
 - split out Gfi/J1772Pilot/J1772EvseController into separate files
 - add support for changing I2C frequency
+- use modified local Wire/twi to get rid of digitalWrite()
 
 vD3.8.4 SCL 20150526
 - display "Disabled" when EVSE_STATE_DISABLED instead of "Stopped"

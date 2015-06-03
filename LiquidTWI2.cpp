@@ -19,7 +19,7 @@
 #include "TinyWireM.h"
 #define Wire TinyWireM
 #else
-#include <Wire.h>
+#include "./Wire.h"
 #endif
 #if defined(ARDUINO) && (ARDUINO >= 100) //scl
 #include "Arduino.h"

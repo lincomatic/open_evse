@@ -27,7 +27,7 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
-#include <Wire.h>
+#include "./Wire.h"
 #include "./Time.h"
 #include "avrstuff.h"
 #if defined(ARDUINO) && (ARDUINO >= 100)
@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.8.4"
+#define VERSION "D3.9.0"
 
 //-- begin features
 
@@ -425,7 +425,7 @@
 #if defined(RGBLCD) || defined(I2CLCD)
 // Using LiquidTWI2 for both types of I2C LCD's
 // see http://blog.lincomatic.com/?p=956 for installation instructions
-#include <Wire.h>
+#include "./Wire.h"
 #ifdef I2CLCD_PCF8574
 #include <LiquidCrystal_I2C.h>
 #define LCD_I2C_ADDR 0x27

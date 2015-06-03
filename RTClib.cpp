@@ -1,7 +1,7 @@
 // Code by JeeLabs http://news.jeelabs.org/code/
 // Released to the public domain! Enjoy!
 
-#include <Wire.h>
+#include "./Wire.h"
 #include <avr/pgmspace.h>
 #include "RTClib.h"
 
