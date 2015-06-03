@@ -24,13 +24,9 @@
 
   //#define ATMEGA8
 
-  #ifndef TWI_FREQ
   #define TWI_FREQ 200000L
-  #endif
 
-  #ifndef TWI_BUFFER_LENGTH
   #define TWI_BUFFER_LENGTH 32
-  #endif
 
   #define TWI_READY 0
   #define TWI_MRX   1
