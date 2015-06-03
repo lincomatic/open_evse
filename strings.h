@@ -46,6 +46,8 @@ extern const char g_psGfiTest[] PROGMEM;
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
+extern char *g_YesNoMenuItems[];
+extern const char g_psResetNow[] PROGMEM;
 extern const char g_psReset[] PROGMEM;
 extern const char g_psExit[] PROGMEM;
 // Add additional strings - GoldServe
@@ -110,8 +112,6 @@ extern char *g_sMaxCurrentFmt;
 #endif // LCD16X2
 
 #ifdef DELAYTIMER_MENU
-extern char *g_YesNoMenuItems[];
-extern const char g_psResetNow[] PROGMEM;
 extern const char g_psSetDateTime[] PROGMEM;
 extern char *g_DelayMenuItems[];
 #endif // DELAYTIMER_MENU

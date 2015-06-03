@@ -57,53 +57,6 @@
   #endif 
 #endif // TEMPERATURE_MONITORING
 
-const char VERSTR[] PROGMEM = VERSION;
-
-
-#if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
-const char g_psSettings[] PROGMEM = "Settings";
-const char g_psSetup[] PROGMEM = "Setup";
-const char g_psSvcLevel[] PROGMEM = "Service Level";
-const char g_psMaxCurrent[] PROGMEM = "Max Current";
-const char g_psDiodeCheck[] PROGMEM = "Diode Check";
-const char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
-#ifdef RGBLCD
-const char g_psBklType[] PROGMEM = "Backlight Type";
-#endif
-#ifdef ADVPWR
-const char g_psGndChk[] PROGMEM = "Ground Check";
-const char g_psRlyChk[] PROGMEM = "Stuck Relay Chk";
-#endif // ADVPWR
-#ifdef GFI_SELFTEST
-const char g_psGfiTest[] PROGMEM = "GFI Self Test";
-#endif
-#endif // BTN_MENU || SHOW_DISABLED_TEST
-#ifdef BTN_MENU
-const char g_psReset[] PROGMEM = "Restart";
-const char g_psExit[] PROGMEM = "Exit";
-// Add additional strings - GoldServe
-#ifdef AUTOSTART_MENU
-const char g_psAutoStart[] PROGMEM = "Auto Start";
-#endif //#ifdef AUTOSTART_MENU
-#ifdef DELAYTIMER_MENU
-const char g_psRTC[] PROGMEM = "Date/Time";
-const char g_psRTC_Month[] PROGMEM = "Month";
-const char g_psRTC_Day[] PROGMEM = "Day";
-const char g_psRTC_Year[] PROGMEM = "Year";
-const char g_psRTC_Hour[] PROGMEM = "Hour";
-const char g_psRTC_Minute[] PROGMEM = "Minute";
-const char g_psDelayTimer[] PROGMEM = "Delay Timer";
-const char g_psDelayTimerStartHour[] PROGMEM = "Start Hour";
-const char g_psDelayTimerStartMin[] PROGMEM = "Start Min";
-const char g_psDelayTimerStopHour[] PROGMEM = "Stop Hour";
-const char g_psDelayTimerStopMin[] PROGMEM = "Stop Min";
-#endif // DELAYTIMER_MENU
-#ifdef CHARGE_LIMIT
-const char g_psChargeLimit[] PROGMEM = "Charge Limit";
-#endif // CHARGE_LIMIT
-#ifdef TIME_LIMIT
-const char g_psTimeLimit[] PROGMEM = "Time Limit";
-#endif // TIME_LIMIT
 
 SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
@@ -187,6 +140,7 @@ Menu *g_SetupMenuList[] = {
   NULL
 };
 
+#ifdef BTN_MENU
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
 #ifdef DELAYTIMER
@@ -227,34 +181,6 @@ uint8_t sec = 0;
 #endif // DELAYTIMER_MENU
 #endif // DELAYTIMER
 
-#ifdef LCD16X2
-#ifdef ADVPWR
-const char g_psPwrOn[] PROGMEM = "Power On";
-const char g_psSelfTest[] PROGMEM = "Self Test";
-const char g_psAutoDetect[] PROGMEM = "Auto Detect";
-const char g_psLevel1[] PROGMEM = "Svc Level: L1";
-const char g_psLevel2[] PROGMEM = "Svc Level: L2";
-const char g_psTestFailed[] PROGMEM = "TEST FAILED";
-#endif // ADVPWR
-const char g_psEvseError[] PROGMEM =  "EVSE ERROR";
-const char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
-const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
-const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHECK";
-const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
-const char g_psGfci[] PROGMEM = "GFCI";
-#ifdef TEMPERATURE_MONITORING
-const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
-#endif
-const char g_psNoGround[] PROGMEM = "NO GROUND";
-const char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
-const char g_psDisabled[] PROGMEM =  "Disabled";
-const char g_psWaiting[] PROGMEM =  "Waiting";
-const char g_psSleeping[] PROGMEM = "Sleeping";
-const char g_psEvConnected[] PROGMEM = "Connected";
-#ifdef SHOW_DISABLED_TESTS
-const char g_psDisabledTests[] PROGMEM = "TEST DISABLED";
-#endif
-#endif // LCD16X2
 
 #ifdef TEMPERATURE_MONITORING
 TempMonitor g_TempMonitor;
@@ -516,9 +442,6 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 #endif // LCD16X2
 
 
-char g_sRdyLAstr[] = "L%d:%dA";
-const char g_psReady[] PROGMEM = "Ready";
-const char g_psCharging[] PROGMEM = "Charging";
 void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled()) return;
@@ -1109,7 +1032,6 @@ const char *g_SvcLevelMenuItems[] = {
 };
 
 #ifdef RGBLCD
-char *g_BklMenuItems[] = {"RGB","Monochrome"};
 BklTypeMenu::BklTypeMenu()
 {
   m_Title = g_psBklType;
@@ -1208,8 +1130,6 @@ Menu *SvcLevelMenu::Select()
   return &g_SetupMenu;
 }
 
-uint8_t g_L1MaxAmps[] = {6,10,12,14,15,16,0};
-uint8_t g_L2MaxAmps[] = {10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,0};
 MaxCurrentMenu::MaxCurrentMenu()
 {
   m_Title = g_psMaxCurrent;
@@ -1218,54 +1138,50 @@ MaxCurrentMenu::MaxCurrentMenu()
 
 void MaxCurrentMenu::Init()
 {
-  m_CurIdx = 0;
   uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
-  m_MaxAmpsList = (cursvclvl == 1) ? g_L1MaxAmps : g_L2MaxAmps;
-  m_MaxCurrent = 0;
-  uint8_t currentlimit = (cursvclvl == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
-
-  for (m_MaxIdx=0;m_MaxAmpsList[m_MaxIdx] != 0;m_MaxIdx++);
-  m_MaxCurrent = m_MaxAmpsList[--m_MaxIdx];
-
-  for (uint8_t i=0;i <= m_MaxIdx;i++) {
-    if (m_MaxAmpsList[i] == g_EvseController.GetCurrentCapacity()) {
-      m_CurIdx = i;
-      break;
-    }
+  if (cursvclvl == 1) {
+    m_MinCurrent = MIN_CURRENT_CAPACITY_L1;
+    m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
+  }
+  else {
+    m_MinCurrent = MIN_CURRENT_CAPACITY_L2;
+    m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
   }
   
-  sprintf(g_sTmp,"%s Max Current",(cursvclvl == 1) ? "L1" : "L2");
+  sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
   g_OBD.LcdPrint(0,g_sTmp);
-  sprintf(g_sTmp,"+%dA",m_MaxAmpsList[m_CurIdx]);
+  m_CurIdx = g_EvseController.GetCurrentCapacity();
+  sprintf(g_sTmp,"+%dA",m_CurIdx);
   g_OBD.LcdPrint(1,g_sTmp);
 }
 
 void MaxCurrentMenu::Next()
 {
-  if (++m_CurIdx > m_MaxIdx) {
-    m_CurIdx = 0;
+  m_CurIdx += 2;
+  if (m_CurIdx > m_MaxCurrent) {
+    m_CurIdx = m_MinCurrent;
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
-  if (g_EvseController.GetCurrentCapacity() == m_MaxAmpsList[m_CurIdx]) {
+  if (g_EvseController.GetCurrentCapacity() == m_CurIdx) {
     g_OBD.LcdPrint(g_sPlus);
   }
-  g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
+  g_OBD.LcdPrint(m_CurIdx);
   g_OBD.LcdPrint("A");
 }
 
 Menu *MaxCurrentMenu::Select()
 {
   g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(m_MaxAmpsList[m_CurIdx]);
+  g_OBD.LcdPrint(m_CurIdx);
   g_OBD.LcdPrint("A");
   delay(500);
-  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_MaxAmpsList[m_CurIdx]);  
-  g_EvseController.SetCurrentCapacity(m_MaxAmpsList[m_CurIdx]);
+  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_CurIdx);  
+  g_EvseController.SetCurrentCapacity(m_CurIdx);
   return &g_SetupMenu;
 }
 
-char *g_YesNoMenuItems[] = {"Yes","No"};
+
 DiodeChkMenu::DiodeChkMenu()
 {
   m_Title = g_psDiodeCheck;
@@ -1469,7 +1385,7 @@ ResetMenu::ResetMenu()
   m_Title = g_psReset;
 }
 
-const char g_psResetNow[] PROGMEM = "Restart Now?";
+
 void ResetMenu::Init()
 {
   m_CurIdx = 0;
@@ -1514,7 +1430,7 @@ RTCMenu::RTCMenu()
 {
   m_Title = g_psRTC;
 }
-const char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
+
 void RTCMenu::Init()
 {
   m_CurIdx = 0;
@@ -1673,7 +1589,6 @@ Menu *RTCMenuMinute::Select()
   delay(500);
   return &g_SetupMenu;
 }
-char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
 
 void HsStrPrint1(uint8_t h,uint8_t m,int8_t pluspos=-1)
 {
@@ -1895,7 +1810,7 @@ Menu *AutoStartMenu::Select()
 #endif //#ifdef AUTOSTART_MENU
 
 #ifdef CHARGE_LIMIT
-uint8_t g_ChargeLimitList[] = {0,1,2,3,4,5,10,15,20,30,0};
+#define MAX_CHARGE_LIMIT 40
 
 ChargeLimitMenu::ChargeLimitMenu()
 {
@@ -1906,11 +1821,11 @@ void ChargeLimitMenu::showCurSel(uint8_t plus)
 {
   *g_sTmp = 0;
   if (plus) strcpy(g_sTmp,g_sPlus);
-  if (g_ChargeLimitList[m_CurIdx] == 0) {
+  if (m_CurIdx == 0) {
     strcat(g_sTmp,"off");
   }
   else {
-    strcat(g_sTmp,u2a(g_ChargeLimitList[m_CurIdx]));
+    strcat(g_sTmp,u2a(m_CurIdx));
     strcat(g_sTmp," kWh");
   }
   g_OBD.LcdPrint(1,g_sTmp);
@@ -1919,57 +1834,41 @@ void ChargeLimitMenu::showCurSel(uint8_t plus)
 
 void ChargeLimitMenu::Init()
 {
-  m_CurIdx = 0;
-  m_kwhLimit = g_EvseController.GetChargeLimit();
+  m_CurIdx = g_EvseController.GetChargeLimit();
 
-  for (m_MaxIdx=1;g_ChargeLimitList[m_MaxIdx] != 0;m_MaxIdx++);
-
-  if (m_kwhLimit) {
-    for (uint8_t i=0;i <= m_MaxIdx;i++) {
-      if (g_ChargeLimitList[i] == m_kwhLimit) {
-	m_CurIdx = i;
-	break;
-      }
-    }
-  }
-  else {
-    m_CurIdx = 0;
-    m_kwhLimit = 0;
-  }
-  
   g_OBD.LcdPrint_P(0,g_psChargeLimit);
   showCurSel(1);
 }
 
 void ChargeLimitMenu::Next()
 {
-  if (++m_CurIdx > m_MaxIdx) {
+  if (m_CurIdx < 5) m_CurIdx++;
+  else m_CurIdx += 5;
+  if (m_CurIdx > MAX_CHARGE_LIMIT) {
     m_CurIdx = 0;
   }
-  showCurSel((m_kwhLimit == g_ChargeLimitList[m_CurIdx]) ? 1 : 0);
+  showCurSel((g_EvseController.GetChargeLimit() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *ChargeLimitMenu::Select()
 {
-  uint8_t limit = g_ChargeLimitList[m_CurIdx];
   showCurSel(1);
-  g_EvseController.SetChargeLimit(limit);
+  g_EvseController.SetChargeLimit(m_CurIdx);
 #ifdef TIME_LIMIT
-  if (limit) {
+  if (m_CurIdx) {
     g_EvseController.SetTimeLimit(0);
   }
 #endif // TIME_LIMIT
   delay(500);
-  return limit ? NULL : &g_SettingsMenu;
+  return m_CurIdx ? NULL : &g_SettingsMenu;
 }
 
 #endif // CHARGE_LIMIT
 
 
 #ifdef TIME_LIMIT
-// above 60min must be in half hour increments < 256min
-// uint8_t g_TimeLimitList[] = {0,15,30,60,90,120,180,240,300,360,420,480,0}; // minutes
-uint8_t g_TimeLimitList[] = {0,1,2,4,6,8,10,12,16,20,24,28,32,0}; // 15 min increments
+// max time limit = MAX_TIME_LIMIT_D15 * 15 minutes
+#define MAX_TIME_LIMIT_D15 32
 
 TimeLimitMenu::TimeLimitMenu()
 {
@@ -1978,7 +1877,7 @@ TimeLimitMenu::TimeLimitMenu()
 
 void TimeLimitMenu::showCurSel(uint8_t plus)
 {
-  uint16_t limit = g_TimeLimitList[m_CurIdx] * 15;
+  uint16_t limit = m_CurIdx * 15;
   *g_sTmp = 0;
   if (plus) strcpy(g_sTmp,g_sPlus);
   if (limit == 0) {
@@ -2003,50 +1902,35 @@ void TimeLimitMenu::showCurSel(uint8_t plus)
 
 void TimeLimitMenu::Init()
 {
-  m_CurIdx = 0;
-  m_timeLimit = g_EvseController.GetTimeLimit();
+  m_CurIdx = g_EvseController.GetTimeLimit();
 
-  for (m_MaxIdx=1;g_TimeLimitList[m_MaxIdx] != 0;m_MaxIdx++);
-
-  if (m_timeLimit) {
-    for (uint8_t i=0;i <= m_MaxIdx;i++) {
-      if (g_TimeLimitList[i] == m_timeLimit) {
-	m_CurIdx = i;
-	break;
-      }
-    }
-  }
-  else {
-    m_CurIdx = 0;
-    m_timeLimit = 0;
-  }
-  
   g_OBD.LcdPrint_P(0,g_psTimeLimit);
   showCurSel(1);
 }
 
 void TimeLimitMenu::Next()
 {
-  if (++m_CurIdx > m_MaxIdx) {
+  if (m_CurIdx < 4) m_CurIdx++;
+  else if (m_CurIdx < 12) m_CurIdx += 2;
+  else m_CurIdx += 4;
+  if (m_CurIdx > MAX_TIME_LIMIT_D15) {
     m_CurIdx = 0;
   }
-  showCurSel((m_timeLimit == g_TimeLimitList[m_CurIdx]) ? 1 : 0);
+  showCurSel((g_EvseController.GetTimeLimit() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *TimeLimitMenu::Select()
 {
-  uint8_t limit = g_TimeLimitList[m_CurIdx];
   showCurSel(1);
-  g_EvseController.SetTimeLimit(limit);
+  g_EvseController.SetTimeLimit(m_CurIdx);
 #ifdef CHARGE_LIMIT
-  if (limit) {
+  if (m_CurIdx) {
     g_EvseController.SetChargeLimit(0);
   }
 #endif // CHARGE_LIMIT
   delay(500);
-  return limit ? NULL : &g_SettingsMenu;
+  return m_CurIdx ? NULL : &g_SettingsMenu;
 }
-
 #endif // TIME_LIMIT
 
 Menu *ResetMenu::Select()

@@ -44,6 +44,8 @@ const char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
+char *g_YesNoMenuItems[] = {"Yes","No"};
+const char g_psResetNow[] PROGMEM = "Restart Now?";
 const char g_psReset[] PROGMEM = "Restart";
 const char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
@@ -109,8 +111,6 @@ char *g_sMaxCurrentFmt = "%s Max Current";
 #endif // LCD16X2
 
 #ifdef DELAYTIMER_MENU
-char *g_YesNoMenuItems[] = {"Yes","No"};
-const char g_psResetNow[] PROGMEM = "Restart Now?";
 const char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
 char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
 #endif // DELAYTIMER_MENU

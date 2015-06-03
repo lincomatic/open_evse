@@ -293,7 +293,8 @@
 #define DEFAULT_CURRENT_CAPACITY_L2 16
 
 // minimum allowable current in amps
-#define MIN_CURRENT_CAPACITY 6
+#define MIN_CURRENT_CAPACITY_L1 6
+#define MIN_CURRENT_CAPACITY_L2 10
 
 // maximum allowable current in amps
 #define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit
@@ -872,9 +873,8 @@ public:
 };
 
 class MaxCurrentMenu  : public Menu {
+  uint8_t m_MinCurrent;
   uint8_t m_MaxCurrent;
-  uint8_t m_MaxIdx;
-  uint8_t *m_MaxAmpsList;
 public:
   MaxCurrentMenu();
   void Init();
@@ -1046,8 +1046,6 @@ public:
 
 #ifdef CHARGE_LIMIT
 class ChargeLimitMenu  : public Menu {
-  uint8_t m_kwhLimit;
-  uint8_t m_MaxIdx;
   void showCurSel(uint8_t plus=0);
 public:
   ChargeLimitMenu();
@@ -1059,8 +1057,6 @@ public:
 
 #ifdef TIME_LIMIT
 class TimeLimitMenu  : public Menu {
-  uint8_t m_timeLimit;
-  uint8_t m_MaxIdx;
   void showCurSel(uint8_t plus=0);
 public:
   TimeLimitMenu();
@@ -1182,84 +1178,5 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
-extern const char VERSTR[] PROGMEM;
-inline void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
-
-
-#if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
-extern const char g_psSettings[] PROGMEM;
-extern const char g_psSetup[] PROGMEM;
-extern const char g_psSvcLevel[] PROGMEM;
-extern const char g_psMaxCurrent[] PROGMEM;
-extern const char g_psDiodeCheck[] PROGMEM;
-extern const char g_psVentReqChk[] PROGMEM;
-#ifdef RGBLCD
-extern const char g_psBklType[] PROGMEM;
-#endif
-#ifdef ADVPWR
-extern const char g_psGndChk[] PROGMEM;
-extern const char g_psRlyChk[] PROGMEM;
-#endif // ADVPWR
-#ifdef GFI_SELFTEST
-extern const char g_psGfiTest[] PROGMEM;
-#endif
-#endif // BTN_MENU || SHOW_DISABLED_TEST
-#ifdef BTN_MENU
-extern const char g_psReset[] PROGMEM;
-extern const char g_psExit[] PROGMEM;
-// Add additional strings - GoldServe
-#ifdef AUTOSTART_MENU
-extern const char g_psAutoStart[] PROGMEM;
-#endif //#ifdef AUTOSTART_MENU
-#ifdef DELAYTIMER_MENU
-extern const char g_psRTC[] PROGMEM;
-extern const char g_psRTC_Month[] PROGMEM;
-extern const char g_psRTC_Day[] PROGMEM;
-extern const char g_psRTC_Year[] PROGMEM;
-extern const char g_psRTC_Hour[] PROGMEM;
-extern const char g_psRTC_Minute[] PROGMEM;
-extern const char g_psDelayTimer[] PROGMEM;
-extern const char g_psDelayTimerStartHour[] PROGMEM;
-extern const char g_psDelayTimerStartMin[] PROGMEM;
-extern const char g_psDelayTimerStopHour[] PROGMEM;
-extern const char g_psDelayTimerStopMin[] PROGMEM;
-#endif // DELAYTIMER_MENU
-#ifdef CHARGE_LIMIT
-extern const char g_psChargeLimit[] PROGMEM;
-#endif // CHARGE_LIMIT
-#ifdef TIME_LIMIT
-extern const char g_psTimeLimit[] PROGMEM;
-#endif // TIME_LIMIT
-#endif // BTN_MENU
-
-#ifdef LCD16X2
-#ifdef ADVPWR
-extern const char g_psPwrOn[] PROGMEM;
-extern const char g_psSelfTest[] PROGMEM;
-extern const char g_psAutoDetect[] PROGMEM;
-extern const char g_psLevel1[] PROGMEM;
-extern const char g_psLevel2[] PROGMEM;
-extern const char g_psTestFailed[] PROGMEM;
-#endif // ADVPWR
-extern const char g_psEvseError[] PROGMEM;
-extern const char g_psSvcReq[] PROGMEM;
-extern const char g_psVentReq[] PROGMEM;
-extern const char g_psDiodeChkFailed[] PROGMEM;
-extern const char g_psGfciFault[] PROGMEM;
-extern const char g_psGfci[] PROGMEM;
-#ifdef TEMPERATURE_MONITORING
-extern const char g_psTemperatureFault[] PROGMEM;
-#endif
-extern const char g_psNoGround[] PROGMEM;
-extern const char g_psStuckRelay[] PROGMEM;
-extern const char g_psDisabled[] PROGMEM;
-extern const char g_psWaiting[] PROGMEM;
-extern const char g_psSleeping[] PROGMEM;
-extern const char g_psEvConnected[] PROGMEM;
-#ifdef SHOW_DISABLED_TESTS
-extern const char g_psDisabledTests[] PROGMEM;
-#endif
-#endif // LCD16X2
-
-
+#include "strings.h"
 #include "rapi_proc.h"
