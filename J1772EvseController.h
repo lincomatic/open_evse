@@ -25,12 +25,15 @@
 #define EVSE_STATE_B       0x02 // vehicle state B 9V - connected, ready
 #define EVSE_STATE_C       0x03 // vehicle state C 6V - charging
 #define EVSE_STATE_D       0x04 // vehicle state D 3V - vent required
+#define EVSE_FAULT_STATE_BEGIN EVSE_STATE_D
 #define EVSE_STATE_DIODE_CHK_FAILED 0x05 // diode check failed
 #define EVSE_STATE_GFCI_FAULT 0x06       // GFCI fault
 #define EVSE_STATE_NO_GROUND 0x07 //bad ground
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
 #define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
-#define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown                    
+#define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown
+#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_TEMPERATURE
+           
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
 
@@ -69,6 +72,7 @@ typedef struct calibdata {
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
 #define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
+#define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
@@ -79,7 +83,7 @@ class J1772EVSEController {
   J1772Pilot m_Pilot;
 #ifdef GFI
   Gfi m_Gfi;
-  unsigned long m_GfiTimeout;
+  unsigned long m_GfiFaultStartMs;
   unsigned long m_GfiRetryCnt;
   uint8_t m_GfiTripCnt;
 #endif // GFI
@@ -198,6 +202,15 @@ public:
   void SaveEvseFlags() {
     eeprom_write_word((uint16_t *)EOFS_FLAGS,m_wFlags);
   }
+
+  int8_t InFaultState() {
+    return ((m_EvseState >= EVSE_FAULT_STATE_BEGIN) && (m_EvseState <= EVSE_FAULT_STATE_END));
+  }
+
+  void SetHardFault() { m_bVFlags |= ECVF_HARD_FAULT; }
+  void ClrHardFault() { m_bVFlags &= ~ECVF_HARD_FAULT; }
+  int8_t InHardFault() { return (m_bVFlags & ECVF_HARD_FAULT) ? 1 : 0; }
+  unsigned long GetResetMs();
 
   uint8_t GetCurrentCapacity() { 
     return m_CurrentCapacity; 
@@ -319,14 +332,14 @@ public:
   uint8_t GetChargeLimit() { return m_chargeLimit; }
 #endif // CHARGE_LIMIT
 #ifdef TIME_LIMIT
-  uint8_t SetTimeLimit(uint8_t minutes) { m_timeLimit = minutes; }
+  uint8_t SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
   uint8_t GetTimeLimit() { return m_timeLimit; }
 #endif // TIME_LIMIT
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
-  void ProcessInputs(uint8_t nosleeptoggle);
+  void ProcessInputs();
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();

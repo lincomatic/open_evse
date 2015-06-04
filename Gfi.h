@@ -24,11 +24,14 @@ class Gfi {
   DigitalPin pin;
   uint8_t m_GfiFault;
 #ifdef GFI_SELFTEST
-  DigitalPin pinTest;
   uint8_t testSuccess;
   uint8_t testInProgress;
 #endif // GFI_SELFTEST
 public:
+#ifdef GFI_SELFTEST
+  DigitalPin pinTest;
+#endif
+
   Gfi() {}
 
   void Init();

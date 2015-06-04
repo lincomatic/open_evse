@@ -91,13 +91,15 @@ const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
 const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHECK";
 const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
 const char g_psGfci[] PROGMEM = "GFCI";
+const char g_sRetryIn[] = "RETRY IN ";
+
 #ifdef TEMPERATURE_MONITORING
 const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
 #endif
 const char g_psNoGround[] PROGMEM = "NO GROUND";
 const char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
 const char g_psDisabled[] PROGMEM =  "Disabled";
-const char g_psWaiting[] PROGMEM =  "Waiting";
+//const char g_psWaiting[] PROGMEM =  "Waiting";
 const char g_psSleeping[] PROGMEM = "Sleeping";
 const char g_psEvConnected[] PROGMEM = "Connected";
 #ifdef SHOW_DISABLED_TESTS

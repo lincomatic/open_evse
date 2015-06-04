@@ -93,13 +93,15 @@ extern const char g_psVentReq[] PROGMEM;
 extern const char g_psDiodeChkFailed[] PROGMEM;
 extern const char g_psGfciFault[] PROGMEM;
 extern const char g_psGfci[] PROGMEM;
+extern const char g_sRetryIn[];
+
 #ifdef TEMPERATURE_MONITORING
 extern const char g_psTemperatureFault[] PROGMEM;
 #endif
 extern const char g_psNoGround[] PROGMEM;
 extern const char g_psStuckRelay[] PROGMEM;
 extern const char g_psDisabled[] PROGMEM;
-extern const char g_psWaiting[] PROGMEM;
+//extern const char g_psWaiting[] PROGMEM;
 extern const char g_psSleeping[] PROGMEM;
 extern const char g_psEvConnected[] PROGMEM;
 #ifdef SHOW_DISABLED_TESTS

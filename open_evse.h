@@ -627,6 +627,7 @@ class OnboardDisplay
 #endif // defined(RGBLCD) || defined(I2CLCD)
   uint8_t m_bFlags;
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
+  unsigned long m_LastUpdateMs;
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
@@ -731,28 +732,7 @@ public:
 };
 
 #ifdef GFI
-class Gfi {
-  DigitalPin pin;
-  uint8_t m_GfiFault;
-#ifdef GFI_SELFTEST
-  DigitalPin pinTest;
-  uint8_t testSuccess;
-  uint8_t testInProgress;
-#endif // GFI_SELFTEST
-public:
-  Gfi() {}
-
-  void Init();
-  void Reset();
-  void SetFault() { m_GfiFault = 1; }
-  uint8_t Fault() { return m_GfiFault; }
-#ifdef GFI_SELFTEST
-  uint8_t SelfTest();
-  void SetTestSuccess() { testSuccess = 1; }
-  uint8_t SelfTestSuccess() { return testSuccess; }
-  uint8_t SelfTestInProgress() { return testInProgress; }
-#endif
-};
+#include "Gfi.h"
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING
@@ -1074,7 +1054,7 @@ class BtnHandler {
 public:
   BtnHandler();
   void init() { m_Btn.init(); }
-  void ChkBtn(int8_t nosleeptoggle);
+  void ChkBtn();
   uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
   uint8_t GetSavedLcdMode() { return m_SavedLcdMode; }
   void SetSavedLcdMode(uint8_t mode ) { m_SavedLcdMode = mode; }

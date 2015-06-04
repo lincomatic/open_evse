@@ -449,10 +449,13 @@ void OnboardDisplay::Update(int8_t updmode)
   int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
+  int currentcap = g_EvseController.GetCurrentCapacity();
   unsigned long curms = millis();
 
   if (g_EvseController.StateTransition() || (updmode != OBD_UPD_NORMAL)) {
-    sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+    curms += 1000; // trigger periodic update code below
+
+    sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,currentcap);
     switch(curstate) {
     case EVSE_STATE_A: // not connected
       SetGreenLed(1);
@@ -468,14 +471,14 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint_P(g_psReady);
       LcdPrint(10,0,g_sTmp);
       
- #ifdef KWH_RECORDING 
+#ifdef KWH_RECORDING 
       sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
-
+      
       sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
- #endif // KWH_RECORDING
-        
+#endif // KWH_RECORDING
+      
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -502,17 +505,17 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif //#ifdef DELAYTIMER
       LcdPrint_P(g_psEvConnected);
       LcdPrint(10,0,g_sTmp);
-
-      #ifdef KWH_RECORDING
+      
+#ifdef KWH_RECORDING
       sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
-
+      
       sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // Display accumulated kWh
       LcdPrint(7,1,g_sTmp);
-      #endif // KWH_RECORDING
- 
+#endif // KWH_RECORDING
+      
 #endif //Adafruit RGB LCD
-    // n.b. blue LED is off
+      // n.b. blue LED is off
       break;
     case EVSE_STATE_C: // charging
       SetGreenLed(0);
@@ -562,7 +565,13 @@ void OnboardDisplay::Update(int8_t updmode)
       SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psGfciFault);
+      if (updmode == OBD_UPD_HARDFAULT) {
+        LcdMsg_P(g_psEvseError,g_psGfciFault);
+      }
+      else {
+	// 2nd line will be updated below with auto retry count
+        LcdPrint_P(0,g_psGfciFault);
+      }
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -581,7 +590,13 @@ void OnboardDisplay::Update(int8_t updmode)
       SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
-      LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psNoGround);
+      if (updmode == OBD_UPD_HARDFAULT) {
+        LcdMsg_P(g_psEvseError,g_psNoGround);
+      }
+      else {
+	// 2nd line will be updated below with auto retry count
+        LcdPrint_P(0,g_psNoGround);
+      }
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -634,6 +649,20 @@ void OnboardDisplay::Update(int8_t updmode)
   // the code below will only run once per second
   //
   if ((curms-m_LastUpdateMs) >= 1000) {
+    m_LastUpdateMs = curms;
+
+    if (!g_EvseController.InHardFault() &&
+	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
+      strcpy(g_sTmp,g_sRetryIn);
+      int resetsec = (int)(g_EvseController.GetResetMs() / 1000ul);
+      if (resetsec >= 0) {
+	sprintf(g_sTmp+sizeof(g_sTmp)-6,g_sHHMMfmt,resetsec / 60,resetsec % 60);
+	strcat(g_sTmp,g_sTmp+sizeof(g_sTmp)-6);
+	LcdPrint(1,g_sTmp);
+      }
+      return;
+    }
+
 #ifdef RTC
     g_CurrTime = g_RTC.now();
 #endif
@@ -664,95 +693,93 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2
     if (curstate == EVSE_STATE_C) {
       time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
-      if (elapsedTime != g_EvseController.GetElapsedChargeTimePrev()) {   
    
 #ifdef KWH_RECORDING
-	uint32_t current = g_EvseController.GetChargingCurrent();
+      uint32_t current = g_EvseController.GetChargingCurrent();
 #ifdef VOLTMETER
-	g_WattSeconds = g_WattSeconds + (g_EvseController.GetVoltage() / 1000 * current / 1000);
+      g_WattSeconds = g_WattSeconds + (g_EvseController.GetVoltage() / 1000 * current / 1000);
 #else
-	if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
-	  g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
-	}
-	else {
-	  g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
-	}
+      if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
+	g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
+      }
+      else {
+	g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
+      }
 #endif // VOLTMETER
-	sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
-	LcdPrint(0,1,g_sTmp);
+      sprintf(g_sTmp,"%5luWh",(g_WattSeconds / 3600) );
+      LcdPrint(0,1,g_sTmp);
 
 #ifdef VOLTMETER
-	sprintf(g_sTmp," %3luV",(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
-	LcdPrint(11,1,g_sTmp);
+      sprintf(g_sTmp," %3luV",(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
+      LcdPrint(11,1,g_sTmp);
 #else
-	sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
-	LcdPrint(7,1,g_sTmp);
+      sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      LcdPrint(7,1,g_sTmp);
 #endif // VOLTMETER
 #else // ! KWH_RECORDING
-	LcdClearLine(0);
+      LcdClearLine(0);
 #endif // KWH_RECORDING
 
 #ifdef TEMPERATURE_MONITORING
-	if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
-	  g_OBD.LcdClearLine(1);
-	  const char *tempfmt = "%2d.%1dC";
+      if ((g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS)  {
+	g_OBD.LcdClearLine(1);
+	const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
-	  if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
-	    sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, g_TempMonitor.m_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
-	    LcdPrint(0,1,g_sTmp);
-	  }
+	if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, g_TempMonitor.m_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
+	  LcdPrint(0,1,g_sTmp);
+	}
 #endif
 
 #ifdef RTC	
-	  if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
-	    sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
-	    LcdPrint(5,1,g_sTmp);
-	  }
+	if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
+	  LcdPrint(5,1,g_sTmp);
+	}
 #endif
 	
 #ifdef TMP007_IS_ON_I2C
-	  if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
-	    sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);  //  Infrared sensor probably looking at 30A fuses
-	    LcdPrint(11,1,g_sTmp);
-	  }
+	if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);  //  Infrared sensor probably looking at 30A fuses
+	  LcdPrint(11,1,g_sTmp);
+	}
 #endif
 
-	  if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) { // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
-	    g_TempMonitor.SetBlinkAlarm(0);                                            // toggle the alarm flag so we can blink
-	    SetRedLed(1);
+	if (g_TempMonitor.BlinkAlarm() && g_TempMonitor.OverTemperatureShutdown()) { // Blink Red off-and-on while over the temperature shutdown limit, zero current should flow to the EV
+	  g_TempMonitor.SetBlinkAlarm(0);                                            // toggle the alarm flag so we can blink
+	  SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
-	    LcdSetBacklightColor(RED);
+	  LcdSetBacklightColor(RED);
 #endif //Adafruit RGB LCD            
-	  }
-	  else  {
-	    g_TempMonitor.SetBlinkAlarm(1);        // toggle the alarm flag so we can blink
-	    SetRedLed(0);
-#ifdef LCD16X2 //Adafruit RGB LCD
-	    LcdSetBacklightColor(TEAL);
-#endif
-	  }           
-	}  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
+	}
 	else  {
-	  SetRedLed(0);          // restore the normal TEAL backlight in case it was left RED while last blinking
+	  g_TempMonitor.SetBlinkAlarm(1);        // toggle the alarm flag so we can blink
+	  SetRedLed(0);
 #ifdef LCD16X2 //Adafruit RGB LCD
 	  LcdSetBacklightColor(TEAL);
 #endif
-	}          
+	}           
+      }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
+      else  {
+	SetRedLed(0);          // restore the normal TEAL backlight in case it was left RED while last blinking
+#ifdef LCD16X2 //Adafruit RGB LCD
+	LcdSetBacklightColor(TEAL);
+#endif
+      }          
 #else // !TEMPERATURE_MONITORING
 #ifndef KWH_RECORDING
-        int h = hour(elapsedTime);          // display the elapsed charge time
-        int m = minute(elapsedTime);
-        int s = second(elapsedTime);
+      int h = hour(elapsedTime);          // display the elapsed charge time
+      int m = minute(elapsedTime);
+      int s = second(elapsedTime);
 #ifdef DELAYTIMER
-	sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.hour() : 0),(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.minute() : 0));
+      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.hour() : 0),(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.minute() : 0));
 #else
-        sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
+      sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #endif //#ifdef DELAYTIMER
           
-        LcdPrint(1,g_sTmp);
+      LcdPrint(1,g_sTmp);
 #endif // KWH_RECORDING
 #endif // TEMPERATURE_MONITORING
-      }
     }
 
     // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
@@ -776,14 +803,12 @@ void OnboardDisplay::Update(int8_t updmode)
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
 	LcdPrint(11,1,g_sTmp);
       } else {
-	sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,(int)g_EvseController.GetCurrentCapacity());
+	sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,currentcap);
 	LcdPrint(10,0,g_sTmp);
       }
     }
 #endif // DELAYTIMER
 #endif // LCD16X2
-
-    m_LastUpdateMs = curms;
   }
 
 #ifdef FT_ENDURANCE
@@ -1951,9 +1976,11 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
-void BtnHandler::ChkBtn(int8_t nosleeptoggle)
+void BtnHandler::ChkBtn()
 {
   WDT_RESET();
+
+  int8_t infaultstate = g_EvseController.InFaultState();
 
   m_Btn.read();
   if (m_Btn.shortPress()) {
@@ -1961,7 +1988,9 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       m_CurMenu->Next();
     }
     else {
-      if (!nosleeptoggle) {
+      // force into setup menu when in fault
+      if (infaultstate) goto longpress;
+      else {
 	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
 	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
 	  g_EvseController.Enable();
@@ -1973,6 +2002,7 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
     }
   }
   else if (m_Btn.longPress()) {
+  longpress:
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
@@ -1991,7 +2021,7 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
 
       }
       else { // exit
-	if (nosleeptoggle) {
+	if (infaultstate) {
 	  g_EvseController.Reboot();
 	}
 	else {
@@ -2009,21 +2039,20 @@ void BtnHandler::ChkBtn(int8_t nosleeptoggle)
       }
     }
     else {
-      if (nosleeptoggle) {
-	g_SetupMenu.Init();
+#if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
+      g_SettingsMenu.CheckSkipLimits();
+#endif // CHARGE_LIMIT
+      m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
+      g_OBD.LcdSetBacklightColor(WHITE);
+      if (infaultstate) {
 	m_CurMenu = &g_SetupMenu;
       }
       else {
-#if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
-	g_SettingsMenu.CheckSkipLimits();
-#endif // CHARGE_LIMIT
-	g_EvseController.Sleep();
 	g_OBD.DisableUpdate(1);
-	m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
-	g_OBD.LcdSetBacklightColor(WHITE);
-	g_SettingsMenu.Init();
+	g_EvseController.Sleep();
 	m_CurMenu = &g_SettingsMenu;
       }
+      m_CurMenu->Init();
     }
   }
 }
@@ -2142,12 +2171,8 @@ void DelayTimer::Disable(){
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
-  //g_OBD.LcdClear();
-  //g_OBD.LcdSetCursor(0,0);
   if (IsTimerEnabled() && IsTimerValid()){
-#ifdef BTN_MENU
     g_OBD.LcdWrite(0x0);
-#endif //#ifdef BTN_MENU
   }
 }
 // End Delay Timer Functions - GoldServe
@@ -2211,7 +2236,7 @@ void loop()
 
   g_OBD.Update();
 
-  g_EvseController.ProcessInputs(0);
+  g_EvseController.ProcessInputs();
   
   // Delay Timer Handler - GoldServe
 #ifdef DELAYTIMER
