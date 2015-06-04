@@ -2077,13 +2077,15 @@ void DelayTimer::Init() {
 
 void DelayTimer::CheckTime()
 {
-  unsigned long curms = millis();
-  if ((curms - m_LastCheck) > 1000ul) {
-    if (IsTimerEnabled() && IsTimerValid()){
+  if (!g_EvseController.InFaultState() &&
+      IsTimerEnabled() &&
+      IsTimerValid()) {
+    unsigned long curms = millis();
+    if ((curms - m_LastCheck) > 1000ul) {
       g_CurrTime = g_RTC.now();
       m_CurrHour = g_CurrTime.hour();
       m_CurrMin = g_CurrTime.minute();
-
+      
       uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
       uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
       uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
