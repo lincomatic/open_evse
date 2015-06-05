@@ -2007,11 +2007,11 @@ void BtnHandler::ChkBtn()
 #endif // CHARGE_LIMIT
       m_SavedLcdMode = g_OBD.IsLcdBacklightMono() ? BKL_TYPE_MONO : BKL_TYPE_RGB;
       g_OBD.LcdSetBacklightColor(WHITE);
+      g_OBD.DisableUpdate(1);
       if (infaultstate) {
 	m_CurMenu = &g_SetupMenu;
       }
       else {
-	g_OBD.DisableUpdate(1);
 	g_EvseController.Sleep();
 	m_CurMenu = &g_SettingsMenu;
       }
