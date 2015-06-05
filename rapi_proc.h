@@ -89,6 +89,8 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps - set current capacity
+   if amps < minimum current capacity, will set to minimum and return $NK
+   if amps > maximum current capacity, will set to maximum and return $NK
 SD 0|1 - disable/enable diode check
  $SD 0*0B
  $SD 1*0C
@@ -139,11 +141,12 @@ GE - get settings
  $GE*B0
 GF - get fault counters
  response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
+ maximum trip count = 0xFE for any counter
  $GF*B1
 GG - get charging current and voltage
  response: OK milliamps millivolts
- AMMETER must be defined in order to get amps, otherwise returns 0 amps
- VOLTMETER must be defined in order to get voltage, otherwise returns 0 volts
+ AMMETER must be defined in order to get amps, otherwise returns -1 amps
+ VOLTMETER must be defined in order to get voltage, otherwise returns -1 volts
  $GG*B2
 GH - get cHarge limit
  response: OK kWh

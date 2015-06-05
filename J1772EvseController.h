@@ -273,6 +273,7 @@ public:
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
+  uint8_t GetGfiTripCnt() { return m_GfiTripCnt; }
 #ifdef GFI_SELFTEST
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
@@ -344,6 +345,10 @@ public:
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();
 #endif
+#ifdef ADVPWR
+  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt; }
+  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt; }
+#endif // ADVPWR
 };
 
 extern J1772EVSEController g_EvseController;
