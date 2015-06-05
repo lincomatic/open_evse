@@ -1384,6 +1384,7 @@ void J1772EVSEController::Update()
 	g_TempMonitor.SetOverTemperatureShutdown(0);
 	
 	currcap /= 2;    // set to the throttled back level
+	setit = 1;
       }    
       if (setit) {
 	SetCurrentCapacity(currcap,0,1);
