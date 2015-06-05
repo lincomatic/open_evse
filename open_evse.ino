@@ -662,7 +662,8 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
 
 
-#if defined(AMMETER) && defined(LCD16X2)
+#ifdef LCD16X2
+#if defined(AMMETER)
     if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
       SetAmmeterDirty(0);
 
@@ -684,7 +685,6 @@ void OnboardDisplay::Update(int8_t updmode)
     }
 #endif // AMMETER
 
-#ifdef LCD16X2
     if (curstate == EVSE_STATE_C) {
       time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
    
@@ -710,8 +710,6 @@ void OnboardDisplay::Update(int8_t updmode)
       sprintf(g_sTmp,"%6lukWh",(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // VOLTMETER
-#else // ! KWH_RECORDING
-      LcdClearLine(0);
 #endif // KWH_RECORDING
 
 #ifdef TEMPERATURE_MONITORING
@@ -760,7 +758,7 @@ void OnboardDisplay::Update(int8_t updmode)
 	LcdSetBacklightColor(TEAL);
 #endif
       }          
-#else // !TEMPERATURE_MONITORING
+
 #ifndef KWH_RECORDING
       int h = hour(elapsedTime);          // display the elapsed charge time
       int m = minute(elapsedTime);
