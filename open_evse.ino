@@ -875,7 +875,7 @@ void Btn::read()
   else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
     if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
       vlongDebounceTime = 0;
-      g_ERP.setWifiMode(WIFI_MODE_AP);
+      g_ERP.setWifiMode(WIFI_MODE_AP_DEFAULT);
     }
   }
 #endif // RAPI

@@ -18,6 +18,8 @@ vD3.9.0 SCL 20150604
 - when waiting for timer, just display Sleeping instead of Waiting
 - during a fault, short press goes directly to Setup menu instead of putting
 	EVSE in Sleep state
+- send $WF WIFI_MODE_AP_DEFAULT instead of WIFI_MODE_AP to client on very long
+	button press
 
 vD3.8.4 SCL 20150526
 - display "Disabled" when EVSE_STATE_DISABLED instead of "Stopped"
