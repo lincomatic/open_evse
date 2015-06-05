@@ -661,7 +661,6 @@ void OnboardDisplay::Update(int8_t updmode)
     g_CurrTime = g_RTC.now();
 #endif
 
-
 #ifdef LCD16X2
 #if defined(AMMETER)
     if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
@@ -757,23 +756,26 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
 	LcdSetBacklightColor(TEAL);
 #endif
-      }          
-
+      }
+      if (!(g_TempMonitor.OverTemperature() || TEMPERATURE_DISPLAY_ALWAYS)) { 
+#endif // TEMPERATURE_MONITORING
 #ifndef KWH_RECORDING
       int h = hour(elapsedTime);          // display the elapsed charge time
       int m = minute(elapsedTime);
       int s = second(elapsedTime);
-#ifdef DELAYTIMER
-      sprintf(g_sTmp,"%02d:%02d:%02d   %02d:%02d",h,m,s,(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.hour() : 0),(int)((g_CurrTime.hour() <= 23) ? g_CurrTime.minute() : 0));
-#else
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
-#endif //#ifdef DELAYTIMER
-          
+#ifdef RTC
+      g_sTmp[8]=' ';
+      g_sTmp[9]=' ';
+      g_sTmp[10]=' ';
+      sprintf(g_sTmp+11,g_sHHMMfmt,(int)g_CurrTime.hour(),(int)g_CurrTime.minute());
+#endif //RTC
       LcdPrint(1,g_sTmp);
 #endif // KWH_RECORDING
+#ifdef TEMPERATURE_MONITORING
+      }
 #endif // TEMPERATURE_MONITORING
-    }
-
+    } // curstate == EVSE_STATE_C
     // Display a new stopped LCD screen with Delay Timers enabled - GoldServe
 #ifdef DELAYTIMER
     else if (curstate == EVSE_STATE_SLEEPING) {
