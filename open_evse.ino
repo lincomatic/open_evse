@@ -376,7 +376,7 @@ void OnboardDisplay::Init()
 #else
   LcdPrint_P(0,PSTR("Open EVSE"));
 #endif
-  LcdPrint_P(0,1,PSTR("Version "));
+  LcdPrint_P(0,1,PSTR("Ver. "));
   LcdPrint_P(VERSTR);
   delay(1500);
   WDT_RESET();
@@ -1178,6 +1178,7 @@ void MaxCurrentMenu::Init()
   sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
   g_OBD.LcdPrint(0,g_sTmp);
   m_CurIdx = g_EvseController.GetCurrentCapacity();
+  if (m_CurIdx < m_MinCurrent) m_CurIdx = m_MinCurrent;
   sprintf(g_sTmp,"+%dA",m_CurIdx);
   g_OBD.LcdPrint(1,g_sTmp);
 }
@@ -1185,11 +1186,11 @@ void MaxCurrentMenu::Init()
 void MaxCurrentMenu::Next()
 {
   if ((g_EvseController.GetCurSvcLevel() == 1) ||
-      (m_CurIdx == 78)) { // n.b. some cars can't do 80A, so allow 79A
+      (m_CurIdx >= 78)) { // n.b. some cars can't do 80A, so allow 79A
     m_CurIdx ++;
   }
   else {
-    else m_CurIdx += 2;
+    m_CurIdx += 2;
   }
   if (m_CurIdx > m_MaxCurrent) {
     m_CurIdx = m_MinCurrent;
