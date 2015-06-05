@@ -284,13 +284,6 @@ public:
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
-  // Function to suppport Auto Start feature - GoldServe
-#ifdef MANUALSTART
-  void EnableAutoStart(uint8_t tf);
-  uint8_t AutoStartEnabled() { 
-    return (m_wFlags & ECF_AUTO_START_DISABLED) ? 0 : 1;
-  }
-#endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
 #ifdef RGBLCD
   int SetBacklightType(uint8_t t,uint8_t update=1); // BKL_TYPE_XXX

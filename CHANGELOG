@@ -23,6 +23,7 @@ vD3.9.0 SCL 20150604
 - fix RAPI bug: $GF was returning FF as trip counts if zero. New max value for
 	any trip count = FE
 - fix documentation for $SC & $GG
+- got rid of superfluous AUTOSTART_MENU and MANUALSTART code
 
 vD3.8.4 SCL 20150526
 - display "Disabled" when EVSE_STATE_DISABLED instead of "Stopped"

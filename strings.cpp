@@ -49,9 +49,6 @@ const char g_psResetNow[] PROGMEM = "Restart Now?";
 const char g_psReset[] PROGMEM = "Restart";
 const char g_psExit[] PROGMEM = "Exit";
 // Add additional strings - GoldServe
-#ifdef AUTOSTART_MENU
-const char g_psAutoStart[] PROGMEM = "Auto Start";
-#endif //#ifdef AUTOSTART_MENU
 #ifdef DELAYTIMER_MENU
 const char g_psRTC[] PROGMEM = "Date/Time";
 const char g_psRTC_Month[] PROGMEM = "Month";

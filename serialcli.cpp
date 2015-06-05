@@ -94,11 +94,6 @@ void CLI::getInput()
 	print_P(PSTR("Stuck Relay Check: "));
 	println_P(g_EvseController.StuckRelayChkEnabled() ? g_psEnabled : g_psDisabled);
 #endif // ADVPWR           
-        // Option to disable auto start - GoldServe
-#ifdef MANUALSTART
-        print_P(PSTR("Auto Start: "));
-	println_P(g_EvseController.AutoStartEnabled() ? g_psEnabled : g_psDisabled);
-#endif //#ifdef MANUALSTART
         // Start Delay Timer feature - GoldServe
 #ifdef DELAYTIMER
         print_P(PSTR("Delay Timer: "));
@@ -157,11 +152,6 @@ void CLI::getInput()
    println_P(PSTR("gndchk on/off - turn ground check on/off"));
    println_P(PSTR("rlychk on/off - turn stuck relay check on/off"));
 #endif // ADVPWR
-   // Start Delay Timer feature - GoldServe
-#ifdef MANUALSTART
-   println_P(PSTR("autostart on/off - enable/disable autostart"));
-#endif //#ifdef MANUALSTART
-   // End Delay Timer feature - GoldServe
    println_P(PSTR("sdbg on/off - turn serial debugging on/off"));
  }
  else if (strncmp_P(m_CLIinstr, PSTR("set "),4) == 0) {
@@ -202,22 +192,6 @@ void CLI::getInput()
        println_P(g_psDisabled);
      }
    }
-   // Start Delay Timer feature - GoldServe
-#ifdef MANUALSTART
-   else if (!strncmp_P(p,PSTR("autostart "),10)) {
-     p += 10;
-     print_P(PSTR("autostart "));
-     if (!strcmp_P(p,g_pson)) {
-       g_EvseController.EnableAutoStart(1);
-       println_P(g_psEnabled);
-     }
-     else {
-       g_EvseController.EnableAutoStart(0);
-       println_P(g_psDisabled);
-     }
-   }
-#endif //#ifdef MANUALSTART
-   // End Delay Timer feature - GoldServe
 #ifdef ADVPWR
    else if (!strncmp_P(p,PSTR("gndchk "),7)) {
      p += 7;

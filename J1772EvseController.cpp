@@ -354,19 +354,6 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 
 #endif // ADVPWR
 
-// Functions to support Auto Start feature - GoldServe
-#ifdef MANUALSTART 
-void J1772EVSEController::EnableAutoStart(uint8_t tf)
-{
-  if (tf) {
-    m_wFlags &= ~ECF_AUTO_START_DISABLED;
-  }
-  else {
-    m_wFlags |= ECF_AUTO_START_DISABLED;
-  }
-  SaveEvseFlags();
-}
-#endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
 {
   if (tf) {
@@ -902,15 +889,11 @@ void J1772EVSEController::Init()
 
   SetSvcLevel(svclvl);
 
-  // Start Manual Start Feature - GoldServe
-#ifdef MANUALSTART
-  if (AutoStartEnabled()){
-    Enable();
-  } else {
+#ifdef DELAYTIMER
+  if (g_DelayTimer.IsTimerEnabled()) {
     Sleep();
   }
-#endif //#ifdef MANUALSTART
-  // End Manual Start Feature - GoldServe
+#endif
 
   g_OBD.SetGreenLed(0);
 }

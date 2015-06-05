@@ -162,17 +162,8 @@
 // Option for Delay Timer - GoldServe
 #define DELAYTIMER
 
-// Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
-//#define AUTOSTART_MENU
-
 #if defined(DELAYTIMER) && defined(BTN_MENU)
 #define DELAYTIMER_MENU
-#endif
-
-// AutoStart feature must be defined if Delay Timers are used - GoldServe
-#if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
-// Option for AutoStart Enable/Disable - GoldServe
-#define MANUALSTART
 #endif
 
 #endif // RTC
@@ -923,16 +914,6 @@ public:
 };
 #endif // RGBLCD
 
-#ifdef AUTOSTART_MENU
-class AutoStartMenu : public Menu {
-public:
-  AutoStartMenu();
-  void Init();
-  void Next();
-  Menu *Select();
-};
-#endif //#ifdef AUTOSTART_MENU
-
 #if defined(DELAYTIMER)
 class RTCMenu : public Menu {
 public:
@@ -1139,6 +1120,9 @@ extern char g_sSpace[];
 #define g_sSpace " "
 
 
+#ifdef DELAYTIMER
+extern DelayTimer g_DelayTimer;
+#endif
 #ifdef BTN_MENU
 extern BtnHandler g_BtnHandler;
 extern SettingsMenu g_SettingsMenu;

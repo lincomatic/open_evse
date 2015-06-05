@@ -51,9 +51,6 @@ extern const char g_psResetNow[] PROGMEM;
 extern const char g_psReset[] PROGMEM;
 extern const char g_psExit[] PROGMEM;
 // Add additional strings - GoldServe
-#ifdef AUTOSTART_MENU
-extern const char g_psAutoStart[] PROGMEM;
-#endif //#ifdef AUTOSTART_MENU
 #ifdef DELAYTIMER_MENU
 extern const char g_psRTC[] PROGMEM;
 extern const char g_psRTC_Month[] PROGMEM;

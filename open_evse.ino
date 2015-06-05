@@ -76,9 +76,6 @@ RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
-#ifdef AUTOSTART_MENU
-AutoStartMenu g_AutoStartMenu;
-#endif //#ifdef AUTOSTART_MENU
 #if defined(DELAYTIMER_MENU)
 RTCMenu g_RTCMenu;
 RTCMenuMonth g_RTCMenuMonth;
@@ -111,9 +108,6 @@ Menu *g_SettingsMenuList[] = {
 #ifdef DELAYTIMER_MENU
   &g_DelayMenu,
 #endif // DELAYTIMER_MENU
-#ifdef AUTOSTART_MENU
-  &g_AutoStartMenu,
-#endif // AUTOSTART_MENU
   &g_SetupMenu,
   &g_ResetMenu,
   NULL
@@ -1804,44 +1798,6 @@ Menu *DelayMenuStopMin::Select()
   return &g_SettingsMenu;
 }
 #endif // DELAYTIMER_MENU
-#ifdef AUTOSTART_MENU
-// Menus for Auto Start feature - GoldServe
-AutoStartMenu::AutoStartMenu()
-{
-  m_Title = g_psAutoStart;
-}
-void AutoStartMenu::Init()
-{
-  g_OBD.LcdPrint_P(0,g_psAutoStart);
-  m_CurIdx = !g_EvseController.AutoStartEnabled();
-  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
-  g_OBD.LcdPrint(1,g_sTmp);
-}
-void AutoStartMenu::Next()
-{
-  
-  if (++m_CurIdx >= 2) {
-    m_CurIdx = 0;
-  }
-  g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  uint8_t dce = g_EvseController.AutoStartEnabled();
-  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
-    g_OBD.LcdPrint(g_sPlus);
-  }
-  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
-  
-}
-Menu *AutoStartMenu::Select()
-{
-  g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
-  g_EvseController.EnableAutoStart((m_CurIdx == 0) ? 1 : 0);
-  g_EvseController.SaveEvseFlags();
-  delay(500);
-  return &g_SettingsMenu;
-}
-#endif //#ifdef AUTOSTART_MENU
 
 #ifdef CHARGE_LIMIT
 #define MAX_CHARGE_LIMIT 40
@@ -2165,7 +2121,6 @@ void DelayTimer::CheckTime()
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.EnableAutoStart(0);
   g_EvseController.SaveSettings();
   CheckTime();
   g_OBD.Update(OBD_UPD_FORCE);
@@ -2173,7 +2128,6 @@ void DelayTimer::Enable(){
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.EnableAutoStart(1);
   g_EvseController.SaveSettings();
   g_OBD.Update(OBD_UPD_FORCE);
 }
