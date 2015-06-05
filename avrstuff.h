@@ -23,6 +23,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
+#ifdef __cplusplus
 class CriticalSection {
   uint8_t sreg;
 public:
@@ -37,6 +38,8 @@ public:
   AutoCriticalSection() { sreg = SREG; cli(); }
   ~AutoCriticalSection() { SREG = sreg; }
 };
+
+#endif // __cplusplus
 
 
 // n.b. NONE OF THE PIN FUNCTIONS BELOW HANDLE PORTS > 0x100.. must be wrapped
@@ -84,6 +87,7 @@ example
 // pin macros .. ugly, but no RAM usage
 //
 
+#ifdef __cplusplus
 
 //
 // begin digitalPin class
@@ -176,3 +180,5 @@ public:
 //
 // end digital pin class
 //
+
+#endif // __cplusplus

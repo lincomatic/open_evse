@@ -51,6 +51,9 @@ $NK [optional parameters]\r - failure
 asynchronous messages
 $ST state\r - EVSE state transition - sent whenever EVSE state changes
  state: EVSE_STATE_xxx
+$WF mode\r - Request client WiFi mode
+ mode: WIFI_MODE_XXX
+ (currently very long press (10 sec) of menu btn on OpenEVSE will send WIFI_MODE_AP_DEFAULT
 
 commands
 

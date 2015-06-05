@@ -20,7 +20,7 @@
 #else
  #include "WProgram.h"
 #endif
-#include "Wire.h"
+#include "./Wire.h"
 
 // uncomment for debugging!
 //#define TMP007_DEBUG 1

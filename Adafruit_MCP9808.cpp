@@ -28,7 +28,7 @@
  #include "TinyWireM.h"
  #define Wire TinyWireM
 #else
- #include <Wire.h>
+ #include "./Wire.h"
 #endif
 
 static inline void wiresend(uint8_t x) {
@@ -64,7 +64,7 @@ Adafruit_MCP9808::Adafruit_MCP9808() {
 /**************************************************************************/
 boolean Adafruit_MCP9808::begin(uint8_t addr) {
   _i2caddr = addr;
-  Wire.begin();
+  //don't need - open_evse.ino does it  Wire.begin();
 
   if (read16(MCP9808_REG_MANUF_ID) != 0x0054) return false;
   if (read16(MCP9808_REG_DEVICE_ID) != 0x0400) return false;
