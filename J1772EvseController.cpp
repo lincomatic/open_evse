@@ -1350,19 +1350,23 @@ void J1772EVSEController::Update()
 
 #ifdef TEMPERATURE_MONITORING
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
+      uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
+      uint8_t setit = 0;
       g_TempMonitor.Read();
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(1);
-	SetCurrentCapacity((eeprom_read_byte((uint8_t*) EOFS_CURRENT_CAPACITY_L2)) / 2,0,1);     // set L2 to the throttled back level
+	currcap /= 2;   // set to the throttled back level
+	setit = 1;
       }
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
-	SetCurrentCapacity((eeprom_read_byte((uint8_t*) EOFS_CURRENT_CAPACITY_L2)),0,1);    // set L2 to the user's original setting for L2 current
+	
+	setit = 1;    // set to the user's original setting for current
       }           
       
       
@@ -1370,16 +1374,23 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        SetCurrentCapacity((eeprom_read_byte((uint8_t*) EOFS_CURRENT_CAPACITY_L2)) / 4,0,1);
+        currcap /= 4;
+	setit = 1;
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
-	SetCurrentCapacity((eeprom_read_byte((uint8_t*) EOFS_CURRENT_CAPACITY_L2)) / 2,0,1);    // set L2 to the throttled back level
-        m_Pilot.SetPWM(m_CurrentCapacity);
+	
+	currcap /= 2;    // set to the throttled back level
       }    
+      if (setit) {
+	SetCurrentCapacity(currcap,0,1);
+	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
+	  m_Pilot.SetPWM(m_CurrentCapacity);
+	}
+      }
     }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
