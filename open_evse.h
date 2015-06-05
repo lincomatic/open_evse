@@ -99,12 +99,11 @@
 #define GFI_SELFTEST
 #endif //UL_GFI_SELFTEST
 
-
-// Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
-#define TEMPERATURE_MONITORING
+#define TEMPERATURE_MONITORING  // Temperature monitoring support    
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
+// comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define KWH_RECORDING
 #ifdef KWH_RECORDING
 // stop charging after a certain kWh reached
@@ -743,8 +742,6 @@ public:
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
-
-  uint8_t m_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
