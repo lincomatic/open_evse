@@ -262,8 +262,6 @@ void TempMonitor::Init()
 #ifdef TMP007_IS_ON_I2C
   m_tmp007.begin();
 #endif // TMP007_IS_ON_I2C
-
-  m_ampacity = g_EvseController.GetCurrentCapacity();  // Need to keep track of the user's original ampacity setting since temperature monitoring will throttle it back and need to later restore it
 }
 
 void TempMonitor::Read()
