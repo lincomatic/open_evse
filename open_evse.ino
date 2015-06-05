@@ -1184,7 +1184,7 @@ void MaxCurrentMenu::Init()
 
 void MaxCurrentMenu::Next()
 {
-  if ((g_EvseController.GetCurSvlLevel() == 1) ||
+  if ((g_EvseController.GetCurSvcLevel() == 1) ||
       (m_CurIdx == 78)) { // n.b. some cars can't do 80A, so allow 79A
     m_CurIdx ++;
   }
