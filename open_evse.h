@@ -106,8 +106,10 @@
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
 #define KWH_RECORDING
+#ifdef KWH_RECORDING
 // stop charging after a certain kWh reached
 #define CHARGE_LIMIT
+#endif // KWH_RECORDING
 #endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
