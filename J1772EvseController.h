@@ -344,4 +344,10 @@ public:
 #endif // ADVPWR
 };
 
+#ifdef FT_ENDURANCE
+extern int g_CycleCnt;
+extern long g_CycleHalfStart;
+extern uint8_t g_CycleState;
+#endif 
+
 extern J1772EVSEController g_EvseController;

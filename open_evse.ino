@@ -185,11 +185,6 @@ unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds;
 #endif // KWH_RECORDING
 
-#ifdef FT_ENDURANCE
-int g_CycleCnt = -1;
-long g_CycleHalfStart;
-uint8_t g_CycleState;
-#endif 
 
 //-- end global variables
 

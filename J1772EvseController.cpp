@@ -18,7 +18,11 @@
  */
 #include "open_evse.h"
 
-
+#ifdef FT_ENDURANCE
+int g_CycleCnt = -1;
+long g_CycleHalfStart;
+uint8_t g_CycleState;
+#endif 
 
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 
