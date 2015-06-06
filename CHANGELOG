@@ -2,6 +2,7 @@ Change Log
 
 SCL20150605
 -> promote to v3.9.0 in stable branch
+Many thanks to CraigK for his numerous contributions and top notch testing.
 
 vD3.9.0 SCL 20150604-5
 - split out Gfi/J1772Pilot/J1772EvseController into separate files
