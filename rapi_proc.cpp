@@ -383,9 +383,9 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       break;
     case 'F': // get fault counters
-      u1.u = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
-      u2.u = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
-      u3.u = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
+      u1.u = g_EvseController.GetGfiTripCnt();
+      u2.u = g_EvseController.GetNoGndTripCnt();
+      u3.u = g_EvseController.GetStuckRelayTripCnt();
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
       break;

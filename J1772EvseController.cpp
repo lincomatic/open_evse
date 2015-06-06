@@ -18,7 +18,11 @@
  */
 #include "open_evse.h"
 
-
+#ifdef FT_ENDURANCE
+int g_CycleCnt = -1;
+long g_CycleHalfStart;
+uint8_t g_CycleState;
+#endif 
 
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 
@@ -354,19 +358,6 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 
 #endif // ADVPWR
 
-// Functions to support Auto Start feature - GoldServe
-#ifdef MANUALSTART 
-void J1772EVSEController::EnableAutoStart(uint8_t tf)
-{
-  if (tf) {
-    m_wFlags &= ~ECF_AUTO_START_DISABLED;
-  }
-  else {
-    m_wFlags |= ECF_AUTO_START_DISABLED;
-  }
-  SaveEvseFlags();
-}
-#endif //#ifdef MANUALSTART
 void J1772EVSEController::EnableSerDbg(uint8_t tf)
 {
   if (tf) {
@@ -902,15 +893,11 @@ void J1772EVSEController::Init()
 
   SetSvcLevel(svclvl);
 
-  // Start Manual Start Feature - GoldServe
-#ifdef MANUALSTART
-  if (AutoStartEnabled()){
-    Enable();
-  } else {
+#ifdef DELAYTIMER
+  if (g_DelayTimer.IsTimerEnabled()) {
     Sleep();
   }
-#endif //#ifdef MANUALSTART
-  // End Manual Start Feature - GoldServe
+#endif
 
   g_OBD.SetGreenLed(0);
 }
@@ -993,7 +980,7 @@ void J1772EVSEController::Update()
 	
 	chargingOff(); // open the relay
 	
-	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 254)) {
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 253)) {
 	  m_NoGndTripCnt++;
 	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
@@ -1043,7 +1030,7 @@ void J1772EVSEController::Update()
                ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
 	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	  // stuck relay
-	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 254)) {
+	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 253)) {
 	    m_StuckRelayTripCnt++;
 	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
 	  }   
@@ -1063,7 +1050,7 @@ void J1772EVSEController::Update()
     m_EvseState = EVSE_STATE_GFCI_FAULT;
 
     if (prevevsestate != EVSE_STATE_GFCI_FAULT) { // state transition
-      if (m_GfiTripCnt < 254) {
+      if (m_GfiTripCnt < 253) {
 	m_GfiTripCnt++;
 	eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
       }
@@ -1367,19 +1354,23 @@ void J1772EVSEController::Update()
 
 #ifdef TEMPERATURE_MONITORING
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
+      uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
+      uint8_t setit = 0;
       g_TempMonitor.Read();
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(1);
-	SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0,1);     // set L2 to the throttled back level
+	currcap /= 2;   // set to the throttled back level
+	setit = 1;
       }
       
       if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
 	g_TempMonitor.SetOverTemperature(0);
-	SetCurrentCapacity(g_TempMonitor.m_ampacity,0,1);    // set L2 to the user's original setting for L2 current
+	
+	setit = 1;    // set to the user's original setting for current
       }           
       
       
@@ -1387,16 +1378,24 @@ void J1772EVSEController::Update()
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
 	g_TempMonitor.SetOverTemperatureShutdown(1);
-        SetCurrentCapacity(g_TempMonitor.m_ampacity / 4,0,1);
+        currcap /= 4;
+	setit = 1;
       }
       
       if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
 	g_TempMonitor.SetOverTemperatureShutdown(0);
-	SetCurrentCapacity(g_TempMonitor.m_ampacity / 2,0,1);    // set L2 to the throttled back level
-        m_Pilot.SetPWM(m_CurrentCapacity);
+	
+	currcap /= 2;    // set to the throttled back level
+	setit = 1;
       }    
+      if (setit) {
+	SetCurrentCapacity(currcap,0,1);
+	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
+	  m_Pilot.SetPWM(m_CurrentCapacity);
+	}
+      }
     }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT

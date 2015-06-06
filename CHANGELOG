@@ -1,7 +1,9 @@
 Change Log
 
+SCL20150605
+-> promote to v3.9.0 in stable branch
 
-vD3.9.0 SCL 20150604
+vD3.9.0 SCL 20150604-5
 - split out Gfi/J1772Pilot/J1772EvseController into separate files
 - add support for changing I2C frequency
 - increase I2C bus from 100KHz -> 200KHz
@@ -21,6 +23,13 @@ vD3.9.0 SCL 20150604
 	EVSE in Sleep state
 - send $WF WIFI_MODE_AP_DEFAULT instead of WIFI_MODE_AP to client on very long
 	button press
+- fix RAPI bug: $GF was returning FF as trip counts if zero. New max value for
+	any trip count = FE
+- fix documentation for $SC & $GG
+- got rid of superfluous AUTOSTART_MENU and MANUALSTART code
+- fixes for TEMPERATURE_MONITORING from CraigK
+- fix bugs in Charging screen when KWH_RECORDING or TEMPERATURE_MONITORING not defined
+
 
 v3.8.4 SCL 20150526
 -> pushed to stable branch

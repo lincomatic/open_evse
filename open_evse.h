@@ -99,15 +99,16 @@
 #define GFI_SELFTEST
 #endif //UL_GFI_SELFTEST
 
-
-// Temperature monitoring support    // comment out both TEMPERATURE_MONITORING and KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
-#define TEMPERATURE_MONITORING
+#define TEMPERATURE_MONITORING  // Temperature monitoring support    
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
+// comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define KWH_RECORDING
+#ifdef KWH_RECORDING
 // stop charging after a certain kWh reached
 #define CHARGE_LIMIT
+#endif // KWH_RECORDING
 #endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
@@ -162,17 +163,8 @@
 // Option for Delay Timer - GoldServe
 #define DELAYTIMER
 
-// Option for AutoStart Menu. If defined, ManualStart feature is also defined by default - GoldServe
-//#define AUTOSTART_MENU
-
 #if defined(DELAYTIMER) && defined(BTN_MENU)
 #define DELAYTIMER_MENU
-#endif
-
-// AutoStart feature must be defined if Delay Timers are used - GoldServe
-#if defined(DELAYTIMER)||defined(AUTOSTART_MENU)
-// Option for AutoStart Enable/Disable - GoldServe
-#define MANUALSTART
 #endif
 
 #endif // RTC
@@ -750,8 +742,6 @@ public:
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
-
-  uint8_t m_ampacity;  // using this to keep track of the user's original ampacity to restore after temperature monitoring has throttled it to a lower value
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
@@ -922,16 +912,6 @@ public:
   Menu *Select();
 };
 #endif // RGBLCD
-
-#ifdef AUTOSTART_MENU
-class AutoStartMenu : public Menu {
-public:
-  AutoStartMenu();
-  void Init();
-  void Next();
-  Menu *Select();
-};
-#endif //#ifdef AUTOSTART_MENU
 
 #if defined(DELAYTIMER)
 class RTCMenu : public Menu {
@@ -1139,6 +1119,9 @@ extern char g_sSpace[];
 #define g_sSpace " "
 
 
+#ifdef DELAYTIMER
+extern DelayTimer g_DelayTimer;
+#endif
 #ifdef BTN_MENU
 extern BtnHandler g_BtnHandler;
 extern SettingsMenu g_SettingsMenu;

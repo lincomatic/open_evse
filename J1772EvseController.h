@@ -273,6 +273,7 @@ public:
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
+  uint8_t GetGfiTripCnt() { return m_GfiTripCnt; }
 #ifdef GFI_SELFTEST
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
@@ -283,13 +284,6 @@ public:
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
-  // Function to suppport Auto Start feature - GoldServe
-#ifdef MANUALSTART
-  void EnableAutoStart(uint8_t tf);
-  uint8_t AutoStartEnabled() { 
-    return (m_wFlags & ECF_AUTO_START_DISABLED) ? 0 : 1;
-  }
-#endif //ifdef MANUALSTART
   void EnableSerDbg(uint8_t tf);
 #ifdef RGBLCD
   int SetBacklightType(uint8_t t,uint8_t update=1); // BKL_TYPE_XXX
@@ -344,6 +338,16 @@ public:
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();
 #endif
+#ifdef ADVPWR
+  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt; }
+  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt; }
+#endif // ADVPWR
 };
+
+#ifdef FT_ENDURANCE
+extern int g_CycleCnt;
+extern long g_CycleHalfStart;
+extern uint8_t g_CycleState;
+#endif 
 
 extern J1772EVSEController g_EvseController;
