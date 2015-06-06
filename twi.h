@@ -24,7 +24,7 @@
 
   //#define ATMEGA8
 
-  #define TWI_FREQ 200000L
+  #define TWI_FREQ 400000L
 
   #define TWI_BUFFER_LENGTH 32
 

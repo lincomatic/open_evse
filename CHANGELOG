@@ -1,5 +1,8 @@
 Change Log
 
+vD3.9.1 SCL 20150605
+- boost I2C bus to 400KHz
+	
 vD3.9.0 SCL 20150604-5
 - split out Gfi/J1772Pilot/J1772EvseController into separate files
 - add support for changing I2C frequency
