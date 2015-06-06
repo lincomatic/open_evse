@@ -1,5 +1,8 @@
 Change Log
 
+vD3.9.2 SCL 20150606
+- fix $GF bug
+	
 vD3.9.1 SCL 20150605
 - boost I2C bus to 400KHz
 	

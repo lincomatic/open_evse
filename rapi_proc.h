@@ -141,7 +141,7 @@ GE - get settings
  $GE*B0
 GF - get fault counters
  response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
- maximum trip count = 0xFE for any counter
+ maximum trip count = 0xFF for any counter
  $GF*B1
 GG - get charging current and voltage
  response: OK milliamps millivolts

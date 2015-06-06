@@ -824,22 +824,13 @@ void J1772EVSEController::Init()
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
-  if (m_GfiTripCnt == 255) {
-    m_GfiTripCnt = 0;
-  }
 #endif // GFI
 #ifdef ADVPWR
   m_NoGndRetryCnt = 0;
   m_NoGndTripCnt = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
-  if (m_NoGndTripCnt != 255) {
-    m_NoGndTripCnt = 0;
-  }
 
   m_StuckRelayStartTimeMS = 0;
   m_StuckRelayTripCnt = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
-  if (m_StuckRelayTripCnt != 255) {
-    m_StuckRelayTripCnt = 0;
-  }
 
   m_NoGndRetryCnt = 0;
   m_NoGndStart = 0;

@@ -85,7 +85,7 @@ class J1772EVSEController {
   Gfi m_Gfi;
   unsigned long m_GfiFaultStartMs;
   unsigned long m_GfiRetryCnt;
-  uint8_t m_GfiTripCnt;
+  uint8_t m_GfiTripCnt; // contains tripcnt-1
 #endif // GFI
   AdcPin adcPilot;
 #ifdef CURRENT_PIN
@@ -114,9 +114,9 @@ class J1772EVSEController {
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
   unsigned long m_NoGndRetryCnt;
-  uint8_t m_NoGndTripCnt;
+  uint8_t m_NoGndTripCnt; // contains tripcnt-1
   unsigned long m_StuckRelayStartTimeMS;
-  uint8_t m_StuckRelayTripCnt;
+  uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
 #endif // ADVPWR
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
@@ -273,7 +273,7 @@ public:
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
-  uint8_t GetGfiTripCnt() { return m_GfiTripCnt; }
+  uint8_t GetGfiTripCnt() { return m_GfiTripCnt+1; }
 #ifdef GFI_SELFTEST
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
@@ -339,8 +339,8 @@ public:
   void ShowDisabledTests();
 #endif
 #ifdef ADVPWR
-  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt; }
-  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt; }
+  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt+1; }
+  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt+1; }
 #endif // ADVPWR
 };
 
