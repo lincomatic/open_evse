@@ -124,10 +124,6 @@
 //#define I2CLCD
 // Support PCF8574* based I2C backpack using F. Malpartida's library
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
-// note: When enabling I2CLCD_PCF8754, due to stupidity of Arduino, at 
-//   top of open_evse.pde must
-//   uncomment #include <LiquidCrystal_I2C.h> and
-//   comment out #include <LiquidTWI2.h>
 //#define I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
@@ -418,7 +414,7 @@
 // see http://blog.lincomatic.com/?p=956 for installation instructions
 #include "./Wire.h"
 #ifdef I2CLCD_PCF8574
-#include <LiquidCrystal_I2C.h>
+#include "./LiquidCrystal_I2C.h"
 #define LCD_I2C_ADDR 0x27
 #else
 #ifdef RGBLCD
@@ -609,7 +605,6 @@ class OnboardDisplay
 #endif
 #if defined(RGBLCD) || defined(I2CLCD)
 #ifdef I2CLCD_PCF8574
-#include <LiquidCrystal_I2C.h>
   LiquidCrystal_I2C m_Lcd;  
 #else
   LiquidTWI2 m_Lcd;

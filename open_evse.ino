@@ -832,7 +832,7 @@ void Btn::read()
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
-  sample = btnPin.read() ? 0 : 1;
+  sample = pinBtn.read() ? 0 : 1;
 #endif // ADAFRUIT_BTN
   if (!sample && (buttonState == BTN_STATE_LONG) && !lastDebounceTime) {
     buttonState = BTN_STATE_OFF;
