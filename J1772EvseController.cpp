@@ -1346,7 +1346,7 @@ void J1772EVSEController::Update()
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
       uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
       uint8_t setit = 0;
-      g_TempMonitor.Read();
+ //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV

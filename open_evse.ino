@@ -637,6 +637,8 @@ void OnboardDisplay::Update(int8_t updmode)
   //
   if ((curms-m_LastUpdateMs) >= 1000) {
     m_LastUpdateMs = curms;
+    
+    g_TempMonitor.Read();  //   update temperatures once per second
 
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
