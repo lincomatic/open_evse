@@ -1,5 +1,9 @@
 Change Log
 
+vD3.9.3 SCL 20150608
+- add files and edits to restore I2CLCD_PCF8574 build capability
+- broken DelayTimer() introduced in 3.9.0
+	
 vD3.9.2 SCL 20150606
 - fix $GF bug
 	

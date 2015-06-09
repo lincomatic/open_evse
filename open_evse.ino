@@ -2109,8 +2109,8 @@ void DelayTimer::CheckTime()
 	  }
 	}
       }
+      m_LastCheck = curms;
     }
-    m_LastCheck = curms;
   }
 }
 void DelayTimer::Enable(){
