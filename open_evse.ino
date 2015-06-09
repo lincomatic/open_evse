@@ -137,9 +137,8 @@ Menu *g_SetupMenuList[] = {
 #ifdef BTN_MENU
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
-#ifdef DELAYTIMER
+
 #define g_sHHMMfmt "%02d:%02d"
-#endif// DELAYTIMER
 
 //-- begin global variables
 
