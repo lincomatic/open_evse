@@ -43,6 +43,9 @@ extern const char g_psRlyChk[] PROGMEM;
 #ifdef GFI_SELFTEST
 extern const char g_psGfiTest[] PROGMEM;
 #endif
+#ifdef TEMPERATURE_MONITORING
+extern const char g_psTempChk[] PROGMEM;
+#endif // TEMPERATURE_MONITORING
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
@@ -94,6 +97,7 @@ extern const char g_sRetryIn[];
 
 #ifdef TEMPERATURE_MONITORING
 extern const char g_psTemperatureFault[] PROGMEM;
+extern const char g_psTempOnOff[] PROGMEM;
 #endif
 extern const char g_psNoGround[] PROGMEM;
 extern const char g_psStuckRelay[] PROGMEM;
@@ -114,4 +118,3 @@ extern char *g_sMaxCurrentFmt;
 extern const char g_psSetDateTime[] PROGMEM;
 extern char *g_DelayMenuItems[];
 #endif // DELAYTIMER_MENU
-
