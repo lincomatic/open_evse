@@ -68,6 +68,7 @@ typedef struct calibdata {
 #define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
+#define ECF_TEMP_CHK_DISABLED  0x0400 // no Temperature Monitoring
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
@@ -281,6 +282,14 @@ public:
   void EnableGfiSelfTest(uint8_t tf);
 #endif
 #endif // GFI
+
+#ifdef TEMPERATURE_MONITORING  
+    uint8_t TempChkEnabled() {
+    return (m_wFlags & ECF_TEMP_CHK_DISABLED) ? 0 : 1;
+  }
+  void EnableTempChk(uint8_t tf);
+#endif TEMPERATURE_MONITORING
+
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
