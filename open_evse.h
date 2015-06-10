@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.9.3"
+#define VERSION "D3.9.3.1"
 
 //-- begin features
 
@@ -515,12 +515,12 @@
 // The SHUTDOWN value must be lower than the PANIC value
 #ifndef TESTING_TEMPERATURE_OPERATION
     // normal oerational thresholds just below
-#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 520     // This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
-#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 490  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 550     // This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 520  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
                                                   // recover to this level we can kick the current back up to the user's original amperage setting.
-#define TEMPERATURE_AMBIENT_SHUTDOWN 550          // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
+#define TEMPERATURE_AMBIENT_SHUTDOWN 580          // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
                                                   
-#define TEMPERATURE_AMBIENT_PANIC 580             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+#define TEMPERATURE_AMBIENT_PANIC 610             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
                                                   //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
                                                   //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
 
@@ -862,6 +862,16 @@ public:
   Menu *Select();
 };
 #endif
+
+#ifdef TEMPERATURE_MONITORING
+class TempOnOffMenu : public Menu {
+public:
+  TempOnOffMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif  // TEMPERATURE_MONITORING
 
 class VentReqMenu : public Menu {
 public:
