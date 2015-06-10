@@ -69,6 +69,9 @@ BklTypeMenu g_BklTypeMenu;
 #ifdef GFI_SELFTEST
 GfiTestMenu g_GfiTestMenu;
 #endif
+#ifdef TEMPERATURE_MONITORING
+TempOnOffMenu g_TempOnOffMenu;
+#endif // TEMPERATURE_MONITORING
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
@@ -131,6 +134,9 @@ Menu *g_SetupMenuList[] = {
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
 #endif // GFI_SELFTEST
+#ifdef TEMPERATURE_MONITORING
+  &g_TempOnOffMenu,
+#endif // TEMPERATURE_MONITORING
   NULL
 };
 
@@ -1283,6 +1289,47 @@ Menu *GfiTestMenu::Select()
   return &g_SetupMenu;
 }
 #endif // GFI_SELFTEST
+
+#ifdef TEMPERATURE_MONITORING
+TempOnOffMenu::TempOnOffMenu()
+{
+  m_Title = g_psTempChk;
+}
+
+void TempOnOffMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.TempChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void TempOnOffMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.TempChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *TempOnOffMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableTempChk((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+#endif // TEMPERATURE_MONITORING
 
 VentReqMenu::VentReqMenu()
 {
