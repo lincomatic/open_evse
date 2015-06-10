@@ -41,6 +41,9 @@ const char g_psRlyChk[] PROGMEM = "Stuck Relay Chk";
 #ifdef GFI_SELFTEST
 const char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif
+#ifdef TEMPERATURE_MONITORING
+const char g_psTempChk[] PROGMEM = "Temperature Chk";
+#endif
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
