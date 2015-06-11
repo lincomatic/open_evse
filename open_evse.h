@@ -358,6 +358,8 @@
 
 #define EOFS_VOLT_OFFSET 20 // 4 bytes
 #define EOFS_VOLT_SCALE_FACTOR 24 // 2 bytes
+#define EOFS_THRESH_AMBIENT 26 // 2 bytes
+#define EOFS_THRESH_IR 28 // 2 bytes
 
 
 // must stay within thresh for this time in ms before switching states
@@ -724,12 +726,14 @@ public:
 #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
+#define TEMPMONITOR_UPDATE_INTERVAL 1000ul
 // TempMonitor.m_Flags
 #define TMF_OVERTEMPERATURE          0x01
 #define TMF_OVERTEMPERATURE_SHUTDOWN 0x02
 #define TMF_BLINK_ALARM              0x04
 class TempMonitor {
   uint8_t m_Flags;
+  unsigned long m_LastUpdate;
 public:
 #ifdef MCP9808_IS_ON_I2C
   Adafruit_MCP9808 m_tempSensor;
@@ -737,6 +741,9 @@ public:
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
+  int16_t m_ambient_thresh;
+  int16_t m_ir_thresh;
+  int16_t m_TMP007_thresh;
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
@@ -761,6 +768,8 @@ public:
     else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
   }
   int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+  void LoadThresh();
+  void SaveThresh();
 };
 #endif // TEMPERATURE_MONITORING
 
@@ -1112,6 +1121,9 @@ public:
 
 // -- end class definitions
 
+char *u2a(unsigned long x,int8_t digits=0);
+void ProcessInputs();
+
 /*
 extern char g_sPlus[];
 extern char g_sSlash[];
@@ -1133,8 +1145,6 @@ extern SettingsMenu g_SettingsMenu;
 #endif // BTN_MENU
 extern OnboardDisplay g_OBD;
 extern char g_sTmp[TMP_BUF_SIZE];
-
-char *u2a(unsigned long x,int8_t digits=0);
 
 #ifdef KWH_RECORDING
 extern unsigned long g_WattHours_accumulated;
