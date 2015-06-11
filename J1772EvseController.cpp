@@ -174,7 +174,8 @@ void J1772EVSEController::ShowDisabledTests()
 		  ECF_VENT_REQ_DISABLED|
 		  ECF_GND_CHK_DISABLED|
 		  ECF_STUCK_RELAY_CHK_DISABLED|
-		  ECF_GFI_TEST_DISABLED)) {
+		  ECF_GFI_TEST_DISABLED|
+                  ECF_TEMP_CHK_DISABLED)) {
     g_OBD.LcdSetBacklightColor(YELLOW);
 
     if (!DiodeCheckEnabled()) {
@@ -201,6 +202,12 @@ void J1772EVSEController::ShowDisabledTests()
       delay(SHOW_DISABLED_DELAY);
     }
 #endif // GFI_SELFTEST
+#ifdef TEMPERATURE_MONITORING
+    if (!TempChkEnabled()) {
+      g_OBD.LcdMsg_P(g_psDisabledTests,g_psTempChk);
+      delay(SHOW_DISABLED_DELAY);
+    }
+#endif // TEMPERATURE_MONITORING
 
     g_OBD.LcdSetBacklightColor(WHITE);
   }
@@ -307,6 +314,19 @@ void J1772EVSEController::EnableGfiSelfTest(uint8_t tf)
   SaveEvseFlags();
 }
 #endif
+
+#ifdef TEMPERATURE_MONITORING
+void J1772EVSEController::EnableTempChk(uint8_t tf)
+{
+  if (tf) {
+    m_wFlags &= ~ECF_TEMP_CHK_DISABLED;
+  }
+  else {
+    m_wFlags |= ECF_TEMP_CHK_DISABLED;
+  }
+  SaveEvseFlags();
+}
+#endif TEMPERATURE_MONITORING
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
@@ -785,7 +805,7 @@ void J1772EVSEController::Init()
   }
 
 #ifdef NOCHECKS
-  m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED;
+  m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED|ECF_TEMP_CHK_DISABLED;
 #endif
 
 #ifdef AMMETER
@@ -1081,6 +1101,7 @@ void J1772EVSEController::Update()
 
 
 #ifdef TEMPERATURE_MONITORING                 //  A state for OverTemp fault
+if (TempChkEnabled()) {
   if ((g_TempMonitor.m_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  || 
       (g_TempMonitor.m_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC)  ||
       (g_TempMonitor.m_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
@@ -1088,6 +1109,7 @@ void J1772EVSEController::Update()
     m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
     nofault = 0;
   }
+}
 #endif // TEMPERATURE_MONITORING
 
   if (nofault) {
@@ -1343,6 +1365,7 @@ void J1772EVSEController::Update()
     m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
 #ifdef TEMPERATURE_MONITORING
+  if(TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
       uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
       uint8_t setit = 0;
@@ -1387,6 +1410,7 @@ void J1772EVSEController::Update()
 	}
       }
     }
+  }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
     if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
