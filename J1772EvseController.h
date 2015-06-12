@@ -342,7 +342,6 @@ public:
   int32_t GetChargingCurrent() { return -1; }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
-  void ProcessInputs();
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();

@@ -739,19 +739,6 @@ uint8_t J1772EVSEController::doPost()
 }
 #endif // ADVPWR
 
-void J1772EVSEController::ProcessInputs()
-{
-#ifdef RAPI
-  g_ERP.doCmd();
-#endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
-#ifdef BTN_MENU
-  g_BtnHandler.ChkBtn();
-#endif
-}
-
 void J1772EVSEController::Init()
 {
   // read settings from EEPROM
