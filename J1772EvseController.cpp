@@ -1197,9 +1197,9 @@ if (TempChkEnabled()) {
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
       m_Gfi.pinTest.write(1);
-      delayMicroseconds(GFI_PULSE_DURATION_US);
+      delayMicroseconds(GFI_PULSE_ON_US);
       m_Gfi.pinTest.write(0);
-      delayMicroseconds(GFI_PULSE_DURATION_US);
+      delayMicroseconds(GFI_PULSE_OFF_US);
       if (m_Gfi.Fault()) break;
     }
   }
@@ -1247,9 +1247,9 @@ if (TempChkEnabled()) {
 #ifdef FT_GFI_LOCKOUT
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
 	m_Gfi.pinTest.write(1);
-	delayMicroseconds(GFI_PULSE_DURATION_US);
+	delayMicroseconds(GFI_PULSE_ON_US);
 	m_Gfi.pinTest.write(0);
-	delayMicroseconds(GFI_PULSE_DURATION_US);
+	delayMicroseconds(GFI_PULSE_OFF_US);
 	if (m_Gfi.Fault()) break;
       }
       g_OBD.LcdMsg("Closing","Relay");

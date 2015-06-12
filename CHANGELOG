@@ -1,5 +1,11 @@
 Change Log
 
+vD3.9.4 SCL 20150611
+- reduce GFI self test pulse duration from 50% to 33%
+	
+vD3.9.3.1 SCL 20150611
+- craigK PR #46
+	
 vD3.9.3 SCL 20150608
 - add files and edits to restore I2CLCD_PCF8574 build capability
 - broken DelayTimer() introduced in 3.9.0

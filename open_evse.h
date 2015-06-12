@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.9.3.1"
+#define VERSION "D3.9.4"
 
 //-- begin features
 
@@ -386,7 +386,9 @@
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
-#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333us as a half-cycle
+// GFI pulse should be 33% duty cycle
+#define GFI_PULSE_ON_US 5556 // 1/3 of roughly 60 Hz.
+#define GFI_PULSE_OFF_US 11111 // 2/3 of roughly 60 Hz.
 #endif
 
 
