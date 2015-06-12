@@ -60,12 +60,11 @@ uint8_t Gfi::SelfTest()
 {
   testInProgress = 1;
   testSuccess = 0;
-  for(int i=0; i < GFI_TEST_CYCLES; i++) {
+  for(int i=0; !testSuccess && (i < GFI_TEST_CYCLES); i++) {
     pinTest.write(1);
     delayMicroseconds(GFI_PULSE_ON_US);
     pinTest.write(0);
     delayMicroseconds(GFI_PULSE_OFF_US);
-    if (testSuccess) break; // no need to keep trying.
   }
 
   // wait for GFI pin to clear
