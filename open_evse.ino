@@ -248,12 +248,33 @@ void wdt_init(void)
 
 
 #ifdef TEMPERATURE_MONITORING
+void TempMonitor::LoadThresh()
+{
+  m_ambient_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_AMBIENT);
+  if (m_ambient_thresh == 0xffff) {
+    m_ambient_thresh = TEMPERATURE_AMBIENT_THROTTLE_DOWN;
+  }
+  m_ir_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_IR);
+  if (m_ir_thresh == 0xffff) {
+    m_ir_thresh = TEMPERATURE_INFRARED_THROTTLE_DOWN;
+  }
+}
+
+void TempMonitor::SaveThresh()
+{
+  eeprom_write_word((uint16_t *)EOFS_THRESH_AMBIENT,m_ambient_thresh);
+  eeprom_write_word((uint16_t *)EOFS_THRESH_IR,m_ir_thresh);
+}
+
+
 void TempMonitor::Init()
 {
   m_Flags = 0;
   m_MCP9808_temperature = 230;  // 230 means 23.0C  Using an integer to save on floating point library use
   m_DS3231_temperature = 230;   // the DS3231 RTC has a built in temperature sensor
   m_TMP007_temperature = 230;
+
+  LoadThresh();
 
 #ifdef MCP9808_IS_ON_I2C
   m_tempSensor.begin();
@@ -266,35 +287,40 @@ void TempMonitor::Init()
 
 void TempMonitor::Read()
 {
+  unsigned long curms = millis();
+  if ((curms - m_LastUpdate) >= TEMPMONITOR_UPDATE_INTERVAL) {
 #ifdef TMP007_IS_ON_I2C
-  m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
+    m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
 #endif
 #ifdef MCP9808_IS_ON_I2C
-  m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
-  if (m_MCP9808_temperature == 2303) {
-    m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
+    m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
+    if (m_MCP9808_temperature == 2303) {
+      m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
 #endif
 
        
 #ifdef RTC
-  // This code chunck below reads the DS3231 RTC's internal temperature sensor            
-  Wire.beginTransmission(0x68);
-  wiresend(uint8_t(0x0e));
-  wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
-  Wire.endTransmission();            
+    // This code chunck below reads the DS3231 RTC's internal temperature sensor            
+    Wire.beginTransmission(0x68);
+    wiresend(uint8_t(0x0e));
+    wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
+    Wire.endTransmission();            
              
-  Wire.beginTransmission(0x68);
-  wiresend(uint8_t(0x11));
-  Wire.endTransmission();
+    Wire.beginTransmission(0x68);
+    wiresend(uint8_t(0x11));
+    Wire.endTransmission();
       
-  Wire.requestFrom(0x68, 2);
-  m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
-  if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
-  #ifdef OPENEVSE_2
+    Wire.requestFrom(0x68, 2);
+    m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
+    m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
+    if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
+#ifdef OPENEVSE_2
     m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
-  #endif
+#endif
 #endif // RTC
+
+    m_LastUpdate = curms;
+  }
 }
 #endif // TEMPERATURE_MONITORING
 
@@ -643,8 +669,6 @@ void OnboardDisplay::Update(int8_t updmode)
   if ((curms-m_LastUpdateMs) >= 1000) {
     m_LastUpdateMs = curms;
     
-    g_TempMonitor.Read();  //   update temperatures once per second
-
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
       strcpy(g_sTmp,g_sRetryIn);
@@ -2180,6 +2204,23 @@ void DelayTimer::PrintTimerIcon(){
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER
 
+void ProcessInputs()
+{
+#ifdef RAPI
+  g_ERP.doCmd();
+#endif
+#ifdef SERIALCLI
+  g_CLI.getInput();
+#endif // SERIALCLI
+#ifdef BTN_MENU
+  g_BtnHandler.ChkBtn();
+#endif
+#ifdef TEMPERATURE_MONITORING
+  g_TempMonitor.Read();  //   update temperatures once per second
+#endif
+}
+
+
 void EvseReset()
 {
   Wire.begin();
@@ -2238,7 +2279,7 @@ void loop()
 
   g_OBD.Update();
 
-  g_EvseController.ProcessInputs();
+  ProcessInputs();
   
   // Delay Timer Handler - GoldServe
 #ifdef DELAYTIMER

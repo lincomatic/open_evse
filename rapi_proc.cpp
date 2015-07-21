@@ -311,6 +311,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // VOLTMETER
+#ifdef TEMPERATURE_MONITORING
+    case 'O':
+      if (tokenCnt == 3) {
+        g_TempMonitor.m_ambient_thresh = dtou32(tokens[1]);
+        g_TempMonitor.m_ir_thresh = dtou32(tokens[2]);
+      }
+      break;
+#endif // TEMPERATURE_MONITORING
 #ifdef ADVPWR      
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
@@ -412,6 +420,12 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // VOLTMETER
 #ifdef TEMPERATURE_MONITORING
+    case 'O':
+      u1.i = g_TempMonitor.m_ambient_thresh;
+      u2.i = g_TempMonitor.m_ir_thresh;
+      sprintf(buffer,"%d %d",u1.i,u2.i);
+      bufCnt = 1; // flag response text output
+      break;
     case 'P':
       sprintf(buffer,"%d %d %d",(int)g_TempMonitor.m_DS3231_temperature,
 	      (int)g_TempMonitor.m_MCP9808_temperature,

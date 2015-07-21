@@ -72,6 +72,7 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
+#define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
 #define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
@@ -271,6 +272,12 @@ public:
 
   void HardFault();
 
+  void SetLimitSleep(int8_t tf) {
+    if (tf) m_bVFlags |= ECVF_LIMIT_SLEEP;
+    else m_bVFlags &= ~ECVF_LIMIT_SLEEP;
+  }
+  int8_t LimitSleepIsSet() { return (int8_t)(m_bVFlags & ECVF_LIMIT_SLEEP); }
+
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
@@ -342,7 +349,6 @@ public:
   int32_t GetChargingCurrent() { return -1; }
 #endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
-  void ProcessInputs();
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();

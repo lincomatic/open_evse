@@ -416,6 +416,9 @@ void J1772EVSEController::Enable()
       pinSleepStatus.write(0);
     }
 #endif // SLEEP_STATUS_REG
+#if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+	SetLimitSleep(0);
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
     
     m_PrevEvseState = EVSE_STATE_DISABLED;
     m_EvseState = EVSE_STATE_UNKNOWN;
@@ -745,19 +748,6 @@ uint8_t J1772EVSEController::doPost()
 }
 #endif // ADVPWR
 
-void J1772EVSEController::ProcessInputs()
-{
-#ifdef RAPI
-  g_ERP.doCmd();
-#endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
-#ifdef BTN_MENU
-  g_BtnHandler.ChkBtn();
-#endif
-}
-
 void J1772EVSEController::Init()
 {
   // read settings from EEPROM
@@ -951,7 +941,7 @@ void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
 void J1772EVSEController::Update()
 {
   int plow;
-  int phigh;
+  int phigh = -127;
 
   unsigned long curms = millis();
 
@@ -960,6 +950,7 @@ void J1772EVSEController::Update()
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
+    int8_t cancelTransition = 1;
     if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
       // wait for pilot voltage to go > STATE C. This will happen if
@@ -976,8 +967,21 @@ void J1772EVSEController::Update()
 #endif
       }
     }
-    m_PrevEvseState = m_EvseState; // cancel state transition
-    return;
+#if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+    else if (LimitSleepIsSet()) {
+      ReadPilot(&plow,&phigh);
+      if (phigh >= m_ThreshData.m_ThreshAB) {
+	// if we went into sleep due to time/charge limit met, then
+	// automatically cancel the sleep when the car is unplugged
+	cancelTransition = 0;
+	SetLimitSleep(0);
+      }
+    }
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+    if (cancelTransition) {
+      m_PrevEvseState = m_EvseState; // cancel state transition
+      return;
+    }
   }
 
   uint8_t prevevsestate = m_EvseState;
@@ -1019,7 +1023,9 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       // check to see if EV disconnected
-      ReadPilot(&plow,&phigh);
+      if (phigh == -127) {
+	ReadPilot(&plow,&phigh);
+      }
       if (phigh >= m_ThreshData.m_ThreshAB) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1416,6 +1422,7 @@ if (TempChkEnabled()) {
 #ifdef CHARGE_LIMIT
     if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
       SetChargeLimit(0); // reset charge limit
+      SetLimitSleep(1);
       Sleep();
     }
 #endif
@@ -1425,6 +1432,7 @@ if (TempChkEnabled()) {
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
       if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
 	SetTimeLimit(0); // reset time limit
+	SetLimitSleep(1);
 	Sleep();
       }
     }

@@ -114,6 +114,8 @@ SL 1|2|A  - set service level L1/L2/Auto
  $SL 2*15
  $SL A*24
 SM voltscalefactor voltoffset - set voltMeter settings
+SO ambientthresh irthresh - set Overtemperature thresholds
+ thresholds are in 10ths of a degree Celcius
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
@@ -154,6 +156,10 @@ GH - get cHarge limit
 GM - get voltMeter settings
  response: OK voltcalefactor voltoffset
  $GM^2E
+GO get Overtemperature thresholds
+ response: OK ambientthresh irthresh
+ thresholds are in 10ths of a degree Celcius
+ $GO^2C
 GP - get temPerature (v1.0.3+)
  $GP*BB
  response: OK ds3231temp mcp9808temp tmp007temp
