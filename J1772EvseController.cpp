@@ -1224,8 +1224,10 @@ if (TempChkEnabled()) {
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
       #ifdef KWH_RECORDING
+      if ((prevevsestate == EVSE_STATE_C) || (prevevsestate == EVSE_STATE_B)) {
         g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
         eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
+      }
       #endif // KWH_RECORDING
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0);
