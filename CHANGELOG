@@ -1,5 +1,17 @@
 Change Log
 
+vD3.9.5 SCL 20150722
+- merge changes from temp branch:
+	1. EVSE goes to sleep after time/charge limit met.. would stay in sleep
+	-> automatically cancel sleep mode when car disconnected *only if* the
+	   sleep was induced by time/charge limit
+	2. decouple temperature monitoring from J1772EVSEController::Update()
+	-> so that temperature is still monitored when EVSE disabled/sleeping
+	3. ProcessInputs() removed from J1772EVSEController
+	4. added TEMPERATURE_MONITORING_NY (not yet) code .. currently disabled
+	-> $GO/$SO RAPI 
+	-> added ambient/ir_thresh support
+	
 vD3.9.4 SCL 20150611
 - reduce GFI self test pulse duration from 50% to 33%
 	

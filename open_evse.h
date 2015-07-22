@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.9.3.2T"
+#define VERSION "D3.9.5"
 
 //-- begin features
 
@@ -99,7 +99,8 @@
 #define GFI_SELFTEST
 #endif //UL_GFI_SELFTEST
 
-#define TEMPERATURE_MONITORING  // Temperature monitoring support    
+#define TEMPERATURE_MONITORING  // Temperature monitoring support
+// not yet #define TEMPERATURE_MONITORING_NY
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
@@ -388,7 +389,9 @@
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
-#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333us as a half-cycle
+// GFI pulse should be 33% duty cycle
+#define GFI_PULSE_ON_US 5556 // 1/3 of roughly 60 Hz.
+#define GFI_PULSE_OFF_US 11111 // 2/3 of roughly 60 Hz.
 #endif
 
 
@@ -741,9 +744,11 @@ public:
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
+#ifdef TEMPERATURE_MONITORING_NY
   int16_t m_ambient_thresh;
   int16_t m_ir_thresh;
   int16_t m_TMP007_thresh;
+#endif //TEMPERATURE_MONITORING_NY
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
@@ -768,8 +773,10 @@ public:
     else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
   }
   int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+#ifdef TEMPERATURE_MONITORING_NY
   void LoadThresh();
   void SaveThresh();
+#endif //TEMPERATURE_MONITORING_NY
 };
 #endif // TEMPERATURE_MONITORING
 

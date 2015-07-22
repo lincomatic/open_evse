@@ -248,6 +248,7 @@ void wdt_init(void)
 
 
 #ifdef TEMPERATURE_MONITORING
+#ifdef TEMPERATURE_MONITORING_NY
 void TempMonitor::LoadThresh()
 {
   m_ambient_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_AMBIENT);
@@ -265,7 +266,7 @@ void TempMonitor::SaveThresh()
   eeprom_write_word((uint16_t *)EOFS_THRESH_AMBIENT,m_ambient_thresh);
   eeprom_write_word((uint16_t *)EOFS_THRESH_IR,m_ir_thresh);
 }
-
+#endif // TEMPERATURE_MONITORING_NY
 
 void TempMonitor::Init()
 {
@@ -274,7 +275,9 @@ void TempMonitor::Init()
   m_DS3231_temperature = 230;   // the DS3231 RTC has a built in temperature sensor
   m_TMP007_temperature = 230;
 
+#ifdef TEMPERATURE_MONITORING_NY
   LoadThresh();
+#endif
 
 #ifdef MCP9808_IS_ON_I2C
   m_tempSensor.begin();
