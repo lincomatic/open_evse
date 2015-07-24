@@ -16,7 +16,7 @@ openevse.bootloader.high_fuses=0xDF
 openevse.bootloader.extended_fuses=0x05
 openevse.bootloader.unlock_bits=0x3F
 openevse.bootloader.lock_bits=0x0F
-#openevse.bootloader.file=optiboot/optiboot_atmega328.hex
+openevse.bootloader.file=optiboot/optiboot_atmega328.hex
 
 openevse.build.mcu=atmega328p
 openevse.build.f_cpu=16000000L
