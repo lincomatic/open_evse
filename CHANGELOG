@@ -1,5 +1,8 @@
 Change Log
 
+vD3.9.6 SCL 20150818
+- for OpenEVSE II, bump up TEMPERATURE_AMBIENT_xxx by 10 due to extra headroom of CUI VSK-S3-12U power supply
+	
 vD3.9.5 SCL 20150722
 - merge changes from temp branch:
 	1. EVSE goes to sleep after time/charge limit met.. would stay in sleep

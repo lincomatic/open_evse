@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.9.5"
+#define VERSION "D3.9.6"
 
 //-- begin features
 
@@ -519,15 +519,37 @@
 // The THROTTLE_DOWN value must be lower than the SHUTDOWN value
 // The SHUTDOWN value must be lower than the PANIC value
 #ifndef TESTING_TEMPERATURE_OPERATION
-    // normal oerational thresholds just below
-#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 550     // This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
-#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 520  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
-                                                  // recover to this level we can kick the current back up to the user's original amperage setting.
-#define TEMPERATURE_AMBIENT_SHUTDOWN 580          // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
+// normal oerational thresholds just below
+// This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 650
+#else
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 550
+#endif
+
+// If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
+// recover to this level we can kick the current back up to the user's original amperage setting.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 620
+#else
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 520
+#endif
+
+// This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_SHUTDOWN 680
+#else
+#define TEMPERATURE_AMBIENT_SHUTDOWN 580
+#endif
                                                   
-#define TEMPERATURE_AMBIENT_PANIC 610             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
-                                                  //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
-                                                  //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
+//  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+//  an over temperature error state.  The EVSE can be restart from the button or unplugged.
+//  If temperatures get to this level it is advised to open the enclosure to look for trouble.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_PANIC 710
+#else
+#define TEMPERATURE_AMBIENT_PANIC 610
+#endif
 
 #define TEMPERATURE_INFRARED_THROTTLE_DOWN 650    // This is the temperature seen  by the IR sensor where we tell the car to draw 1/2 amperage.
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 600 // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
