@@ -1,5 +1,8 @@
 Change Log
 
+vD3.9.7 SCL 20150905
+- raise OpenEVSE temperature thresholds +10C to match OE-II
+
 SCL 20150905
 - fix compile error when AMMETER disabled
 	
