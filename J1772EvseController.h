@@ -161,6 +161,10 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
+#ifdef TIME_LIMIT
+  uint8_t m_timeLimit; // minutes * 15
+#endif
+
 #ifdef AMMETER
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
@@ -168,9 +172,6 @@ class J1772EVSEController {
   int16_t m_CurrentScaleFactor;
 #ifdef CHARGE_LIMIT
   uint8_t m_chargeLimit; // kWh
-#endif
-#ifdef TIME_LIMIT
-  uint8_t m_timeLimit; // minutes * 15
 #endif
 
   void readAmmeter();
@@ -341,13 +342,13 @@ public:
   void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
 #endif // CHARGE_LIMIT
+#else // !AMMETER
+  int32_t GetChargingCurrent() { return -1; }
+#endif // AMMETER
 #ifdef TIME_LIMIT
   uint8_t SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
   uint8_t GetTimeLimit() { return m_timeLimit; }
 #endif // TIME_LIMIT
-#else // !AMMETER
-  int32_t GetChargingCurrent() { return -1; }
-#endif
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS

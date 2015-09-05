@@ -1,5 +1,8 @@
 Change Log
 
+SCL 20150905
+- fix compile error when AMMETER disabled
+	
 vD3.9.6 SCL 20150818
 - for OpenEVSE II, bump up TEMPERATURE_AMBIENT_xxx by 10 due to extra headroom of CUI VSK-S3-12U power supply
 	
