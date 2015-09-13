@@ -1,5 +1,9 @@
 Change Log
 
+vD3.9.8 CWK 20150912
+- fix Temperature Monitoring, broken by accident in D3.9.5 
+      The original users amperage level is restored properly after an event.
+
 vD3.9.7 SCL 20150905
 - raise OpenEVSE temperature thresholds +10C to match OE-II
 
