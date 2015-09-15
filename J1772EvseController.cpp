@@ -1281,6 +1281,7 @@ if (TempChkEnabled()) {
       // vent required not supported
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
+      HardFault();
     }
     else if (m_EvseState == EVSE_STATE_GFCI_FAULT) {
       // vehicle state F
