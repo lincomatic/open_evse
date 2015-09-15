@@ -1147,8 +1147,8 @@ if (TempChkEnabled()) {
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
     }
-    else if ((phigh  >= m_ThreshData.m_ThreshCD) ||
-	     (!VentReqEnabled() && (phigh > m_ThreshData.m_ThreshD))) {
+    else if ((m_Pilot.GetState() == PILOT_STATE_PWM) && 
+	     ((phigh  >= m_ThreshData.m_ThreshCD) ||(!VentReqEnabled() && (phigh > m_ThreshData.m_ThreshD)))) {
       // 6V ready to charge
       tmpevsestate = EVSE_STATE_C;
     }
