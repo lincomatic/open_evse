@@ -4,6 +4,7 @@ vD3.9.9 CWK/SCL 20150914
 - fix diode check state oscillation bug (cwk/scl)
 - hard fault on vent required (scl)
 - setup() - increase I2C device delay from 200 -> 400ms (cwk) for Danny ter Haars board
+- code cleanup of temperature monitoring to save 62 bytes
 	
 vD3.9.8 CWK 20150912
 - fix Temperature Monitoring, broken by accident in D3.9.5 
