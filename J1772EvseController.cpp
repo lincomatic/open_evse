@@ -1306,6 +1306,8 @@ if (TempChkEnabled()) {
       // N.B. J1772 specifies to go to State F (-12V) but we can't do that
       // and keep checking
       m_Pilot.SetPWM(m_CurrentCapacity);
+      m_Pilot.SetState(PILOT_STATE_P12);
+      HardFault();
     }
     else if (m_EvseState == EVSE_STATE_NO_GROUND) {
       // Ground not detected
