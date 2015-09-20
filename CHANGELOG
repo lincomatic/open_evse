@@ -1,5 +1,8 @@
 Change Log
 
+vD3.9.10 CWK 20150920
+- GFI Self Test Duty Cylce restored to 50%
+
 vD3.9.9 CWK/SCL 20150914
 - fix diode check state oscillation bug (cwk/scl)
 - hard fault on vent required (scl)
