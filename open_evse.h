@@ -389,9 +389,9 @@
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
-// GFI pulse should be 33% duty cycle
-#define GFI_PULSE_ON_US 5556 // 1/3 of roughly 60 Hz.
-#define GFI_PULSE_OFF_US 11111 // 2/3 of roughly 60 Hz.
+// GFI pulse should be 50% duty cycle
+#define GFI_PULSE_ON_US 8333 // 1/2 of roughly 60 Hz.
+#define GFI_PULSE_OFF_US 8334 // 1/2 of roughly 60 Hz.
 #endif
 
 
