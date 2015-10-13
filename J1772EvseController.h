@@ -72,9 +72,9 @@ typedef struct calibdata {
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
-#define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
 #define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
+#define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed

@@ -975,6 +975,7 @@ void J1772EVSEController::Update()
 	// automatically cancel the sleep when the car is unplugged
 	cancelTransition = 0;
 	SetLimitSleep(0);
+	m_EvseState = EVSE_STATE_UNKNOWN;
       }
     }
 #endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
@@ -1147,14 +1148,24 @@ if (TempChkEnabled()) {
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
     }
-    else if ((m_Pilot.GetState() == PILOT_STATE_PWM) && 
-	     ((phigh  >= m_ThreshData.m_ThreshCD) ||(!VentReqEnabled() && (phigh > m_ThreshData.m_ThreshD)))) {
+    else if (phigh  >= m_ThreshData.m_ThreshCD) {
       // 6V ready to charge
-      tmpevsestate = EVSE_STATE_C;
+      if (m_Pilot.GetState() == PILOT_STATE_PWM) {
+	tmpevsestate = EVSE_STATE_C;
+      }
+      else {
+	// PWM is off so we can't charge.. force to State B
+	tmpevsestate = EVSE_STATE_B;
+      }
     }
     else if (phigh > m_ThreshData.m_ThreshD) {
       // 3V ready to charge vent required
-      tmpevsestate = EVSE_STATE_D;
+      if (VentReqEnabled()) {
+	tmpevsestate = EVSE_STATE_D;
+      }
+      else {
+	tmpevsestate = EVSE_STATE_C;
+      }
     }
     else {
       tmpevsestate = EVSE_STATE_UNKNOWN;

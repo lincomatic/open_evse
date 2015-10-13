@@ -1,5 +1,14 @@
 Change Log
 
+vD3.10.0 SCL 20151012
+- fix bug introduced by diode check state oscillation fix in D3.9.9 - if 
+  transition to sleep while charging, on sleep exit would go into VENT REQ error
+  -> if pilot voltage in State C range, but PWM off, go to State B
+     this is an added safety feature, because State C should never be allowed
+     when PWM is off
+- fix bug: if enter sleep mode due to time/charge limit met, sleep should
+  automatically be cancelled when car disconnected but it was staying in sleep
+	
 vD3.9.10 CWK 20150920
 - GFI Self Test Duty Cylce restored to 50%
 
