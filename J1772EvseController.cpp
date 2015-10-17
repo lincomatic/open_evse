@@ -31,12 +31,25 @@ J1772EVSEController g_EvseController;
 #ifdef AMMETER
 static inline unsigned long ulong_sqrt(unsigned long in)
 {
-  unsigned long out;
-  // find the last int whose square is not too big
-  // Yes, it's wasteful, but we only theoretically ever have to go to 512.
-  // Removing floating point saves us almost 1K of flash.
-  for(out = 1; out*out <= in; out++) ;
-  return out - 1;
+  unsigned long out = 0;
+  unsigned long bit = 1 << 30;
+
+  // "bit" starts at the highest power of four <= the argument.
+  while (bit > in)
+    bit >>= 2;
+
+  while (bit) {
+    unsigned long sum = out + bit;
+    if (in >= sum) {
+      in -= sum;
+      out = (out >> 1) + bit;
+    }
+    else
+      out >>= 1;
+    bit >>= 2;
+  }
+
+  return out;
 }
 
 void J1772EVSEController::readAmmeter()
@@ -139,14 +152,15 @@ J1772EVSEController::J1772EVSEController() :
 
 void J1772EVSEController::SaveSettings()
 {
+  uint8_t *dest;
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  // ugly code below is smaller than this:  eeprom_write_byte((uint8_t *)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)GetCurrentCapacity());
   if (GetCurSvcLevel() == 1) {
-    eeprom_write_byte((uint8_t *)EOFS_CURRENT_CAPACITY_L1,(byte)GetCurrentCapacity());
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L1;
   }
   else {
-    eeprom_write_byte((uint8_t *)EOFS_CURRENT_CAPACITY_L2,(byte)GetCurrentCapacity());
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L2;
   }
+  eeprom_write_byte(dest, GetCurrentCapacity());
   SaveEvseFlags();
 }
 

@@ -213,23 +213,16 @@ static inline uint8_t wirerecv(void) {
 // WARNING: This function uses the *end* of g_sTmp as its buffer
 char *u2a(unsigned long x,int8_t digits)
 {
-  int8_t d = digits;
   char *s = g_sTmp + sizeof(g_sTmp);
+
   *--s = 0;
-  if (!x) {
-    *--s = '0';
-    d--;
-  }
-  else {
-    for (; x; x/=10) {
-      *--s = '0'+ x%10;
-      d--;
-    }
-  }
-  for (;d > 0;d--) {
-    *--s = '0';
-  }
-  
+
+  do {
+    *--s = '0'+ x % 10;
+    x /= 10;
+    --digits;
+  } while (x || digits > 0);
+
   return s;
 }
 
