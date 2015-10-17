@@ -152,14 +152,15 @@ J1772EVSEController::J1772EVSEController() :
 
 void J1772EVSEController::SaveSettings()
 {
+  uint8_t *dest;
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  // ugly code below is smaller than this:  eeprom_write_byte((uint8_t *)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)GetCurrentCapacity());
   if (GetCurSvcLevel() == 1) {
-    eeprom_write_byte((uint8_t *)EOFS_CURRENT_CAPACITY_L1,(byte)GetCurrentCapacity());
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L1;
   }
   else {
-    eeprom_write_byte((uint8_t *)EOFS_CURRENT_CAPACITY_L2,(byte)GetCurrentCapacity());
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L2;
   }
+  eeprom_write_byte(dest, GetCurrentCapacity());
   SaveEvseFlags();
 }
 
