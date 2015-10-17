@@ -1,5 +1,8 @@
 Change Log
 
+vD3.10.0 SCL 20151017
+- fix compile error caused by include for LiquidCrystal_I2C.h
+	
 vD3.10.0 SCL 20151012
 - fix bug introduced by diode check state oscillation fix in D3.9.9 - if 
   transition to sleep while charging, on sleep exit would go into VENT REQ error

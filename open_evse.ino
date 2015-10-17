@@ -47,7 +47,7 @@
 #include "./RTClib.h"
 #include "open_evse.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
-//#include <LiquidCrystal_I2C.h>
+//#include "./LiquidCrystal_I2C.h"
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
   #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
