@@ -1,5 +1,10 @@
 Change Log
 
+vD3.10.1 SCL 20151017
+- merge PR 47 from wmcbrine
+ - faster ulong_sqrt()
+ - code saving tweaks to u2a() & SaveSettings()
+	
 vD3.10.0 SCL 20151017
 - fix compile error caused by include for LiquidCrystal_I2C.h
 	
