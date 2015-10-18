@@ -1,5 +1,9 @@
 Change Log
 
+vD3.10.2 SCL 20151017
+- lots of changes to get rid of 1.6.5 compiler warnings(More)
+- wmcbrine PR 48: more code shrinking from - manually merged
+	
 vD3.10.1 SCL 20151017
 - merge PR 47 from wmcbrine
  - faster ulong_sqrt()

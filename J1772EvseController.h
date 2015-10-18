@@ -352,6 +352,7 @@ public:
   void ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt=PILOT_LOOP_CNT);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
+  void DisabledTest_P(PGM_P message);
   void ShowDisabledTests();
 #endif
 #ifdef ADVPWR

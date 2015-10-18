@@ -7,6 +7,7 @@
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
+ * portions Copyright (c) 2015 wmcbrine
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -346,6 +347,12 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
+void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
+{
+  memcpy_P(g_sTmp, bytes, 8);
+  m_Lcd.createChar(n, (uint8_t*)g_sTmp);
+}
+
 void OnboardDisplay::Init()
 {
   WDT_RESET();
@@ -370,18 +377,14 @@ void OnboardDisplay::Init()
   LcdSetBacklightColor(WHITE);
 
 #if defined(DELAYTIMER)||defined(TIME_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_0,8);
-  m_Lcd.createChar(0, (uint8_t*)g_sTmp);
+  MakeChar(0,CustomChar_0);
 #endif
 #ifdef DELAYTIMER
-  memcpy_P(g_sTmp,CustomChar_1,8);
-  m_Lcd.createChar(1, (uint8_t*)g_sTmp);
-  memcpy_P(g_sTmp,CustomChar_2,8);
-  m_Lcd.createChar(2, (uint8_t*)g_sTmp);
+  MakeChar(1,CustomChar_1);
+  MakeChar(2,CustomChar_2);
 #endif //#ifdef DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_3,8);
-  m_Lcd.createChar(3, (uint8_t*)g_sTmp);
+  MakeChar(3,CustomChar_3);
 #endif
   m_Lcd.clear();
 
