@@ -404,21 +404,21 @@ void OnboardDisplay::LcdPrint(int x,int y,const char *s)
   m_Lcd.print(s); 
 }
 
-void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   LcdPrint(y,m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int x,int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
@@ -426,7 +426,7 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
+void OnboardDisplay::LcdMsg_P(PGM_P l1,PGM_P l2)
 {
   LcdPrint_P(0,l1);
   LcdPrint_P(1,l2);
@@ -460,7 +460,6 @@ void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled()) return;
 
-  int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int currentcap = g_EvseController.GetCurrentCapacity();
@@ -705,7 +704,9 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // AMMETER
 
     if (curstate == EVSE_STATE_C) {
+#ifndef KWH_RECORDING
       time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
+#endif
    
 #ifdef KWH_RECORDING
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -992,7 +993,7 @@ void SettingsMenu::Next()
   }
 #endif // CHARGE_LIMIT || TIME_LIMIT
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SettingsMenuList[m_CurIdx]->m_Title;
   }
@@ -1037,7 +1038,7 @@ void SetupMenu::Next()
     m_CurIdx = 0;
   }
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SetupMenuList[m_CurIdx]->m_Title;
   }
@@ -2030,7 +2031,7 @@ void BtnHandler::ChkBtn()
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
-	uint8_t curidx;
+	uint8_t curidx = 0;
 	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
 	  curidx = m_CurMenu->m_CurIdx;
 	}

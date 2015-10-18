@@ -296,7 +296,7 @@ public:
     return (m_wFlags & ECF_TEMP_CHK_DISABLED) ? 0 : 1;
   }
   void EnableTempChk(uint8_t tf);
-#endif TEMPERATURE_MONITORING
+#endif //TEMPERATURE_MONITORING
 
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
@@ -346,10 +346,10 @@ public:
   int32_t GetChargingCurrent() { return -1; }
 #endif // AMMETER
 #ifdef TIME_LIMIT
-  uint8_t SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
+  void SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
   uint8_t GetTimeLimit() { return m_timeLimit; }
 #endif // TIME_LIMIT
-  void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
+  void ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt=PILOT_LOOP_CNT);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void ShowDisabledTests();

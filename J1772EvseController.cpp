@@ -32,7 +32,7 @@ J1772EVSEController g_EvseController;
 static inline unsigned long ulong_sqrt(unsigned long in)
 {
   unsigned long out = 0;
-  unsigned long bit = 1 << 30;
+  unsigned long bit = 0x40000000ul;
 
   // "bit" starts at the highest power of four <= the argument.
   while (bit > in)
@@ -277,7 +277,7 @@ void J1772EVSEController::HardFault()
     // if we're in P12 state, we can recover from the hard fault when EV
     // is unplugged
     if (m_Pilot.GetState() == PILOT_STATE_P12) {
-      int plow,phigh;
+      uint16_t plow,phigh;
       ReadPilot(&plow,&phigh);
       if (phigh >= m_ThreshData.m_ThreshAB) {
 	// EV disconnected - cancel fault
@@ -346,7 +346,7 @@ void J1772EVSEController::EnableTempChk(uint8_t tf)
   }
   SaveEvseFlags();
 }
-#endif TEMPERATURE_MONITORING
+#endif // TEMPERATURE_MONITORING
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
@@ -822,10 +822,10 @@ void J1772EVSEController::Init()
   m_AmmeterCurrentOffset = eeprom_read_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET);
   m_CurrentScaleFactor = eeprom_read_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR);
   
-  if (m_AmmeterCurrentOffset == 0x0000ffff) {
+  if (m_AmmeterCurrentOffset == (int16_t)0xffff) {
     m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
   }
-  if (m_CurrentScaleFactor == 0x0000ffff) {
+  if (m_CurrentScaleFactor == (int16_t)0xffff) {
     m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
   }
   
@@ -923,14 +923,14 @@ void J1772EVSEController::Init()
   g_OBD.SetGreenLed(0);
 }
 
-void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
+void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt)
 {
-  int pl = 1023;
-  int ph = 0;
+  uint16_t pl = 1023;
+  uint16_t ph = 0;
 
   // 1x = 114us 20x = 2.3ms 100x = 11.3ms
   for (int i=0;i < 100;i++) {
-    int reading = adcPilot.read();  // measures pilot voltage
+    uint16_t reading = adcPilot.read();  // measures pilot voltage
     
     if (reading > ph) {
       ph = reading;
@@ -954,8 +954,8 @@ void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
 //Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60 
 void J1772EVSEController::Update()
 {
-  int plow;
-  int phigh = -127;
+  uint16_t plow;
+  uint16_t phigh = 0xffff;
 
   unsigned long curms = millis();
 
@@ -1038,7 +1038,7 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       // check to see if EV disconnected
-      if (phigh == -127) {
+      if (phigh == 0xffff) {
 	ReadPilot(&plow,&phigh);
       }
       if (phigh >= m_ThreshData.m_ThreshAB) {

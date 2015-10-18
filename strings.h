@@ -49,7 +49,7 @@ extern const char g_psTempChk[] PROGMEM;
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
-extern char *g_YesNoMenuItems[];
+extern const char *g_YesNoMenuItems[];
 extern const char g_psResetNow[] PROGMEM;
 extern const char g_psReset[] PROGMEM;
 extern const char g_psExit[] PROGMEM;
@@ -74,7 +74,7 @@ extern const char g_psChargeLimit[] PROGMEM;
 extern const char g_psTimeLimit[] PROGMEM;
 #endif // TIME_LIMIT
 #ifdef RGBLCD
-extern char *g_BklMenuItems[];
+extern const char *g_BklMenuItems[];
 #endif // RGBLCD
 #endif // BTN_MENU
 
@@ -108,13 +108,13 @@ extern const char g_psEvConnected[] PROGMEM;
 #ifdef SHOW_DISABLED_TESTS
 extern const char g_psDisabledTests[] PROGMEM;
 #endif
-extern char g_sRdyLAstr[];
+extern const char g_sRdyLAstr[];
 extern const char g_psReady[] PROGMEM;
 extern const char g_psCharging[] PROGMEM;
-extern char *g_sMaxCurrentFmt;
+extern const char *g_sMaxCurrentFmt;
 #endif // LCD16X2
 
 #ifdef DELAYTIMER_MENU
 extern const char g_psSetDateTime[] PROGMEM;
-extern char *g_DelayMenuItems[];
+extern const char *g_DelayMenuItems[];
 #endif // DELAYTIMER_MENU

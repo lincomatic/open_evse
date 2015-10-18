@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.10.1"
+#define VERSION "D3.10.2"
 
 //-- begin features
 
@@ -675,11 +675,11 @@ public:
   void LcdPrint(const char *s) {
     m_Lcd.print(s); 
   }
-  void LcdPrint_P(const char PROGMEM *s);
+  void LcdPrint_P(PGM_P s);
   void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const char PROGMEM *s);
+  void LcdPrint_P(int y,PGM_P s);
   void LcdPrint(int x,int y,const char *s);
-  void LcdPrint_P(int x,int y,const char PROGMEM *s);
+  void LcdPrint_P(int x,int y,PGM_P s);
   void LcdPrint(int i) { 
     m_Lcd.print(i); 
   }
@@ -700,7 +700,7 @@ public:
     m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
+  void LcdMsg_P(PGM_P l1,PGM_P l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=OBD_UPD_FORCE) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
@@ -829,7 +829,7 @@ public:
 
 class Menu {
 public:
-  const char PROGMEM *m_Title;
+  PGM_P m_Title;
   uint8_t m_CurIdx;
   
   void init(const char *firstitem);
