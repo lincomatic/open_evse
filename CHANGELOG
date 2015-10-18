@@ -1,5 +1,8 @@
 Change Log
 
+vD3.10.3 CWK 20151018
+- Correcting accumulating kWh and resetting Wh going in and out of sleep state
+
 vD3.10.2 SCL 20151017
 - lots of changes to get rid of 1.6.5 compiler warnings(More)
 - wmcbrine PR 48: more code shrinking from - manually merged
