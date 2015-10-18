@@ -572,7 +572,10 @@ uint8_t J1772EVSEController::doPost()
 {
   WDT_RESET();
 
-  uint8_t RelayOff, Relay1, Relay2; //Relay Power status
+  uint8_t RelayOff;
+#ifndef OPENEVSE_2
+  uint8_t Relay1, Relay2; //Relay Power status
+#endif
   uint8_t svcState = UD;	// service state = undefined
 
 #ifdef SERIALCLI
@@ -714,7 +717,9 @@ uint8_t J1772EVSEController::doPost()
 #endif //#else OPENEVSE_2
   }
   else { // ! AutoSvcLevelEnabled
+#ifndef OPENEVSE_2
   stuckrelaychk:
+#endif
     if (StuckRelayChkEnabled()) {
       RelayOff = ReadACPins();
       if ((RelayOff & 3) != 3) {
