@@ -188,6 +188,12 @@ void J1772EVSEController::Reboot()
 
 
 #ifdef SHOW_DISABLED_TESTS
+void J1772EVSEController::DisabledTest_P(const char PROGMEM *message)
+{
+  g_OBD.LcdMsg_P(g_psDisabledTests, message);
+  delay(SHOW_DISABLED_DELAY);
+}
+
 void J1772EVSEController::ShowDisabledTests()
 {
   if (m_wFlags & (ECF_DIODE_CHK_DISABLED|
@@ -199,33 +205,27 @@ void J1772EVSEController::ShowDisabledTests()
     g_OBD.LcdSetBacklightColor(YELLOW);
 
     if (!DiodeCheckEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psDiodeCheck);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psDiodeCheck);
     }
     if (!VentReqEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psVentReqChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psVentReqChk);
     }
 #ifdef ADVPWR
     if (!GndChkEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGndChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psGndChk);
     }
     if (!StuckRelayChkEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psRlyChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psRlyChk);
     }
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
     if (!GfiSelfTestEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGfiTest);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psGfiTest);
     }
 #endif // GFI_SELFTEST
 #ifdef TEMPERATURE_MONITORING
     if (!TempChkEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psTempChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psTempChk);
     }
 #endif // TEMPERATURE_MONITORING
 

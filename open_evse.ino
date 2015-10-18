@@ -346,6 +346,12 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
+void OnboardDisplay::MakeChar_P(uint8_t n, const char PROGMEM *bytes)
+{
+  memcpy_P(g_sTmp, bytes, 8);
+  m_Lcd.createChar(n, (uint8_t*)g_sTmp);
+}
+
 void OnboardDisplay::Init()
 {
   WDT_RESET();
@@ -370,18 +376,14 @@ void OnboardDisplay::Init()
   LcdSetBacklightColor(WHITE);
 
 #if defined(DELAYTIMER)||defined(TIME_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_0,8);
-  m_Lcd.createChar(0, (uint8_t*)g_sTmp);
+  MakeChar_P(0, CustomChar_0);
 #endif
 #ifdef DELAYTIMER
-  memcpy_P(g_sTmp,CustomChar_1,8);
-  m_Lcd.createChar(1, (uint8_t*)g_sTmp);
-  memcpy_P(g_sTmp,CustomChar_2,8);
-  m_Lcd.createChar(2, (uint8_t*)g_sTmp);
+  MakeChar_P(1, CustomChar_1);
+  MakeChar_P(2, CustomChar_2);
 #endif //#ifdef DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_3,8);
-  m_Lcd.createChar(3, (uint8_t*)g_sTmp);
+  MakeChar_P(3, CustomChar_3);
 #endif
   m_Lcd.clear();
 
