@@ -188,7 +188,7 @@ void J1772EVSEController::Reboot()
 
 
 #ifdef SHOW_DISABLED_TESTS
-void J1772EVSEController::DisabledTest(const char PROGMEM *message)
+void J1772EVSEController::DisabledTest_P(const char PROGMEM *message)
 {
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
   delay(SHOW_DISABLED_DELAY);
@@ -205,27 +205,27 @@ void J1772EVSEController::ShowDisabledTests()
     g_OBD.LcdSetBacklightColor(YELLOW);
 
     if (!DiodeCheckEnabled()) {
-      DisabledTest(g_psDiodeCheck);
+      DisabledTest_P(g_psDiodeCheck);
     }
     if (!VentReqEnabled()) {
-      DisabledTest(g_psVentReqChk);
+      DisabledTest_P(g_psVentReqChk);
     }
 #ifdef ADVPWR
     if (!GndChkEnabled()) {
-      DisabledTest(g_psGndChk);
+      DisabledTest_P(g_psGndChk);
     }
     if (!StuckRelayChkEnabled()) {
-      DisabledTest(g_psRlyChk);
+      DisabledTest_P(g_psRlyChk);
     }
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
     if (!GfiSelfTestEnabled()) {
-      DisabledTest(g_psGfiTest);
+      DisabledTest_P(g_psGfiTest);
     }
 #endif // GFI_SELFTEST
 #ifdef TEMPERATURE_MONITORING
     if (!TempChkEnabled()) {
-      DisabledTest(g_psTempChk);
+      DisabledTest_P(g_psTempChk);
     }
 #endif // TEMPERATURE_MONITORING
 

@@ -352,7 +352,7 @@ public:
   void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
-  void DisabledTest(const char PROGMEM *message);
+  void DisabledTest_P(const char PROGMEM *message);
   void ShowDisabledTests();
 #endif
 #ifdef ADVPWR

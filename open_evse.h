@@ -643,7 +643,7 @@ class OnboardDisplay
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
-  void MakeChar(uint8_t n, const char PROGMEM *bytes);
+  void MakeChar_P(uint8_t n, const char PROGMEM *bytes);
 public:
   OnboardDisplay();
   void Init();
