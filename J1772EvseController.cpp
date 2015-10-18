@@ -457,6 +457,12 @@ void J1772EVSEController::Disable()
 
 void J1772EVSEController::Sleep()
 {
+#ifdef KWH_RECORDING   // Reset the Wh when exiting State A for any reason
+  if (m_EvseState == EVSE_STATE_A) {
+    g_WattSeconds = 0;
+  }
+#endif
+
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
@@ -1254,10 +1260,8 @@ if (TempChkEnabled()) {
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
       #ifdef KWH_RECORDING
-      if ((prevevsestate == EVSE_STATE_C) || (prevevsestate == EVSE_STATE_B)) {
         g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
         eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
-      }
       #endif // KWH_RECORDING
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0);
@@ -1269,11 +1273,6 @@ if (TempChkEnabled()) {
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
       m_Pilot.SetPWM(m_CurrentCapacity);
-      #ifdef KWH_RECORDING
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
@@ -1301,11 +1300,6 @@ if (TempChkEnabled()) {
 #endif // FT_GFI_LOCKOUT
 
       chargingOn(); // turn on charging current
-      #ifdef KWH_RECORDING
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
     }
     else if (m_EvseState == EVSE_STATE_D) {
       // vent required not supported
@@ -1375,7 +1369,11 @@ if (TempChkEnabled()) {
       Serial.println(phigh);
     }
 #endif //#ifdef SERIALCLI
-
+      #ifdef KWH_RECORDING          // Reset the Wh when exiting State A for any reason
+        if (prevevsestate == EVSE_STATE_A) {
+          g_WattSeconds = 0;
+        }
+      #endif
   } // state transition
 
 #ifdef UL_COMPLIANT
