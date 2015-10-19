@@ -7,7 +7,7 @@
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
- * portions Copyright (c) 2015 wmcbrine
+ * portions Copyright (c) 2015 William McBrine
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
