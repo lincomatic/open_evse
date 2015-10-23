@@ -196,7 +196,7 @@
 #endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(SERIALCLI) && defined(DELAYTIMER)
+#if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
 #error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
 #endif
 
@@ -211,6 +211,9 @@
 #if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
 #error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
 #endif
+
+// for testing print various diagnostic messages to the UART
+//#define SERDBG
 
 //
 // begin functional tests

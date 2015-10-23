@@ -54,7 +54,7 @@ DateTime::DateTime (uint32_t t) {
     uint8_t leap;
     for (yOff = 0; ; ++yOff) {
         leap = yOff % 4 == 0;
-        if (days < (uint16_t)(365 + leap))
+        if (days < 365u + leap)
             break;
         days -= 365 + leap;
     }

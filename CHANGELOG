@@ -1,5 +1,11 @@
 Change Log
 
+SCL 20151022
+- added SERDBG - decouple serial diags from SERIALCLI
+	
+SCL 20151019
+- slight tweak to RTClib.cpp compiler warning fix in 3.10.2
+	
 vD3.10.3 CWK 20151018
 - Correcting accumulating kWh and resetting Wh going in and out of sleep state
 

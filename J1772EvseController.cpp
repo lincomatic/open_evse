@@ -488,12 +488,11 @@ void J1772EVSEController::LoadThresholds()
 
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 {
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.printlnn();
-    g_CLI.print_P(PSTR("SetSvcLevel: "));Serial.println((int)svclvl);
+    Serial.print("SetSvcLevel: ");Serial.println((int)svclvl);
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
   if (svclvl == 2) {
     m_wFlags |= ECF_L2; // set to Level 2
   }
@@ -584,11 +583,11 @@ uint8_t J1772EVSEController::doPost()
 #endif
   uint8_t svcState = UD;	// service state = undefined
 
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.print_P(PSTR("POST start..."));
+    Serial.print("POST start...");
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
 
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
@@ -607,12 +606,12 @@ uint8_t J1772EVSEController::doPost()
     } else {
       svcState = L1;
     }
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.print_P(PSTR("AC millivolts: "));Serial.println(ac_volts);
-      g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+      Serial.print("AC millivolts: ");Serial.println(ac_volts);
+      Serial.print("SvcState: ");Serial.println((int)svcState);
     }  
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 #ifdef LCD16X2
     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
 #endif //LCD16x2
@@ -621,12 +620,11 @@ uint8_t J1772EVSEController::doPost()
 
     delay(150); // delay reading for stable pilot before reading
     int reading = adcPilot.read(); //read pilot
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.printlnn();
-      g_CLI.print_P(PSTR("Pilot: "));Serial.println((int)reading);
+      Serial.print("Pilot: ");Serial.println((int)reading);
     }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
@@ -693,14 +691,14 @@ uint8_t J1772EVSEController::doPost()
 	  svcState = SR;
 	}
       }
-#ifdef SERIALCLI
+#ifdef SERDBG
       if (SerDbgEnabled()) {
-	g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
-	g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
-	g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
-	g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+	Serial.print("RelayOff: ");Serial.println((int)RelayOff);
+	Serial.print("Relay1: ");Serial.println((int)Relay1);
+	Serial.print("Relay2: ");Serial.println((int)Relay2);
+	Serial.print("SvcState: ");Serial.println((int)svcState);
       }  
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
       // update LCD
 #ifdef LCD16X2
@@ -760,12 +758,12 @@ uint8_t J1772EVSEController::doPost()
   }
   m_Pilot.SetState(PILOT_STATE_P12);
 
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.print_P(PSTR("POST result: "));
+    Serial.print("POST result: ");
     Serial.println((int)svcState);
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
   WDT_RESET();
 
@@ -827,6 +825,10 @@ void J1772EVSEController::Init()
 
 #ifdef NOCHECKS
   m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED|ECF_TEMP_CHK_DISABLED;
+#endif
+
+#ifdef SERDBG
+  EnableSerDbg(1);
 #endif
 
 #ifdef AMMETER
@@ -1357,18 +1359,24 @@ if (TempChkEnabled()) {
 #ifdef RAPI
     g_ERP.sendEvseState();
 #endif // RAPI
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.print_P(PSTR("state: "));
+      Serial.print("state: ");
+      switch (m_Pilot.GetState()) {
+      case PILOT_STATE_P12: Serial.print("P12"); break;
+      case PILOT_STATE_PWM: Serial.print("PWM"); break;
+      case PILOT_STATE_N12: Serial.print("N12"); break;
+      }
+      Serial.print(" ");
       Serial.print((int)prevevsestate);
-      g_CLI.print_P(PSTR("->"));
+      Serial.print("->");
       Serial.print((int)m_EvseState);
-      g_CLI.print_P(PSTR(" p "));
+      Serial.print(" p ");
       Serial.print(plow);
-      g_CLI.print_P(PSTR(" "));
+      Serial.print(" ");
       Serial.println(phigh);
     }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
       #ifdef KWH_RECORDING          // Reset the Wh when exiting State A for any reason
         if (prevevsestate == EVSE_STATE_A) {
           g_WattSeconds = 0;
