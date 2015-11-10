@@ -7,6 +7,7 @@
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
+ * portions Copyright (c) 2015 William McBrine
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -47,7 +48,7 @@
 #include "./RTClib.h"
 #include "open_evse.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
-//#include <LiquidCrystal_I2C.h>
+//#include "./LiquidCrystal_I2C.h"
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
   #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
@@ -69,6 +70,9 @@ BklTypeMenu g_BklTypeMenu;
 #ifdef GFI_SELFTEST
 GfiTestMenu g_GfiTestMenu;
 #endif
+#ifdef TEMPERATURE_MONITORING
+TempOnOffMenu g_TempOnOffMenu;
+#endif // TEMPERATURE_MONITORING
 VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
 GndChkMenu g_GndChkMenu;
@@ -131,15 +135,17 @@ Menu *g_SetupMenuList[] = {
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,
 #endif // GFI_SELFTEST
+#ifdef TEMPERATURE_MONITORING
+  &g_TempOnOffMenu,
+#endif // TEMPERATURE_MONITORING
   NULL
 };
 
 #ifdef BTN_MENU
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
-#ifdef DELAYTIMER
+
 #define g_sHHMMfmt "%02d:%02d"
-#endif// DELAYTIMER
 
 //-- begin global variables
 
@@ -208,23 +214,16 @@ static inline uint8_t wirerecv(void) {
 // WARNING: This function uses the *end* of g_sTmp as its buffer
 char *u2a(unsigned long x,int8_t digits)
 {
-  int8_t d = digits;
   char *s = g_sTmp + sizeof(g_sTmp);
+
   *--s = 0;
-  if (!x) {
-    *--s = '0';
-    d--;
-  }
-  else {
-    for (; x; x/=10) {
-      *--s = '0'+ x%10;
-      d--;
-    }
-  }
-  for (;d > 0;d--) {
-    *--s = '0';
-  }
-  
+
+  do {
+    *--s = '0'+ x % 10;
+    x /= 10;
+    --digits;
+  } while (x || digits > 0);
+
   return s;
 }
 
@@ -243,12 +242,36 @@ void wdt_init(void)
 
 
 #ifdef TEMPERATURE_MONITORING
+#ifdef TEMPERATURE_MONITORING_NY
+void TempMonitor::LoadThresh()
+{
+  m_ambient_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_AMBIENT);
+  if (m_ambient_thresh == 0xffff) {
+    m_ambient_thresh = TEMPERATURE_AMBIENT_THROTTLE_DOWN;
+  }
+  m_ir_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_IR);
+  if (m_ir_thresh == 0xffff) {
+    m_ir_thresh = TEMPERATURE_INFRARED_THROTTLE_DOWN;
+  }
+}
+
+void TempMonitor::SaveThresh()
+{
+  eeprom_write_word((uint16_t *)EOFS_THRESH_AMBIENT,m_ambient_thresh);
+  eeprom_write_word((uint16_t *)EOFS_THRESH_IR,m_ir_thresh);
+}
+#endif // TEMPERATURE_MONITORING_NY
+
 void TempMonitor::Init()
 {
   m_Flags = 0;
   m_MCP9808_temperature = 230;  // 230 means 23.0C  Using an integer to save on floating point library use
   m_DS3231_temperature = 230;   // the DS3231 RTC has a built in temperature sensor
   m_TMP007_temperature = 230;
+
+#ifdef TEMPERATURE_MONITORING_NY
+  LoadThresh();
+#endif
 
 #ifdef MCP9808_IS_ON_I2C
   m_tempSensor.begin();
@@ -261,35 +284,40 @@ void TempMonitor::Init()
 
 void TempMonitor::Read()
 {
+  unsigned long curms = millis();
+  if ((curms - m_LastUpdate) >= TEMPMONITOR_UPDATE_INTERVAL) {
 #ifdef TMP007_IS_ON_I2C
-  m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
+    m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
 #endif
 #ifdef MCP9808_IS_ON_I2C
-  m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
-  if (m_MCP9808_temperature == 2303) {
-    m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
+    m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
+    if (m_MCP9808_temperature == 2303) {
+      m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
 #endif
 
        
 #ifdef RTC
-  // This code chunck below reads the DS3231 RTC's internal temperature sensor            
-  Wire.beginTransmission(0x68);
-  wiresend(uint8_t(0x0e));
-  wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
-  Wire.endTransmission();            
+    // This code chunck below reads the DS3231 RTC's internal temperature sensor            
+    Wire.beginTransmission(0x68);
+    wiresend(uint8_t(0x0e));
+    wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
+    Wire.endTransmission();            
              
-  Wire.beginTransmission(0x68);
-  wiresend(uint8_t(0x11));
-  Wire.endTransmission();
+    Wire.beginTransmission(0x68);
+    wiresend(uint8_t(0x11));
+    Wire.endTransmission();
       
-  Wire.requestFrom(0x68, 2);
-  m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-  m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
-  if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
-  #ifdef OPENEVSE_2
+    Wire.requestFrom(0x68, 2);
+    m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
+    m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
+    if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
+#ifdef OPENEVSE_2
     m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
-  #endif
+#endif
 #endif // RTC
+
+    m_LastUpdate = curms;
+  }
 }
 #endif // TEMPERATURE_MONITORING
 
@@ -319,6 +347,12 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
+void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
+{
+  memcpy_P(g_sTmp, bytes, 8);
+  m_Lcd.createChar(n, (uint8_t*)g_sTmp);
+}
+
 void OnboardDisplay::Init()
 {
   WDT_RESET();
@@ -343,18 +377,14 @@ void OnboardDisplay::Init()
   LcdSetBacklightColor(WHITE);
 
 #if defined(DELAYTIMER)||defined(TIME_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_0,8);
-  m_Lcd.createChar(0, (uint8_t*)g_sTmp);
+  MakeChar(0,CustomChar_0);
 #endif
 #ifdef DELAYTIMER
-  memcpy_P(g_sTmp,CustomChar_1,8);
-  m_Lcd.createChar(1, (uint8_t*)g_sTmp);
-  memcpy_P(g_sTmp,CustomChar_2,8);
-  m_Lcd.createChar(2, (uint8_t*)g_sTmp);
+  MakeChar(1,CustomChar_1);
+  MakeChar(2,CustomChar_2);
 #endif //#ifdef DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
-  memcpy_P(g_sTmp,CustomChar_3,8);
-  m_Lcd.createChar(3, (uint8_t*)g_sTmp);
+  MakeChar(3,CustomChar_3);
 #endif
   m_Lcd.clear();
 
@@ -377,21 +407,21 @@ void OnboardDisplay::LcdPrint(int x,int y,const char *s)
   m_Lcd.print(s); 
 }
 
-void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   LcdPrint(y,m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int x,int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
@@ -399,7 +429,7 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
+void OnboardDisplay::LcdMsg_P(PGM_P l1,PGM_P l2)
 {
   LcdPrint_P(0,l1);
   LcdPrint_P(1,l2);
@@ -433,7 +463,6 @@ void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled()) return;
 
-  int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int currentcap = g_EvseController.GetCurrentCapacity();
@@ -637,7 +666,7 @@ void OnboardDisplay::Update(int8_t updmode)
   //
   if ((curms-m_LastUpdateMs) >= 1000) {
     m_LastUpdateMs = curms;
-
+    
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
       strcpy(g_sTmp,g_sRetryIn);
@@ -678,7 +707,9 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // AMMETER
 
     if (curstate == EVSE_STATE_C) {
+#ifndef KWH_RECORDING
       time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
+#endif
    
 #ifdef KWH_RECORDING
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -830,7 +861,7 @@ void Btn::read()
 #ifdef ADAFRUIT_BTN
   sample = (g_OBD.readButtons() & BUTTON_SELECT) ? 1 : 0;
 #else //!ADAFRUIT_BTN
-  sample = btnPin.read() ? 0 : 1;
+  sample = pinBtn.read() ? 0 : 1;
 #endif // ADAFRUIT_BTN
   if (!sample && (buttonState == BTN_STATE_LONG) && !lastDebounceTime) {
     buttonState = BTN_STATE_OFF;
@@ -965,7 +996,7 @@ void SettingsMenu::Next()
   }
 #endif // CHARGE_LIMIT || TIME_LIMIT
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SettingsMenuList[m_CurIdx]->m_Title;
   }
@@ -1010,7 +1041,7 @@ void SetupMenu::Next()
     m_CurIdx = 0;
   }
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SetupMenuList[m_CurIdx]->m_Title;
   }
@@ -1282,6 +1313,47 @@ Menu *GfiTestMenu::Select()
   return &g_SetupMenu;
 }
 #endif // GFI_SELFTEST
+
+#ifdef TEMPERATURE_MONITORING
+TempOnOffMenu::TempOnOffMenu()
+{
+  m_Title = g_psTempChk;
+}
+
+void TempOnOffMenu::Init()
+{
+  g_OBD.LcdPrint_P(0,m_Title);
+  m_CurIdx = g_EvseController.TempChkEnabled() ? 0 : 1;
+  sprintf(g_sTmp,"+%s",g_YesNoMenuItems[m_CurIdx]);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void TempOnOffMenu::Next()
+{
+  if (++m_CurIdx >= 2) {
+    m_CurIdx = 0;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  uint8_t dce = g_EvseController.TempChkEnabled();
+  if ((dce && !m_CurIdx) || (!dce && m_CurIdx)) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *TempOnOffMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+
+  g_EvseController.EnableTempChk((m_CurIdx == 0) ? 1 : 0);
+
+  delay(500);
+
+  return &g_SetupMenu;
+}
+#endif // TEMPERATURE_MONITORING
 
 VentReqMenu::VentReqMenu()
 {
@@ -1962,7 +2034,7 @@ void BtnHandler::ChkBtn()
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
-	uint8_t curidx;
+	uint8_t curidx = 0;
 	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
 	  curidx = m_CurMenu->m_CurIdx;
 	}
@@ -2107,8 +2179,8 @@ void DelayTimer::CheckTime()
 	  }
 	}
       }
+      m_LastCheck = curms;
     }
-    m_LastCheck = curms;
   }
 }
 void DelayTimer::Enable(){
@@ -2131,6 +2203,23 @@ void DelayTimer::PrintTimerIcon(){
 }
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER
+
+void ProcessInputs()
+{
+#ifdef RAPI
+  g_ERP.doCmd();
+#endif
+#ifdef SERIALCLI
+  g_CLI.getInput();
+#endif // SERIALCLI
+#ifdef BTN_MENU
+  g_BtnHandler.ChkBtn();
+#endif
+#ifdef TEMPERATURE_MONITORING
+  g_TempMonitor.Read();  //   update temperatures once per second
+#endif
+}
+
 
 void EvseReset()
 {
@@ -2156,7 +2245,7 @@ void setup()
 {
   wdt_disable();
   
-  delay(200);  // give I2C devices time to be ready before running code that wants to initialize I2C devices.  Otherwise a hang can occur upon powerup.
+  delay(400);  // give I2C devices time to be ready before running code that wants to initialize I2C devices.  Otherwise a hang can occur upon powerup.
   
   Serial.begin(SERIAL_BAUD);
 
@@ -2190,7 +2279,7 @@ void loop()
 
   g_OBD.Update();
 
-  g_EvseController.ProcessInputs();
+  ProcessInputs();
   
   // Delay Timer Handler - GoldServe
 #ifdef DELAYTIMER

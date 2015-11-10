@@ -68,11 +68,13 @@ typedef struct calibdata {
 #define ECF_SERIAL_DBG         0x0080 // enable debugging messages via serial
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
+#define ECF_TEMP_CHK_DISABLED  0x0400 // no Temperature Monitoring
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
 #define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
+#define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
@@ -85,7 +87,7 @@ class J1772EVSEController {
   Gfi m_Gfi;
   unsigned long m_GfiFaultStartMs;
   unsigned long m_GfiRetryCnt;
-  uint8_t m_GfiTripCnt;
+  uint8_t m_GfiTripCnt; // contains tripcnt-1
 #endif // GFI
   AdcPin adcPilot;
 #ifdef CURRENT_PIN
@@ -114,9 +116,9 @@ class J1772EVSEController {
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
   unsigned long m_NoGndRetryCnt;
-  uint8_t m_NoGndTripCnt;
+  uint8_t m_NoGndTripCnt; // contains tripcnt-1
   unsigned long m_StuckRelayStartTimeMS;
-  uint8_t m_StuckRelayTripCnt;
+  uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
 #endif // ADVPWR
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
@@ -159,6 +161,10 @@ class J1772EVSEController {
     m_wFlags &= ~flags; 
   }
 
+#ifdef TIME_LIMIT
+  uint8_t m_timeLimit; // minutes * 15
+#endif
+
 #ifdef AMMETER
   unsigned long m_AmmeterReading;
   int32_t m_ChargingCurrent;
@@ -166,9 +172,6 @@ class J1772EVSEController {
   int16_t m_CurrentScaleFactor;
 #ifdef CHARGE_LIMIT
   uint8_t m_chargeLimit; // kWh
-#endif
-#ifdef TIME_LIMIT
-  uint8_t m_timeLimit; // minutes * 15
 #endif
 
   void readAmmeter();
@@ -270,10 +273,16 @@ public:
 
   void HardFault();
 
+  void SetLimitSleep(int8_t tf) {
+    if (tf) m_bVFlags |= ECVF_LIMIT_SLEEP;
+    else m_bVFlags &= ~ECVF_LIMIT_SLEEP;
+  }
+  int8_t LimitSleepIsSet() { return (int8_t)(m_bVFlags & ECVF_LIMIT_SLEEP); }
+
 #ifdef GFI
   void SetGfiTripped();
   uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
-  uint8_t GetGfiTripCnt() { return m_GfiTripCnt; }
+  uint8_t GetGfiTripCnt() { return m_GfiTripCnt+1; }
 #ifdef GFI_SELFTEST
   uint8_t GfiSelfTestEnabled() {
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
@@ -281,6 +290,14 @@ public:
   void EnableGfiSelfTest(uint8_t tf);
 #endif
 #endif // GFI
+
+#ifdef TEMPERATURE_MONITORING  
+    uint8_t TempChkEnabled() {
+    return (m_wFlags & ECF_TEMP_CHK_DISABLED) ? 0 : 1;
+  }
+  void EnableTempChk(uint8_t tf);
+#endif //TEMPERATURE_MONITORING
+
   uint8_t SerDbgEnabled() { 
     return (m_wFlags & ECF_SERIAL_DBG) ? 1 : 0;
   }
@@ -325,22 +342,22 @@ public:
   void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
 #endif // CHARGE_LIMIT
-#ifdef TIME_LIMIT
-  uint8_t SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
-  uint8_t GetTimeLimit() { return m_timeLimit; }
-#endif // TIME_LIMIT
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
-#endif
-  void ReadPilot(int *plow,int *phigh,int loopcnt=PILOT_LOOP_CNT);
-  void ProcessInputs();
+#endif // AMMETER
+#ifdef TIME_LIMIT
+  void SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
+  uint8_t GetTimeLimit() { return m_timeLimit; }
+#endif // TIME_LIMIT
+  void ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt=PILOT_LOOP_CNT);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
+  void DisabledTest_P(PGM_P message);
   void ShowDisabledTests();
 #endif
 #ifdef ADVPWR
-  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt; }
-  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt; }
+  uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt+1; }
+  uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt+1; }
 #endif // ADVPWR
 };
 

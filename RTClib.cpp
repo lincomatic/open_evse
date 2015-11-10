@@ -54,7 +54,7 @@ DateTime::DateTime (uint32_t t) {
     uint8_t leap;
     for (yOff = 0; ; ++yOff) {
         leap = yOff % 4 == 0;
-        if (days < 365 + leap)
+        if (days < 365u + leap)
             break;
         days -= 365 + leap;
     }
@@ -95,7 +95,7 @@ DateTime::DateTime (const char* date, const char* time) {
     yOff = conv2d(date + 9);
     // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 
     switch (date[0]) {
-        case 'J': m = date[1] == 'a' ? 1 : m = date[2] == 'n' ? 6 : 7; break;
+    case 'J': m = (date[1] == 'a') ? 1 : ((date[2] == 'n') ? 6 : 7); break;
         case 'F': m = 2; break;
         case 'A': m = date[2] == 'r' ? 4 : 8; break;
         case 'M': m = date[2] == 'r' ? 3 : 5; break;

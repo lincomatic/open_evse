@@ -12,6 +12,7 @@
   Compatible with Adafruit I2C LCD backpack (MCP23008) and
   Adafruit RGB LCD Shield
 */
+#if defined(MCP23017) || defined(MCP23008)
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
@@ -701,3 +702,5 @@ void LiquidTWI2::buzz(long duration, uint16_t freq) {
    }
 }
 #endif //MCP23017
+
+#endif // defined(MCP23017) || defined(MCP23008)

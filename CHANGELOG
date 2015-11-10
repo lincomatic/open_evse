@@ -1,5 +1,93 @@
 Change Log
 
+SC: 20151011
+v3.10.4
+- vD3.10.4 promoted to stable
+
+vD3.10.4 SCL 20151110
+- update version number
+	
+SCL 20151022
+- added SERDBG - decouple serial diags from SERIALCLI
+	
+SCL 20151019
+- slight tweak to RTClib.cpp compiler warning fix in 3.10.2
+	
+vD3.10.3 CWK 20151018
+- Correcting accumulating kWh and resetting Wh going in and out of sleep state
+
+vD3.10.2 SCL 20151017
+- lots of changes to get rid of 1.6.5 compiler warnings(More)
+- wmcbrine PR 48: more code shrinking from - manually merged
+	
+vD3.10.1 SCL 20151017
+- merge PR 47 from wmcbrine
+ - faster ulong_sqrt()
+ - code saving tweaks to u2a() & SaveSettings()
+	
+vD3.10.0 SCL 20151017
+- fix compile error caused by include for LiquidCrystal_I2C.h
+	
+vD3.10.0 SCL 20151012
+- fix bug introduced by diode check state oscillation fix in D3.9.9 - if 
+  transition to sleep while charging, on sleep exit would go into VENT REQ error
+  -> if pilot voltage in State C range, but PWM off, go to State B
+     this is an added safety feature, because State C should never be allowed
+     when PWM is off
+- fix bug: if enter sleep mode due to time/charge limit met, sleep should
+  automatically be cancelled when car disconnected but it was staying in sleep
+	
+vD3.9.10 CWK 20150920
+- GFI Self Test Duty Cylce restored to 50%
+
+vD3.9.9 CWK/SCL 20150914
+- fix diode check state oscillation bug (cwk/scl)
+- hard fault on vent required (scl)
+- setup() - increase I2C device delay from 200 -> 400ms (cwk) for Danny ter Haars board
+- code cleanup of temperature monitoring to save 62 bytes
+	
+vD3.9.8 CWK 20150912
+- fix Temperature Monitoring, broken by accident in D3.9.5 
+      The original users amperage level is restored properly after an event.
+
+vD3.9.7 SCL 20150905
+- raise OpenEVSE temperature thresholds +10C to match OE-II
+
+SCL 20150905
+- fix compile error when AMMETER disabled
+	
+vD3.9.6 SCL 20150818
+- for OpenEVSE II, bump up TEMPERATURE_AMBIENT_xxx by 10 due to extra headroom of CUI VSK-S3-12U power supply
+	
+vD3.9.5 SCL 20150722
+- merge changes from temp branch:
+	1. EVSE goes to sleep after time/charge limit met.. would stay in sleep
+	-> automatically cancel sleep mode when car disconnected *only if* the
+	   sleep was induced by time/charge limit
+	2. decouple temperature monitoring from J1772EVSEController::Update()
+	-> so that temperature is still monitored when EVSE disabled/sleeping
+	3. ProcessInputs() removed from J1772EVSEController
+	4. added TEMPERATURE_MONITORING_NY (not yet) code .. currently disabled
+	-> $GO/$SO RAPI 
+	-> added ambient/ir_thresh support
+	
+vD3.9.4 SCL 20150611
+- reduce GFI self test pulse duration from 50% to 33%
+	
+vD3.9.3.1 SCL 20150611
+- craigK PR #46
+	
+vD3.9.3 SCL 20150608
+- add files and edits to restore I2CLCD_PCF8574 build capability
+- broken DelayTimer() introduced in 3.9.0
+	
+vD3.9.2 SCL 20150606
+- fix $GF bug
+	
+vD3.9.1 SCL 20150605
+- boost I2C bus to 400KHz
+	
+
 SCL20150605
 -> promote to v3.9.0 in stable branch
 Many thanks to CraigK for his numerous contributions and top notch testing.

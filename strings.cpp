@@ -41,10 +41,13 @@ const char g_psRlyChk[] PROGMEM = "Stuck Relay Chk";
 #ifdef GFI_SELFTEST
 const char g_psGfiTest[] PROGMEM = "GFI Self Test";
 #endif
+#ifdef TEMPERATURE_MONITORING
+const char g_psTempChk[] PROGMEM = "Temperature Chk";
+#endif
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
-char *g_YesNoMenuItems[] = {"Yes","No"};
+const char *g_YesNoMenuItems[] = {"Yes","No"};
 const char g_psResetNow[] PROGMEM = "Restart Now?";
 const char g_psReset[] PROGMEM = "Restart";
 const char g_psExit[] PROGMEM = "Exit";
@@ -69,7 +72,7 @@ const char g_psChargeLimit[] PROGMEM = "Charge Limit";
 const char g_psTimeLimit[] PROGMEM = "Time Limit";
 #endif // TIME_LIMIT
 #ifdef RGBLCD
-char *g_BklMenuItems[] = {"RGB","Monochrome"};
+const char *g_BklMenuItems[] = {"RGB","Monochrome"};
 #endif // RGBLCD
 #endif // BTN_MENU
 
@@ -103,13 +106,13 @@ const char g_psEvConnected[] PROGMEM = "Connected";
 const char g_psDisabledTests[] PROGMEM = "TEST DISABLED";
 #endif
 
-char g_sRdyLAstr[] = "L%d:%dA";
+const char g_sRdyLAstr[] = "L%d:%dA";
 const char g_psReady[] PROGMEM = "Ready";
 const char g_psCharging[] PROGMEM = "Charging";
-char *g_sMaxCurrentFmt = "%s Max Current";
+const char *g_sMaxCurrentFmt = "%s Max Current";
 #endif // LCD16X2
 
 #ifdef DELAYTIMER_MENU
 const char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
-char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
+const char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
 #endif // DELAYTIMER_MENU

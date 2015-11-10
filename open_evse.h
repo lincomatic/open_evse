@@ -36,7 +36,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.9.0"
+#define VERSION "3.10.4"
 
 //-- begin features
 
@@ -99,7 +99,8 @@
 #define GFI_SELFTEST
 #endif //UL_GFI_SELFTEST
 
-#define TEMPERATURE_MONITORING  // Temperature monitoring support    
+#define TEMPERATURE_MONITORING  // Temperature monitoring support
+// not yet #define TEMPERATURE_MONITORING_NY
 
 #ifdef AMMETER
 // kWh Recording feature depends upon #AMMETER support
@@ -124,10 +125,6 @@
 //#define I2CLCD
 // Support PCF8574* based I2C backpack using F. Malpartida's library
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
-// note: When enabling I2CLCD_PCF8754, due to stupidity of Arduino, at 
-//   top of open_evse.pde must
-//   uncomment #include <LiquidCrystal_I2C.h> and
-//   comment out #include <LiquidTWI2.h>
 //#define I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
@@ -199,7 +196,7 @@
 #endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(SERIALCLI) && defined(DELAYTIMER)
+#if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
 #error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
 #endif
 
@@ -214,6 +211,9 @@
 #if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
 #error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
 #endif
+
+// for testing print various diagnostic messages to the UART
+//#define SERDBG
 
 //
 // begin functional tests
@@ -362,6 +362,8 @@
 
 #define EOFS_VOLT_OFFSET 20 // 4 bytes
 #define EOFS_VOLT_SCALE_FACTOR 24 // 2 bytes
+#define EOFS_THRESH_AMBIENT 26 // 2 bytes
+#define EOFS_THRESH_IR 28 // 2 bytes
 
 
 // must stay within thresh for this time in ms before switching states
@@ -390,7 +392,9 @@
 #define GFITEST_IDX 6
 
 #define GFI_TEST_CYCLES 60
-#define GFI_PULSE_DURATION_US 8333 // of roughly 60 Hz. - 8333us as a half-cycle
+// GFI pulse should be 50% duty cycle
+#define GFI_PULSE_ON_US 8333 // 1/2 of roughly 60 Hz.
+#define GFI_PULSE_OFF_US 8334 // 1/2 of roughly 60 Hz.
 #endif
 
 
@@ -418,7 +422,7 @@
 // see http://blog.lincomatic.com/?p=956 for installation instructions
 #include "./Wire.h"
 #ifdef I2CLCD_PCF8574
-#include <LiquidCrystal_I2C.h>
+#include "./LiquidCrystal_I2C.h"
 #define LCD_I2C_ADDR 0x27
 #else
 #ifdef RGBLCD
@@ -518,15 +522,37 @@
 // The THROTTLE_DOWN value must be lower than the SHUTDOWN value
 // The SHUTDOWN value must be lower than the PANIC value
 #ifndef TESTING_TEMPERATURE_OPERATION
-    // normal oerational thresholds just below
-#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 520     // This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
-#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 490  // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
-                                                  // recover to this level we can kick the current back up to the user's original amperage setting.
-#define TEMPERATURE_AMBIENT_SHUTDOWN 550          // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
+// normal oerational thresholds just below
+// This is the temperature in the enclosure where we tell the car to draw 1/2 amperage.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 650
+#else
+#define TEMPERATURE_AMBIENT_THROTTLE_DOWN 650
+#endif
+
+// If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
+// recover to this level we can kick the current back up to the user's original amperage setting.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 620
+#else
+#define TEMPERATURE_AMBIENT_RESTORE_AMPERAGE 620
+#endif
+
+// This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_SHUTDOWN 680
+#else
+#define TEMPERATURE_AMBIENT_SHUTDOWN 680
+#endif
                                                   
-#define TEMPERATURE_AMBIENT_PANIC 580             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
-                                                  //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
-                                                  //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
+//  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+//  an over temperature error state.  The EVSE can be restart from the button or unplugged.
+//  If temperatures get to this level it is advised to open the enclosure to look for trouble.
+#ifdef OPENEVSE_2
+#define TEMPERATURE_AMBIENT_PANIC 710
+#else
+#define TEMPERATURE_AMBIENT_PANIC 710
+#endif
 
 #define TEMPERATURE_INFRARED_THROTTLE_DOWN 650    // This is the temperature seen  by the IR sensor where we tell the car to draw 1/2 amperage.
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 600 // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
@@ -609,7 +635,6 @@ class OnboardDisplay
 #endif
 #if defined(RGBLCD) || defined(I2CLCD)
 #ifdef I2CLCD_PCF8574
-#include <LiquidCrystal_I2C.h>
   LiquidCrystal_I2C m_Lcd;  
 #else
   LiquidTWI2 m_Lcd;
@@ -621,6 +646,7 @@ class OnboardDisplay
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
+  void MakeChar(uint8_t n, PGM_P bytes);
 public:
   OnboardDisplay();
   void Init();
@@ -653,11 +679,11 @@ public:
   void LcdPrint(const char *s) {
     m_Lcd.print(s); 
   }
-  void LcdPrint_P(const char PROGMEM *s);
+  void LcdPrint_P(PGM_P s);
   void LcdPrint(int y,const char *s);
-  void LcdPrint_P(int y,const char PROGMEM *s);
+  void LcdPrint_P(int y,PGM_P s);
   void LcdPrint(int x,int y,const char *s);
-  void LcdPrint_P(int x,int y,const char PROGMEM *s);
+  void LcdPrint_P(int x,int y,PGM_P s);
   void LcdPrint(int i) { 
     m_Lcd.print(i); 
   }
@@ -678,7 +704,7 @@ public:
     m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
-  void LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2);
+  void LcdMsg_P(PGM_P l1,PGM_P l2);
   void LcdSetBacklightType(uint8_t t,uint8_t update=OBD_UPD_FORCE) { // BKL_TYPE_XXX
 #ifdef RGBLCD
     if (t == BKL_TYPE_RGB) m_bFlags &= ~OBDF_MONO_BACKLIGHT;
@@ -729,12 +755,14 @@ public:
 #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
+#define TEMPMONITOR_UPDATE_INTERVAL 1000ul
 // TempMonitor.m_Flags
 #define TMF_OVERTEMPERATURE          0x01
 #define TMF_OVERTEMPERATURE_SHUTDOWN 0x02
 #define TMF_BLINK_ALARM              0x04
 class TempMonitor {
   uint8_t m_Flags;
+  unsigned long m_LastUpdate;
 public:
 #ifdef MCP9808_IS_ON_I2C
   Adafruit_MCP9808 m_tempSensor;
@@ -742,6 +770,11 @@ public:
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;
 #endif  //TMP007_IS_ON_I2C
+#ifdef TEMPERATURE_MONITORING_NY
+  int16_t m_ambient_thresh;
+  int16_t m_ir_thresh;
+  int16_t m_TMP007_thresh;
+#endif //TEMPERATURE_MONITORING_NY
   // these three temperatures need to be signed integers
   int16_t m_MCP9808_temperature;  // 230 means 23.0C  Using an integer to save on floating point library use
   int16_t m_DS3231_temperature;   // the DS3231 RTC has a built in temperature sensor
@@ -766,6 +799,10 @@ public:
     else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
   }
   int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+#ifdef TEMPERATURE_MONITORING_NY
+  void LoadThresh();
+  void SaveThresh();
+#endif //TEMPERATURE_MONITORING_NY
 };
 #endif // TEMPERATURE_MONITORING
 
@@ -796,7 +833,7 @@ public:
 
 class Menu {
 public:
-  const char PROGMEM *m_Title;
+  PGM_P m_Title;
   uint8_t m_CurIdx;
   
   void init(const char *firstitem);
@@ -867,6 +904,16 @@ public:
   Menu *Select();
 };
 #endif
+
+#ifdef TEMPERATURE_MONITORING
+class TempOnOffMenu : public Menu {
+public:
+  TempOnOffMenu();
+  void Init();
+  void Next();
+  Menu *Select();
+};
+#endif  // TEMPERATURE_MONITORING
 
 class VentReqMenu : public Menu {
 public:
@@ -1107,6 +1154,9 @@ public:
 
 // -- end class definitions
 
+char *u2a(unsigned long x,int8_t digits=0);
+void ProcessInputs();
+
 /*
 extern char g_sPlus[];
 extern char g_sSlash[];
@@ -1128,8 +1178,6 @@ extern SettingsMenu g_SettingsMenu;
 #endif // BTN_MENU
 extern OnboardDisplay g_OBD;
 extern char g_sTmp[TMP_BUF_SIZE];
-
-char *u2a(unsigned long x,int8_t digits=0);
 
 #ifdef KWH_RECORDING
 extern unsigned long g_WattHours_accumulated;

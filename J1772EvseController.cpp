@@ -31,12 +31,25 @@ J1772EVSEController g_EvseController;
 #ifdef AMMETER
 static inline unsigned long ulong_sqrt(unsigned long in)
 {
-  unsigned long out;
-  // find the last int whose square is not too big
-  // Yes, it's wasteful, but we only theoretically ever have to go to 512.
-  // Removing floating point saves us almost 1K of flash.
-  for(out = 1; out*out <= in; out++) ;
-  return out - 1;
+  unsigned long out = 0;
+  unsigned long bit = 0x40000000ul;
+
+  // "bit" starts at the highest power of four <= the argument.
+  while (bit > in)
+    bit >>= 2;
+
+  while (bit) {
+    unsigned long sum = out + bit;
+    if (in >= sum) {
+      in -= sum;
+      out = (out >> 1) + bit;
+    }
+    else
+      out >>= 1;
+    bit >>= 2;
+  }
+
+  return out;
 }
 
 void J1772EVSEController::readAmmeter()
@@ -139,8 +152,15 @@ J1772EVSEController::J1772EVSEController() :
 
 void J1772EVSEController::SaveSettings()
 {
+  uint8_t *dest;
   // n.b. should we add dirty bits so we only write the changed values? or should we just write them on the fly when necessary?
-  eeprom_write_byte((uint8_t *)((GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),(byte)GetCurrentCapacity());
+  if (GetCurSvcLevel() == 1) {
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L1;
+  }
+  else {
+    dest = (uint8_t *)EOFS_CURRENT_CAPACITY_L2;
+  }
+  eeprom_write_byte(dest, GetCurrentCapacity());
   SaveEvseFlags();
 }
 
@@ -168,39 +188,46 @@ void J1772EVSEController::Reboot()
 
 
 #ifdef SHOW_DISABLED_TESTS
+void J1772EVSEController::DisabledTest_P(PGM_P message)
+{
+  g_OBD.LcdMsg_P(g_psDisabledTests, message);
+  delay(SHOW_DISABLED_DELAY);
+}
+
 void J1772EVSEController::ShowDisabledTests()
 {
   if (m_wFlags & (ECF_DIODE_CHK_DISABLED|
 		  ECF_VENT_REQ_DISABLED|
 		  ECF_GND_CHK_DISABLED|
 		  ECF_STUCK_RELAY_CHK_DISABLED|
-		  ECF_GFI_TEST_DISABLED)) {
+		  ECF_GFI_TEST_DISABLED|
+                  ECF_TEMP_CHK_DISABLED)) {
     g_OBD.LcdSetBacklightColor(YELLOW);
 
     if (!DiodeCheckEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psDiodeCheck);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psDiodeCheck);
     }
     if (!VentReqEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psVentReqChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psVentReqChk);
     }
 #ifdef ADVPWR
     if (!GndChkEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGndChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psGndChk);
     }
     if (!StuckRelayChkEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psRlyChk);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psRlyChk);
     }
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
     if (!GfiSelfTestEnabled()) {
-      g_OBD.LcdMsg_P(g_psDisabledTests,g_psGfiTest);
-      delay(SHOW_DISABLED_DELAY);
+      DisabledTest_P(g_psGfiTest);
     }
 #endif // GFI_SELFTEST
+#ifdef TEMPERATURE_MONITORING
+    if (!TempChkEnabled()) {
+      DisabledTest_P(g_psTempChk);
+    }
+#endif // TEMPERATURE_MONITORING
 
     g_OBD.LcdSetBacklightColor(WHITE);
   }
@@ -250,7 +277,7 @@ void J1772EVSEController::HardFault()
     // if we're in P12 state, we can recover from the hard fault when EV
     // is unplugged
     if (m_Pilot.GetState() == PILOT_STATE_P12) {
-      int plow,phigh;
+      uint16_t plow,phigh;
       ReadPilot(&plow,&phigh);
       if (phigh >= m_ThreshData.m_ThreshAB) {
 	// EV disconnected - cancel fault
@@ -307,6 +334,19 @@ void J1772EVSEController::EnableGfiSelfTest(uint8_t tf)
   SaveEvseFlags();
 }
 #endif
+
+#ifdef TEMPERATURE_MONITORING
+void J1772EVSEController::EnableTempChk(uint8_t tf)
+{
+  if (tf) {
+    m_wFlags &= ~ECF_TEMP_CHK_DISABLED;
+  }
+  else {
+    m_wFlags |= ECF_TEMP_CHK_DISABLED;
+  }
+  SaveEvseFlags();
+}
+#endif // TEMPERATURE_MONITORING
 
 void J1772EVSEController::EnableVentReq(uint8_t tf)
 {
@@ -390,6 +430,9 @@ void J1772EVSEController::Enable()
       pinSleepStatus.write(0);
     }
 #endif // SLEEP_STATUS_REG
+#if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+	SetLimitSleep(0);
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
     
     m_PrevEvseState = EVSE_STATE_DISABLED;
     m_EvseState = EVSE_STATE_UNKNOWN;
@@ -414,6 +457,12 @@ void J1772EVSEController::Disable()
 
 void J1772EVSEController::Sleep()
 {
+#ifdef KWH_RECORDING   // Reset the Wh when exiting State A for any reason
+  if (m_EvseState == EVSE_STATE_A) {
+    g_WattSeconds = 0;
+  }
+#endif
+
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
@@ -439,12 +488,11 @@ void J1772EVSEController::LoadThresholds()
 
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 {
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.printlnn();
-    g_CLI.print_P(PSTR("SetSvcLevel: "));Serial.println((int)svclvl);
+    Serial.print("SetSvcLevel: ");Serial.println((int)svclvl);
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
   if (svclvl == 2) {
     m_wFlags |= ECF_L2; // set to Level 2
   }
@@ -529,14 +577,17 @@ uint8_t J1772EVSEController::doPost()
 {
   WDT_RESET();
 
-  uint8_t RelayOff, Relay1, Relay2; //Relay Power status
+  uint8_t RelayOff;
+#ifndef OPENEVSE_2
+  uint8_t Relay1, Relay2; //Relay Power status
+#endif
   uint8_t svcState = UD;	// service state = undefined
 
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.print_P(PSTR("POST start..."));
+    Serial.print("POST start...");
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
 
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
@@ -555,12 +606,12 @@ uint8_t J1772EVSEController::doPost()
     } else {
       svcState = L1;
     }
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.print_P(PSTR("AC millivolts: "));Serial.println(ac_volts);
-      g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+      Serial.print("AC millivolts: ");Serial.println(ac_volts);
+      Serial.print("SvcState: ");Serial.println((int)svcState);
     }  
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 #ifdef LCD16X2
     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
 #endif //LCD16x2
@@ -569,12 +620,11 @@ uint8_t J1772EVSEController::doPost()
 
     delay(150); // delay reading for stable pilot before reading
     int reading = adcPilot.read(); //read pilot
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.printlnn();
-      g_CLI.print_P(PSTR("Pilot: "));Serial.println((int)reading);
+      Serial.print("Pilot: ");Serial.println((int)reading);
     }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
@@ -641,14 +691,14 @@ uint8_t J1772EVSEController::doPost()
 	  svcState = SR;
 	}
       }
-#ifdef SERIALCLI
+#ifdef SERDBG
       if (SerDbgEnabled()) {
-	g_CLI.print_P(PSTR("RelayOff: "));Serial.println((int)RelayOff);
-	g_CLI.print_P(PSTR("Relay1: "));Serial.println((int)Relay1);
-	g_CLI.print_P(PSTR("Relay2: "));Serial.println((int)Relay2);
-	g_CLI.print_P(PSTR("SvcState: "));Serial.println((int)svcState);
+	Serial.print("RelayOff: ");Serial.println((int)RelayOff);
+	Serial.print("Relay1: ");Serial.println((int)Relay1);
+	Serial.print("Relay2: ");Serial.println((int)Relay2);
+	Serial.print("SvcState: ");Serial.println((int)svcState);
       }  
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
       // update LCD
 #ifdef LCD16X2
@@ -671,7 +721,9 @@ uint8_t J1772EVSEController::doPost()
 #endif //#else OPENEVSE_2
   }
   else { // ! AutoSvcLevelEnabled
+#ifndef OPENEVSE_2
   stuckrelaychk:
+#endif
     if (StuckRelayChkEnabled()) {
       RelayOff = ReadACPins();
       if ((RelayOff & 3) != 3) {
@@ -706,31 +758,18 @@ uint8_t J1772EVSEController::doPost()
   }
   m_Pilot.SetState(PILOT_STATE_P12);
 
-#ifdef SERIALCLI
+#ifdef SERDBG
   if (SerDbgEnabled()) {
-    g_CLI.print_P(PSTR("POST result: "));
+    Serial.print("POST result: ");
     Serial.println((int)svcState);
   }
-#endif //#ifdef SERIALCLI
+#endif //#ifdef SERDBG
 
   WDT_RESET();
 
   return svcState;
 }
 #endif // ADVPWR
-
-void J1772EVSEController::ProcessInputs()
-{
-#ifdef RAPI
-  g_ERP.doCmd();
-#endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
-#ifdef BTN_MENU
-  g_BtnHandler.ChkBtn();
-#endif
-}
 
 void J1772EVSEController::Init()
 {
@@ -785,17 +824,21 @@ void J1772EVSEController::Init()
   }
 
 #ifdef NOCHECKS
-  m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED;
+  m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED|ECF_TEMP_CHK_DISABLED;
+#endif
+
+#ifdef SERDBG
+  EnableSerDbg(1);
 #endif
 
 #ifdef AMMETER
   m_AmmeterCurrentOffset = eeprom_read_word((uint16_t*)EOFS_AMMETER_CURR_OFFSET);
   m_CurrentScaleFactor = eeprom_read_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR);
   
-  if (m_AmmeterCurrentOffset == 0x0000ffff) {
+  if (m_AmmeterCurrentOffset == (int16_t)0xffff) {
     m_AmmeterCurrentOffset = DEFAULT_AMMETER_CURRENT_OFFSET;
   }
-  if (m_CurrentScaleFactor == 0x0000ffff) {
+  if (m_CurrentScaleFactor == (int16_t)0xffff) {
     m_CurrentScaleFactor = DEFAULT_CURRENT_SCALE_FACTOR;
   }
   
@@ -824,22 +867,13 @@ void J1772EVSEController::Init()
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
-  if (m_GfiTripCnt == 255) {
-    m_GfiTripCnt = 0;
-  }
 #endif // GFI
 #ifdef ADVPWR
   m_NoGndRetryCnt = 0;
   m_NoGndTripCnt = eeprom_read_byte((uint8_t*)EOFS_NOGND_TRIP_CNT);
-  if (m_NoGndTripCnt != 255) {
-    m_NoGndTripCnt = 0;
-  }
 
   m_StuckRelayStartTimeMS = 0;
   m_StuckRelayTripCnt = eeprom_read_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT);
-  if (m_StuckRelayTripCnt != 255) {
-    m_StuckRelayTripCnt = 0;
-  }
 
   m_NoGndRetryCnt = 0;
   m_NoGndStart = 0;
@@ -902,14 +936,14 @@ void J1772EVSEController::Init()
   g_OBD.SetGreenLed(0);
 }
 
-void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
+void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt)
 {
-  int pl = 1023;
-  int ph = 0;
+  uint16_t pl = 1023;
+  uint16_t ph = 0;
 
   // 1x = 114us 20x = 2.3ms 100x = 11.3ms
   for (int i=0;i < 100;i++) {
-    int reading = adcPilot.read();  // measures pilot voltage
+    uint16_t reading = adcPilot.read();  // measures pilot voltage
     
     if (reading > ph) {
       ph = reading;
@@ -933,8 +967,8 @@ void J1772EVSEController::ReadPilot(int *plow,int *phigh,int loopcnt)
 //Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60 
 void J1772EVSEController::Update()
 {
-  int plow;
-  int phigh;
+  uint16_t plow;
+  uint16_t phigh = 0xffff;
 
   unsigned long curms = millis();
 
@@ -943,6 +977,7 @@ void J1772EVSEController::Update()
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
+    int8_t cancelTransition = 1;
     if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
       // wait for pilot voltage to go > STATE C. This will happen if
@@ -959,8 +994,22 @@ void J1772EVSEController::Update()
 #endif
       }
     }
-    m_PrevEvseState = m_EvseState; // cancel state transition
-    return;
+#if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+    else if (LimitSleepIsSet()) {
+      ReadPilot(&plow,&phigh);
+      if (phigh >= m_ThreshData.m_ThreshAB) {
+	// if we went into sleep due to time/charge limit met, then
+	// automatically cancel the sleep when the car is unplugged
+	cancelTransition = 0;
+	SetLimitSleep(0);
+	m_EvseState = EVSE_STATE_UNKNOWN;
+      }
+    }
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+    if (cancelTransition) {
+      m_PrevEvseState = m_EvseState; // cancel state transition
+      return;
+    }
   }
 
   uint8_t prevevsestate = m_EvseState;
@@ -979,8 +1028,7 @@ void J1772EVSEController::Update()
 	m_EvseState = EVSE_STATE_NO_GROUND;
 	
 	chargingOff(); // open the relay
-	
-	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (m_NoGndTripCnt < 253)) {
+	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (((uint8_t)(m_NoGndTripCnt+1)) < 254)) {
 	  m_NoGndTripCnt++;
 	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
 	}
@@ -1003,7 +1051,9 @@ void J1772EVSEController::Update()
   else { // !chargingIsOn() - relay open
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       // check to see if EV disconnected
-      ReadPilot(&plow,&phigh);
+      if (phigh == 0xffff) {
+	ReadPilot(&plow,&phigh);
+      }
       if (phigh >= m_ThreshData.m_ThreshAB) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1030,7 +1080,7 @@ void J1772EVSEController::Update()
                ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
 	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
 	  // stuck relay
-	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (m_StuckRelayTripCnt < 253)) {
+	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (((uint8_t)(m_StuckRelayTripCnt+1)) < 254)) {
 	    m_StuckRelayTripCnt++;
 	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
 	  }   
@@ -1050,7 +1100,7 @@ void J1772EVSEController::Update()
     m_EvseState = EVSE_STATE_GFCI_FAULT;
 
     if (prevevsestate != EVSE_STATE_GFCI_FAULT) { // state transition
-      if (m_GfiTripCnt < 253) {
+      if (((uint8_t)(m_GfiTripCnt+1)) < 254) {
 	m_GfiTripCnt++;
 	eeprom_write_byte((uint8_t*)EOFS_GFI_TRIP_CNT,m_GfiTripCnt);
       }
@@ -1091,6 +1141,7 @@ void J1772EVSEController::Update()
 
 
 #ifdef TEMPERATURE_MONITORING                 //  A state for OverTemp fault
+if (TempChkEnabled()) {
   if ((g_TempMonitor.m_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  || 
       (g_TempMonitor.m_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC)  ||
       (g_TempMonitor.m_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
@@ -1098,6 +1149,7 @@ void J1772EVSEController::Update()
     m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
     nofault = 0;
   }
+}
 #endif // TEMPERATURE_MONITORING
 
   if (nofault) {
@@ -1123,14 +1175,24 @@ void J1772EVSEController::Update()
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
     }
-    else if ((phigh  >= m_ThreshData.m_ThreshCD) ||
-	     (!VentReqEnabled() && (phigh > m_ThreshData.m_ThreshD))) {
+    else if (phigh  >= m_ThreshData.m_ThreshCD) {
       // 6V ready to charge
-      tmpevsestate = EVSE_STATE_C;
+      if (m_Pilot.GetState() == PILOT_STATE_PWM) {
+	tmpevsestate = EVSE_STATE_C;
+      }
+      else {
+	// PWM is off so we can't charge.. force to State B
+	tmpevsestate = EVSE_STATE_B;
+      }
     }
     else if (phigh > m_ThreshData.m_ThreshD) {
       // 3V ready to charge vent required
-      tmpevsestate = EVSE_STATE_D;
+      if (VentReqEnabled()) {
+	tmpevsestate = EVSE_STATE_D;
+      }
+      else {
+	tmpevsestate = EVSE_STATE_C;
+      }
     }
     else {
       tmpevsestate = EVSE_STATE_UNKNOWN;
@@ -1185,9 +1247,9 @@ void J1772EVSEController::Update()
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
       m_Gfi.pinTest.write(1);
-      delayMicroseconds(GFI_PULSE_DURATION_US);
+      delayMicroseconds(GFI_PULSE_ON_US);
       m_Gfi.pinTest.write(0);
-      delayMicroseconds(GFI_PULSE_DURATION_US);
+      delayMicroseconds(GFI_PULSE_OFF_US);
       if (m_Gfi.Fault()) break;
     }
   }
@@ -1213,11 +1275,6 @@ void J1772EVSEController::Update()
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
       m_Pilot.SetPWM(m_CurrentCapacity);
-      #ifdef KWH_RECORDING
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
@@ -1235,9 +1292,9 @@ void J1772EVSEController::Update()
 #ifdef FT_GFI_LOCKOUT
       for(int i = 0; i < GFI_TEST_CYCLES; i++) {
 	m_Gfi.pinTest.write(1);
-	delayMicroseconds(GFI_PULSE_DURATION_US);
+	delayMicroseconds(GFI_PULSE_ON_US);
 	m_Gfi.pinTest.write(0);
-	delayMicroseconds(GFI_PULSE_DURATION_US);
+	delayMicroseconds(GFI_PULSE_OFF_US);
 	if (m_Gfi.Fault()) break;
       }
       g_OBD.LcdMsg("Closing","Relay");
@@ -1245,16 +1302,12 @@ void J1772EVSEController::Update()
 #endif // FT_GFI_LOCKOUT
 
       chargingOn(); // turn on charging current
-      #ifdef KWH_RECORDING
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
     }
     else if (m_EvseState == EVSE_STATE_D) {
       // vent required not supported
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
+      HardFault();
     }
     else if (m_EvseState == EVSE_STATE_GFCI_FAULT) {
       // vehicle state F
@@ -1280,6 +1333,8 @@ void J1772EVSEController::Update()
       // N.B. J1772 specifies to go to State F (-12V) but we can't do that
       // and keep checking
       m_Pilot.SetPWM(m_CurrentCapacity);
+      m_Pilot.SetState(PILOT_STATE_P12);
+      HardFault();
     }
     else if (m_EvseState == EVSE_STATE_NO_GROUND) {
       // Ground not detected
@@ -1304,19 +1359,29 @@ void J1772EVSEController::Update()
 #ifdef RAPI
     g_ERP.sendEvseState();
 #endif // RAPI
-#ifdef SERIALCLI
+#ifdef SERDBG
     if (SerDbgEnabled()) {
-      g_CLI.print_P(PSTR("state: "));
+      Serial.print("state: ");
+      switch (m_Pilot.GetState()) {
+      case PILOT_STATE_P12: Serial.print("P12"); break;
+      case PILOT_STATE_PWM: Serial.print("PWM"); break;
+      case PILOT_STATE_N12: Serial.print("N12"); break;
+      }
+      Serial.print(" ");
       Serial.print((int)prevevsestate);
-      g_CLI.print_P(PSTR("->"));
+      Serial.print("->");
       Serial.print((int)m_EvseState);
-      g_CLI.print_P(PSTR(" p "));
+      Serial.print(" p ");
       Serial.print(plow);
-      g_CLI.print_P(PSTR(" "));
+      Serial.print(" ");
       Serial.println(phigh);
     }
-#endif //#ifdef SERIALCLI
-
+#endif //#ifdef SERDBG
+      #ifdef KWH_RECORDING          // Reset the Wh when exiting State A for any reason
+        if (prevevsestate == EVSE_STATE_A) {
+          g_WattSeconds = 0;
+        }
+      #endif
   } // state transition
 
 #ifdef UL_COMPLIANT
@@ -1353,54 +1418,55 @@ void J1772EVSEController::Update()
     m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
 #ifdef TEMPERATURE_MONITORING
+  if(TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
       uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
       uint8_t setit = 0;
-      g_TempMonitor.Read();
+ //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
-	g_TempMonitor.SetOverTemperature(1);
 	currcap /= 2;   // set to the throttled back level
-	setit = 1;
+	setit = 2;
       }
-      
-      if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
+
+      else if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
 					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
 					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
-	g_TempMonitor.SetOverTemperature(0);
-	
 	setit = 1;    // set to the user's original setting for current
       }           
       
       
-      if (!g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_SHUTDOWN ) ||  // any sensor reaching threshold trips action
+      else if (!g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_SHUTDOWN ) ||  // any sensor reaching threshold trips action
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
-	g_TempMonitor.SetOverTemperatureShutdown(1);
-        currcap /= 4;
-	setit = 1;
+  currcap /= 4;
+	setit = 4;
       }
       
-      if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
+      else if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
 						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
 						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
-	g_TempMonitor.SetOverTemperatureShutdown(0);
-	
 	currcap /= 2;    // set to the throttled back level
-	setit = 1;
+	setit = 3;
       }    
       if (setit) {
-	SetCurrentCapacity(currcap,0,1);
-	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
-	  m_Pilot.SetPWM(m_CurrentCapacity);
-	}
+        if (setit <= 2) 
+          g_TempMonitor.SetOverTemperature(setit-1);
+        else
+        	g_TempMonitor.SetOverTemperatureShutdown(setit-3);
+      SetCurrentCapacity(currcap,0,1);
+    	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
+    	  m_Pilot.SetPWM(m_CurrentCapacity);
+	      }
       }
     }
+  }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
     if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
       SetChargeLimit(0); // reset charge limit
+      SetLimitSleep(1);
       Sleep();
     }
 #endif
@@ -1410,6 +1476,7 @@ void J1772EVSEController::Update()
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
       if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
 	SetTimeLimit(0); // reset time limit
+	SetLimitSleep(1);
 	Sleep();
       }
     }
