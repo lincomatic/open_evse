@@ -43,8 +43,6 @@
 // (the Panelolu2 encoder bits are subset of these bits)
 #define ALL_BUTTON_BITS (BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT|BUTTON_SELECT)
 
-#define MCP23008_ADDRESS 0x20
-
 // registers
 #define MCP23008_IODIR 0x00
 #define MCP23008_IPOL 0x01
@@ -57,8 +55,6 @@
 #define MCP23008_INTCAP 0x08
 #define MCP23008_GPIO 0x09
 #define MCP23008_OLAT 0x0A
-
-#define MCP23017_ADDRESS 0x20
 
 // registers
 #define MCP23017_IODIRA 0x00

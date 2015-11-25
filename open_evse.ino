@@ -298,16 +298,16 @@ void TempMonitor::Read()
        
 #ifdef RTC
     // This code chunck below reads the DS3231 RTC's internal temperature sensor            
-    Wire.beginTransmission(0x68);
+    Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x0e));
     wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
     Wire.endTransmission();            
              
-    Wire.beginTransmission(0x68);
+    Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x11));
     Wire.endTransmission();
       
-    Wire.requestFrom(0x68, 2);
+    Wire.requestFrom(DS1307_ADDRESS, 2);
     m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
     m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
     if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0

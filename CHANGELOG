@@ -1,5 +1,9 @@
 Change Log
 
+SCL 20151125
+- added i2caddr.h
+- take Wire.begin() out of RTClib.cpp
+
 vD3.10.4 SCL 20151110
 - update version number
 	

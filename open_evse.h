@@ -35,6 +35,7 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
+#include "i2caddr.h"
 
 #define VERSION "D3.10.4"
 
@@ -266,6 +267,7 @@
 #define WATCHDOG_TIMEOUT WDTO_2S
 
 #define LCD_MAX_CHARS_PER_LINE 16
+
 
 #ifdef SERIALCLI
 #define TMP_BUF_SIZE 64

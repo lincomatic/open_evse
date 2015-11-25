@@ -58,7 +58,7 @@ int I2CIO::begin (  uint8_t i2cAddr )
 {
    _i2cAddr = i2cAddr;
    
-   Wire.begin ( );
+//don't need - open_evse.ino does it   Wire.begin ( );
       
    _initialised = Wire.requestFrom ( _i2cAddr, (uint8_t)1 );
 

@@ -27,6 +27,7 @@
 #else
 #include "WProgram.h"
 #endif
+#include "i2caddr.h"
 
 
 //MCP23017 - Adafruit RGB LCD Shield

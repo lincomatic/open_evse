@@ -4,8 +4,8 @@
 #include "./Wire.h"
 #include <avr/pgmspace.h>
 #include "RTClib.h"
+#include "i2caddr.h"
 
-#define DS1307_ADDRESS 0x68
 #define SECONDS_PER_DAY 86400L
 
 #define SECONDS_FROM_1970_TO_2000 946684800
