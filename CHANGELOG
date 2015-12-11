@@ -1,5 +1,9 @@
 Change Log
 
+SCL 20151211
+- change static inline to inline for wiresend/wirerecv() to fix compiler error
+	in Arduino 1.6.6
+	
 SCL 20151125
 - added i2caddr.h
 - take Wire.begin() out of RTClib.cpp
