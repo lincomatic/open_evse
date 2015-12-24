@@ -412,6 +412,10 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       break;
 #endif // CHARGE_LIMIT
+    case 'L': // get service level
+      sprintf(buffer,"%d",(int)g_EvseController.GetCurSvcLevel());
+      bufCnt = 1; // flag response text output
+      break;
 #ifdef VOLTMETER
     case 'M':
       u1.i = g_EvseController.GetVoltScaleFactor();
