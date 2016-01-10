@@ -294,7 +294,7 @@
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
-#define VOLT_PIN 1 // analog pilot voltage reading pin ADCx
+#define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
 #ifdef OPENEVSE_2
 #define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin ADCx
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If

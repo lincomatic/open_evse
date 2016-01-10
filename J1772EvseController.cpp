@@ -140,7 +140,7 @@ uint32_t MovingAverage(uint32_t samp)
 #endif // AMMETER
 
 J1772EVSEController::J1772EVSEController() :
-  adcPilot(VOLT_PIN)
+  adcPilot(PILOT_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
