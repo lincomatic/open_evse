@@ -449,7 +449,7 @@ void J1772EVSEController::Disable()
     chargingOff();
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
   }
 }
@@ -472,7 +472,7 @@ void J1772EVSEController::Sleep()
 
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
@@ -1357,7 +1357,7 @@ if (TempChkEnabled()) {
     }
 
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
 #ifdef SERDBG
     if (SerDbgEnabled()) {

@@ -33,4 +33,9 @@
 //RTClib
 #define DS1307_ADDRESS 0x68
 
+//RAPI_I2C
+#define RAPI_I2C_LOCAL_ADDR 0x05
+#define RAPI_I2C_REMOTE_ADDR 0x06
+
+
 #endif // _I2CADDR_H_

@@ -1,5 +1,13 @@
 Change Log
 
+SCL 20160112
+- added RAPI_I2C. Serial RAPI now enabled by RAPI_SERIAL.
+  *WARNING* RAPI_I2C not tested yet and probably doesn't work
+  both RAPI_I2C and RAPI_SERIAL may be enabled simultaneously
+	
+SCL 20160111
+- change VOLT_PIN to PILOT_PIN
+	
 SCL 20151211
 - change static inline to inline for wiresend/wirerecv() to fix compiler error
 	in Arduino 1.6.6

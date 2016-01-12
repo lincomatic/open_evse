@@ -35,9 +35,8 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-#include "i2caddr.h"
 
-#define VERSION "D3.10.4"
+#define VERSION "D3.11.0"
 
 //-- begin features
 
@@ -49,6 +48,12 @@
 
 // serial remote api
 #define RAPI
+
+// RAPI over serial
+#define RAPI_SERIAL
+
+// RAPI over I2C
+#define RAPI_I2C
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -100,7 +105,7 @@
 #define GFI_SELFTEST
 #endif //UL_GFI_SELFTEST
 
-#define TEMPERATURE_MONITORING  // Temperature monitoring support
+//#define TEMPERATURE_MONITORING  // Temperature monitoring support
 // not yet #define TEMPERATURE_MONITORING_NY
 
 #ifdef AMMETER
@@ -180,6 +185,8 @@
 #define PAFC_PWM
 
 //-- end features
+
+#include "i2caddr.h"
 
 #ifndef RGBLCD
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
