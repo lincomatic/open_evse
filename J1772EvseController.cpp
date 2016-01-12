@@ -272,6 +272,7 @@ void J1772EVSEController::HardFault()
 {
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
+  RapiSendEvseState();
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
     // if we're in P12 state, we can recover from the hard fault when EV
