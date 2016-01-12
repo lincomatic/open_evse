@@ -911,6 +911,7 @@ void J1772EVSEController::Init()
     if (fault) {
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
+      RapiSendEvseState();
       while (1) { // spin forever
 	  ProcessInputs();
       }

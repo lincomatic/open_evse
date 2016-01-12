@@ -4,6 +4,7 @@ SCL 20160112
 - added RAPI_I2C. Serial RAPI now enabled by RAPI_SERIAL.
   *WARNING* RAPI_I2C not tested yet and probably doesn't work
   both RAPI_I2C and RAPI_SERIAL may be enabled simultaneously
+- call RapiSendEvseState() if POST error
 	
 SCL 20160111
 - change VOLT_PIN to PILOT_PIN
