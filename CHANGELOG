@@ -6,7 +6,8 @@ vD3.11.0 SCL 20160112
   both RAPI_I2C and RAPI_SERIAL may be enabled simultaneously
 - call RapiSendEvseState() if POST error
 - fix bug, wasn't calling RapiSendEvseState() if HardFault()
-	
+- in J1772EvseController::Init() - call RapiSendCommand() with EVSE_STATE_UNKNOWN
+
 SCL 20160111
 - change VOLT_PIN to PILOT_PIN
 	

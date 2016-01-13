@@ -774,6 +774,11 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+  m_EvseState = EVSE_STATE_UNKNOWN;
+  m_PrevEvseState = EVSE_STATE_UNKNOWN;
+
+  RapiSendEvseState(0);
+
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
@@ -879,10 +884,6 @@ void J1772EVSEController::Init()
   m_NoGndRetryCnt = 0;
   m_NoGndStart = 0;
 #endif // ADVPWR
-
-  m_EvseState = EVSE_STATE_UNKNOWN;
-  m_PrevEvseState = EVSE_STATE_UNKNOWN;
-
 
 #ifdef ADVPWR
 
