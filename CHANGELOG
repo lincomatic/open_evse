@@ -1,5 +1,8 @@
 Change Log
 
+vD3.11.1 SCL 20160120
+- fix bug in handling negative temperatures from DS3231
+	
 vD3.11.0 SCL 20160112
 - added RAPI_I2C. Serial RAPI now enabled by RAPI_SERIAL.
   *WARNING* RAPI_I2C not tested yet and probably doesn't work

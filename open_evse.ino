@@ -297,6 +297,9 @@ void TempMonitor::Read()
 
        
 #ifdef RTC
+#ifdef OPENEVSE_2
+    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
+#else // !OPENEVSE_2
     // This code chunck below reads the DS3231 RTC's internal temperature sensor            
     Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x0e));
@@ -308,12 +311,17 @@ void TempMonitor::Read()
     Wire.endTransmission();
       
     Wire.requestFrom(DS1307_ADDRESS, 2);
-    m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-    m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
-    if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
-#ifdef OPENEVSE_2
-    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
-#endif
+    m_DS3231_temperature = (((int16_t)wirerecv()) << 2) | (wirerecv() >> 6);
+    if (m_DS3231_temperature == 0x3FF) {
+      // assume chip not present
+      m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
+    }
+    else {
+      if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00; // sign extend negative number
+      // convert from .25C to .1C
+      m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;
+    }
+#endif // OPENEVSE_2
 #endif // RTC
 
     m_LastUpdate = curms;
