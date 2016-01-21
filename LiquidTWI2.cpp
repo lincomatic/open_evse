@@ -248,6 +248,7 @@ void LiquidTWI2::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
   if (lines > 1) {
     _displayfunction |= LCD_2LINE;
   }
+  _numcols = col;
   _numlines = lines;
   _currline = 0;
 
@@ -347,8 +348,6 @@ void LiquidTWI2::setCursor(uint8_t col, uint8_t row)
 #ifdef DETECT_DEVICE
   if (!_deviceDetected) return;
 #endif
-
-  _numcols = col;
 
   int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
   if ( row > _numlines ) row = _numlines - 1;    // we count rows starting w/0
