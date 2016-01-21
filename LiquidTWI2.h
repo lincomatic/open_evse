@@ -175,9 +175,6 @@ public:
     _mcpType = mcptype;
 #endif //defined(MCP23017)&&defined(MCP23008)
   }
-  uint8_t getCols() { return _numcols; }
-  uint8_t getLines() { return _numlines; }
-
 
 private:
 	void send(uint8_t, uint8_t);
@@ -194,7 +191,6 @@ private:
 	uint8_t _displaycontrol;
 	uint8_t _displaymode;
 	uint8_t _numlines,_currline;
-	uint8_t _numcols;
 	uint8_t _i2cAddr;
 	uint8_t _backlightInverted;
 #ifdef DETECT_DEVICE

@@ -248,7 +248,6 @@ void LiquidTWI2::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
   if (lines > 1) {
     _displayfunction |= LCD_2LINE;
   }
-  _numcols = col;
   _numlines = lines;
   _currline = 0;
 
