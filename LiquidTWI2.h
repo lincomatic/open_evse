@@ -170,11 +170,13 @@ public:
   //make some noise
   void buzz(long,uint16_t);
 #endif
-	void setMCPType(uint8_t mcptype) {
+  void setMCPType(uint8_t mcptype) {
 #if defined(MCP23017)&&defined(MCP23008)
-	  _mcpType = mcptype;
+    _mcpType = mcptype;
 #endif //defined(MCP23017)&&defined(MCP23008)
-	}
+  }
+  uint8_t getCols() { return _numcols; }
+  uint8_t getLines() { return _numlines; }
 
 
 private:
@@ -192,6 +194,7 @@ private:
 	uint8_t _displaycontrol;
 	uint8_t _displaymode;
 	uint8_t _numlines,_currline;
+	uint8_t _numcols;
 	uint8_t _i2cAddr;
 	uint8_t _backlightInverted;
 #ifdef DETECT_DEVICE
