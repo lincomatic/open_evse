@@ -300,7 +300,7 @@ void TempMonitor::Read()
 #ifdef OPENEVSE_2
     m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
 #else // !OPENEVSE_2
-    // This code chunck below reads the DS3231 RTC's internal temperature sensor            
+    // This code chunk below reads the DS3231 RTC's internal temperature sensor            
     Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x0e));
     wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
@@ -749,21 +749,21 @@ void OnboardDisplay::Update(int8_t updmode)
 	const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
 	if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, g_TempMonitor.m_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, abs(g_TempMonitor.m_MCP9808_temperature % 10));  //  Ambient sensor near or on the LCD
 	  LcdPrint(0,1,g_sTmp);
 	}
 #endif
 
 #ifdef RTC	
 	if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, abs(g_TempMonitor.m_DS3231_temperature % 10));      //  sensor built into the DS3231 RTC Chip
 	  LcdPrint(5,1,g_sTmp);
 	}
 #endif
 	
 #ifdef TMP007_IS_ON_I2C
 	if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);  //  Infrared sensor probably looking at 30A fuses
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, abs(g_TempMonitor.m_TMP007_temperature % 10));  //  Infrared sensor probably looking at 30A fuses
 	  LcdPrint(11,1,g_sTmp);
 	}
 #endif

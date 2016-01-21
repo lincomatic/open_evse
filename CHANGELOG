@@ -1,5 +1,8 @@
 Change Log
 
+vD3.11.2 SCL 20160120
+- fix error displaying negative temperatures... extra - sign leading decimals when negative temperature
+	
 vD3.11.1 SCL 20160120
 - fix bug in handling negative temperatures from DS3231
 	
