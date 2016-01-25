@@ -30,13 +30,15 @@
 #include "./Wire.h"
 #include "./Time.h"
 #include "avrstuff.h"
+#include "i2caddr.h"
+
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "3.10.4"
+#define VERSION "3.11.3"
 
 //-- begin features
 
@@ -48,6 +50,12 @@
 
 // serial remote api
 #define RAPI
+
+// RAPI over serial
+#define RAPI_SERIAL
+
+// RAPI over I2C
+//#define RAPI_I2C
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -267,6 +275,7 @@
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
+
 #ifdef SERIALCLI
 #define TMP_BUF_SIZE 64
 #else
@@ -292,7 +301,7 @@
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
-#define VOLT_PIN 1 // analog pilot voltage reading pin ADCx
+#define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
 #ifdef OPENEVSE_2
 #define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin ADCx
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
@@ -752,7 +761,7 @@ public:
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING
-#include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "./MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
 #define TEMPMONITOR_UPDATE_INTERVAL 1000ul
@@ -765,7 +774,7 @@ class TempMonitor {
   unsigned long m_LastUpdate;
 public:
 #ifdef MCP9808_IS_ON_I2C
-  Adafruit_MCP9808 m_tempSensor;
+  MCP9808 m_tempSensor;
 #endif  //MCP9808_IS_ON_I2C
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;

@@ -61,13 +61,26 @@ uint32_t dtou32(const char *s)
   return u;
 }
 
+#ifdef RAPI_I2C
+//get data from master - HINT: this is a ISR call!
+//HINT2: do not handle stuff here!! this will NOT work
+//collect only data here and process it in the main loop!
+void receiveEvent(int numBytes)
+{
+  //do nothing here
+}
+#endif // RAPI_I2C
+
 EvseRapiProcessor::EvseRapiProcessor()
+{
+}
+
+void EvseRapiProcessor::init()
 {
   echo = 0;
   reset();
 }
 
-//extern HardwareSerial Serial;
 int EvseRapiProcessor::doCmd()
 {
   int rc = 1;
@@ -108,16 +121,21 @@ int EvseRapiProcessor::doCmd()
   return rc;
 }
 
+
 void EvseRapiProcessor::sendEvseState()
 {
   sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  writeStart();
   write(g_sTmp);
+  writeEnd();
 }
 
 void EvseRapiProcessor::setWifiMode(uint8_t mode)
 {
   sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
+  writeStart();
   write(g_sTmp);
+  writeEnd();
 }
 
 int EvseRapiProcessor::tokenize()
@@ -486,6 +504,8 @@ int EvseRapiProcessor::processCmd()
 
 void EvseRapiProcessor::response(uint8_t ok)
 {
+  writeStart();
+
   write(ESRAPI_SOC);
   write(ok ? "OK " : "NK ");
 
@@ -494,8 +514,88 @@ void EvseRapiProcessor::response(uint8_t ok)
   }
   write(ESRAPI_EOC);
   if (echo) write('\n');
+
+  writeEnd();
+}
+
+EvseSerialRapiProcessor::EvseSerialRapiProcessor()
+{
+}
+
+void EvseSerialRapiProcessor::init()
+{
+  EvseRapiProcessor::init();
 }
 
 
-EvseRapiProcessor g_ERP;
+#ifdef RAPI_I2C
+
+EvseI2cRapiProcessor::EvseI2cRapiProcessor()
+{
+}
+
+void EvseI2cRapiProcessor::init()
+{
+  Wire.begin(RAPI_I2C_LOCAL_ADDR);
+  Wire.onReceive(receiveEvent);   // define the receive function for receiving data from master
+
+  EvseRapiProcessor::init();
+}
+
+
+#endif // RAPI_I2C
+
+#ifdef RAPI_SERIAL
+EvseSerialRapiProcessor g_ESRP;
+#endif
+#ifdef RAPI_I2C
+EvseI2cRapiProcessor g_EIRP;
+#endif
+
+void RapiInit()
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.init();
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.init();
+#endif
+}
+
+void RapiDoCmd()
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.doCmd();
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.doCmd();
+#endif
+}
+
+void RapiSendEvseState(uint8_t nodupe)
+{
+  static uint8_t evseStateSent = EVSE_STATE_UNKNOWN;
+  uint8_t es = g_EvseController.GetState();
+
+  if (!nodupe || (evseStateSent != es)) {
+#ifdef RAPI_SERIAL
+    g_ESRP.sendEvseState();
+#endif
+#ifdef RAPI_I2C
+    g_EIRP.sendEvseState();
+#endif
+    evseStateSent = es;
+  }
+}
+
+void RapiSetWifiMode(uint8_t mode)
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.setWifiMode(mode);
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.setWifiMode(mode);
+#endif
+}
+
 #endif // RAPI

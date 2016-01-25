@@ -140,7 +140,7 @@ uint32_t MovingAverage(uint32_t samp)
 #endif // AMMETER
 
 J1772EVSEController::J1772EVSEController() :
-  adcPilot(VOLT_PIN)
+  adcPilot(PILOT_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -191,7 +191,9 @@ void J1772EVSEController::Reboot()
 void J1772EVSEController::DisabledTest_P(PGM_P message)
 {
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
+#ifndef NOCHECKS
   delay(SHOW_DISABLED_DELAY);
+#endif
 }
 
 void J1772EVSEController::ShowDisabledTests()
@@ -272,6 +274,7 @@ void J1772EVSEController::HardFault()
 {
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
+  RapiSendEvseState();
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
     // if we're in P12 state, we can recover from the hard fault when EV
@@ -449,7 +452,7 @@ void J1772EVSEController::Disable()
     chargingOff();
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
   }
 }
@@ -472,7 +475,7 @@ void J1772EVSEController::Sleep()
 
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
@@ -773,6 +776,11 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+  m_EvseState = EVSE_STATE_UNKNOWN;
+  m_PrevEvseState = EVSE_STATE_UNKNOWN;
+
+  RapiSendEvseState(0);
+
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
@@ -879,10 +887,6 @@ void J1772EVSEController::Init()
   m_NoGndStart = 0;
 #endif // ADVPWR
 
-  m_EvseState = EVSE_STATE_UNKNOWN;
-  m_PrevEvseState = EVSE_STATE_UNKNOWN;
-
-
 #ifdef ADVPWR
 
 #ifdef FT_READ_AC_PINS
@@ -911,6 +915,7 @@ void J1772EVSEController::Init()
     if (fault) {
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
+      RapiSendEvseState();
       while (1) { // spin forever
 	  ProcessInputs();
       }
@@ -1357,7 +1362,7 @@ if (TempChkEnabled()) {
     }
 
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
 #ifdef SERDBG
     if (SerDbgEnabled()) {
