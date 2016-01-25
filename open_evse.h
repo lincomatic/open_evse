@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.11.3"
+#define VERSION "D4.0.0"
 
 //-- begin features
 
@@ -51,10 +51,13 @@
 // serial remote api
 #define RAPI
 
+// add checksum to RAPI responses RAPI v2.0.0+
+#define RAPI_RESPONSE_CHK
+
 // RAPI over serial
 #define RAPI_SERIAL
 
-// RAPI over I2C
+// RAPI over I2C - NOT TESTED - CURRENTLY BROKEN
 //#define RAPI_I2C
 
 // serial port command line
@@ -64,6 +67,17 @@
 
 // enable watchdog timer
 #define WATCHDOG
+
+// auto detect ampacity by PP pin resistor
+//#define PP_AUTO_AMPACITY
+
+#ifdef PP_AUTO_AMPACITY
+#define PP_TABLE_FF_TESLA // only 0,12,40A
+
+#include "AutoCurrentCapacityController.h"
+#endif
+
+
 
 // charge for a specified amount of time and then stop
 #define TIME_LIMIT
@@ -314,6 +328,8 @@
 #define CHARGING_REG &PIND // OpenEVSE II has just one relay pin.
 #define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
+#define PP_PIN 2 // PP_READ - ADC2
+
  // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE1_REG &PIND
 #define ACLINE1_IDX 3
@@ -519,7 +535,7 @@
 #ifdef TEMPERATURE_MONITORING
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
-#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
 #define TEMPERATURE_DISPLAY_ALWAYS 0     // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
                                          // Set to it 0 to only display when temperatures become elevated 
 // #define TESTING_TEMPERATURE_OPERATION // Set this flag to play with very low sensor thresholds or to evaluate the code.

@@ -191,6 +191,10 @@ unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds;
 #endif // KWH_RECORDING
 
+#ifdef PP_AUTO_AMPACITY
+AutoCurrentCapacityController g_ACCController;
+#endif
+
 
 //-- end global variables
 
@@ -2249,7 +2253,36 @@ void EvseReset()
 #endif
 
   g_EvseController.Init();
+
+#ifdef PP_AUTO_AMPACITY
+  g_ACCController.SetMaxAmps(g_EvseController.GetCurrentCapacity());
+  g_ACCController.AutoSetCurrentCapacity();
+#endif
 }
+
+#ifdef PP_AUTO_AMPACITY
+uint8_t StateTransitionReqFunc(uint8_t curPilotState,uint8_t newPilotState,uint8_t curEvseState,uint8_t newEvseState)
+{
+  uint8_t retEvseState = newEvseState;
+
+  if ((newEvseState >= EVSE_STATE_B) && (newEvseState <= EVSE_STATE_C)) {
+    //n.b. no debounce delay needed because J1772EvseController::Update()
+    // already debounces before requesting the state transition, so we can
+    // be absolutely sure that the PP pin has firm contact by the time we
+    // get here
+    g_ACCController.AutoSetCurrentCapacity();
+    if (!g_ACCController.GetCurAmps()) {
+      // invalid PP so 0 amps - force to stay in State A
+      retEvseState = EVSE_STATE_A;
+    }
+  }
+  //  Serial.print(" r: ");Serial.print(retEvseState);Serial.print(" a: ");Serial.print(g_ACCController.GetCurAmps());
+  //  Serial.print(" c: ");Serial.print(curEvseState);Serial.print(" n: ");Serial.print(newEvseState);Serial.print(" r: ");Serial.print(retEvseState);
+
+  return retEvseState;
+}
+#endif //PP_AUTO_AMPACITY
+
 
 void setup()
 {
@@ -2262,6 +2295,10 @@ void setup()
 #ifdef BTN_MENU
   g_BtnHandler.init();
 #endif // BTN_MENU
+
+#ifdef PP_AUTO_AMPACITY
+  g_EvseController.SetStateTransitionReqFunc(&StateTransitionReqFunc);
+#endif //PP_AUTO_AMPACITY
 
   EvseReset();
 

@@ -43,10 +43,14 @@ xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
 
 
-response format
+response format (v1.0.3-)
 $OK [optional parameters]\r - success
-
 $NK [optional parameters]\r - failure
+
+response format (v2.0.0+)
+$OK [optional parameters]^xk\r - success
+$NK [optional parameters]^xk\r - failure
+xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 
 asynchronous messages
 $ST state\r - EVSE state transition - sent whenever EVSE state changes
@@ -185,12 +189,21 @@ GV - get version
  response: OK firmware_version protocol_version
  $GV*C1
 
+T commands for debugging only #define RAPI_T_COMMMANDS
+T0 amps - set fake charging current
+ response: OK
+ $T0 75
+
  *
  */
 
 #ifdef RAPI
 
+#ifdef RAPI_RESPONSE_CHK
+#define RAPIVER "2.0.0"
+#else
 #define RAPIVER "1.0.3"
+#endif
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

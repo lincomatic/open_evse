@@ -148,6 +148,7 @@ J1772EVSEController::J1772EVSEController() :
   , adcVoltMeter(VOLTMETER_PIN)
 #endif
 {
+  m_StateTransitionReqFunc = NULL;
 }
 
 void J1772EVSEController::SaveSettings()
@@ -1157,6 +1158,9 @@ if (TempChkEnabled()) {
 }
 #endif // TEMPERATURE_MONITORING
 
+ uint8_t prevpilotstate = m_PilotState;
+ uint8_t tmppilotstate = EVSE_STATE_UNKNOWN;
+
   if (nofault) {
     if ((prevevsestate >= EVSE_FAULT_STATE_BEGIN) &&
 	(prevevsestate <= EVSE_FAULT_STATE_END)) {
@@ -1171,17 +1175,21 @@ if (TempChkEnabled()) {
     if (DiodeCheckEnabled() && (m_Pilot.GetState() == PILOT_STATE_PWM) && (plow >= m_ThreshData.m_ThreshDS)) {
       // diode check failed
       tmpevsestate = EVSE_STATE_DIODE_CHK_FAILED;
+      tmppilotstate = EVSE_STATE_DIODE_CHK_FAILED;
     }
     else if (phigh >= m_ThreshData.m_ThreshAB) {
       // 12V EV not connected
       tmpevsestate = EVSE_STATE_A;
+      tmppilotstate = EVSE_STATE_A;
     }
     else if (phigh >= m_ThreshData.m_ThreshBC) {
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
+      tmppilotstate = EVSE_STATE_B;
     }
     else if (phigh  >= m_ThreshData.m_ThreshCD) {
       // 6V ready to charge
+      tmppilotstate = EVSE_STATE_C;
       if (m_Pilot.GetState() == PILOT_STATE_PWM) {
 	tmpevsestate = EVSE_STATE_C;
       }
@@ -1191,6 +1199,7 @@ if (TempChkEnabled()) {
       }
     }
     else if (phigh > m_ThreshData.m_ThreshD) {
+      tmppilotstate = EVSE_STATE_D;
       // 3V ready to charge vent required
       if (VentReqEnabled()) {
 	tmpevsestate = EVSE_STATE_D;
@@ -1259,6 +1268,16 @@ if (TempChkEnabled()) {
     }
   }
 #endif // FT_GFI_RETRY
+
+  // check request for state transition to A/B/C
+  if (m_StateTransitionReqFunc && (m_EvseState != prevevsestate) &&
+      ((m_EvseState >= EVSE_STATE_A) && (m_EvseState <= EVSE_STATE_C))) {
+    m_PilotState = tmppilotstate;
+    uint8_t newstate = (*m_StateTransitionReqFunc)(prevpilotstate,m_PilotState,prevevsestate,m_EvseState);
+    if (newstate) {
+      m_EvseState = newstate;
+    }
+  }
 
   
   // state transition
@@ -1407,6 +1426,7 @@ if (TempChkEnabled()) {
 #ifdef AMMETER
   if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
     
+#ifndef FAKE_CHARGING_CURRENT
     readAmmeter();
     uint32_t ma = MovingAverage(m_AmmeterReading);
     if (ma != 0xffffffff) {
@@ -1416,6 +1436,7 @@ if (TempChkEnabled()) {
       }
       g_OBD.SetAmmeterDirty(1);
     }
+#endif // !FAKE_CHARGING_CURRENT
   }
 #endif // AMMETER
   if (m_EvseState == EVSE_STATE_C) {

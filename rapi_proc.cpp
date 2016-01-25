@@ -176,7 +176,7 @@ int EvseRapiProcessor::tokenize()
 int EvseRapiProcessor::processCmd()
 {
   UNION4B u1,u2,u3;
-  int rc = 0;
+  int rc = -1;
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -188,13 +188,16 @@ int EvseRapiProcessor::processCmd()
 #ifdef LCD16X2
     case 'B': // LCD backlight
       g_OBD.LcdSetBacklightColor(dtou32(tokens[1]));
+      rc = 0;
       break;
 #endif // LCD16X2      
     case 'D': // disable EVSE
       g_EvseController.Disable();
+      rc = 0;
       break;
     case 'E': // enable EVSE
       g_EvseController.Enable();
+      rc = 0;
       break;
 #ifdef LCD16X2
     case 'P': // print to LCD
@@ -207,16 +210,17 @@ int EvseRapiProcessor::processCmd()
 	}
 	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
       }
+      rc = 0;
       break;
 #endif // LCD16X2      
     case 'R': // reset EVSE
       g_EvseController.Reboot();
+      rc = 0;
       break;
     case 'S': // sleep
       g_EvseController.Sleep();
+      rc = 0;
       break;
-    default:
-      rc = -1; // unknown
     }
     break;
 
@@ -237,6 +241,7 @@ int EvseRapiProcessor::processCmd()
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
 	SetRTC(dtou32(tokens[1]),dtou32(tokens[2]),dtou32(tokens[3]),
 	       dtou32(tokens[4]),dtou32(tokens[5]),dtou32(tokens[6]));
+	rc = 0;
       }
       break;
 #endif // RTC      
@@ -244,12 +249,14 @@ int EvseRapiProcessor::processCmd()
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
 	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
+	rc = 0;
       }
       break;
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
 	g_EvseController.SetTimeLimit(dtou32(tokens[1]));
+	rc = 0;
       }
       break;
 #endif // TIME_LIMIT
@@ -257,6 +264,7 @@ int EvseRapiProcessor::processCmd()
       if (tokenCnt == 3) {
 	g_EvseController.SetCurrentScaleFactor(dtou32(tokens[1]));
 	g_EvseController.SetAmmeterCurrentOffset(dtou32(tokens[2]));
+	rc = 0;
       }
       break;
 #endif // AMMETER
@@ -268,17 +276,20 @@ int EvseRapiProcessor::processCmd()
     case 'D': // diode check
       if (tokenCnt == 2) {
 	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
+	rc = 0;
       }
       break;
     case 'E': // echo
       if (tokenCnt == 2) {
 	echo = ((*tokens[1] == '0') ? 0 : 1);
+	rc = 0;
       }
       break;
 #ifdef GFI_SELFTEST
     case 'F': // GFI self test
       if (tokenCnt == 2) {
 	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
       }
       break;
 #endif // GFI_SELFTEST
@@ -286,6 +297,7 @@ int EvseRapiProcessor::processCmd()
     case 'G': // ground check
       if (tokenCnt == 2) {
 	g_EvseController.EnableGndChk(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
       }
       break;
 #endif // ADVPWR
@@ -293,6 +305,7 @@ int EvseRapiProcessor::processCmd()
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
 	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
+	rc = 0;
       }
       break;
 #endif // CHARGE_LIMIT
@@ -300,6 +313,7 @@ int EvseRapiProcessor::processCmd()
     case 'K': // set accumulated kwh
       g_WattHours_accumulated = dtou32(tokens[1]);
       eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
+      rc = 0;
       break;
 #endif //KWH_RECORDING
     case 'L': // service level
@@ -311,14 +325,14 @@ int EvseRapiProcessor::processCmd()
 #ifdef ADVPWR
 	  g_EvseController.EnableAutoSvcLevel(0);
 #endif
+	  rc = 0;
 	  break;
 #ifdef ADVPWR
 	case 'A':
 	  g_EvseController.EnableAutoSvcLevel(1);
+	  rc = 0;
 	  break;
 #endif // ADVPWR
-	default:
-	  rc = -1; // unknown
 	}
       }
       break;
@@ -326,6 +340,7 @@ int EvseRapiProcessor::processCmd()
     case 'M':
       if (tokenCnt == 3) {
         g_EvseController.SetVoltmeter(dtou32(tokens[1]),dtou32(tokens[2]));
+	rc = 0;
       }
       break;
 #endif // VOLTMETER
@@ -335,6 +350,7 @@ int EvseRapiProcessor::processCmd()
         g_TempMonitor.m_ambient_thresh = dtou32(tokens[1]);
         g_TempMonitor.m_ir_thresh = dtou32(tokens[2]);
 	g_TempMonitor.SaveThresh();
+	rc = 0;
       }
       break;
 #endif // TEMPERATURE_MONITORING
@@ -342,6 +358,7 @@ int EvseRapiProcessor::processCmd()
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
 	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
       }
       break;
 #endif // ADVPWR      
@@ -349,6 +366,7 @@ int EvseRapiProcessor::processCmd()
     case 'S': // GFI self-test
       if (tokenCnt == 2) {
 	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
       }
       break;
 #endif // GFI_SELFTEST   
@@ -364,12 +382,14 @@ int EvseRapiProcessor::processCmd()
 	  g_DelayTimer.SetStopTimer(dtou32(tokens[3]),dtou32(tokens[4]));
 	  g_DelayTimer.Enable();
 	}
+	rc = 0;
       }
       break;
 #endif // DELAYTIMER      
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);
+	rc = 0;
       }
       break;
     }
@@ -381,6 +401,7 @@ int EvseRapiProcessor::processCmd()
     case '3': // get time limit
       sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit());
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // TIME_LIMIT
 #ifdef AMMETER
@@ -389,6 +410,7 @@ int EvseRapiProcessor::processCmd()
       u2.i = g_EvseController.GetAmmeterCurrentOffset();
       sprintf(buffer,"%d %d",u1.i,u2.i);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // AMMETER
     case 'C': // get current capacity range
@@ -402,12 +424,14 @@ int EvseRapiProcessor::processCmd()
       }
       sprintf(buffer,"%d %d",u1.i,u2.i);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
     case 'E': // get settings
       u1.u = g_EvseController.GetCurrentCapacity();
       u2.u = g_EvseController.GetFlags();
       sprintf(buffer,"%d %04x",u1.u,u2.u);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
     case 'F': // get fault counters
       u1.u = g_EvseController.GetGfiTripCnt();
@@ -415,6 +439,7 @@ int EvseRapiProcessor::processCmd()
       u3.u = g_EvseController.GetStuckRelayTripCnt();
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #if defined(AMMETER)||defined(VOLTMETER)
     case 'G':
@@ -422,12 +447,14 @@ int EvseRapiProcessor::processCmd()
       u2.i32 = (int32_t)g_EvseController.GetVoltage();
       sprintf(buffer,"%ld %ld",u1.i32,u2.i32);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // AMMETER || VOLTMETER
 #ifdef CHARGE_LIMIT
     case 'H': // get cHarge limit
       sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimit());
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // CHARGE_LIMIT
 #ifdef VOLTMETER
@@ -436,6 +463,7 @@ int EvseRapiProcessor::processCmd()
       u2.i32 = g_EvseController.GetVoltOffset();
       sprintf(buffer,"%d %ld",u1.i,u2.i32);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // VOLTMETER
 #ifdef TEMPERATURE_MONITORING
@@ -445,6 +473,7 @@ int EvseRapiProcessor::processCmd()
       u2.i = g_TempMonitor.m_ir_thresh;
       sprintf(buffer,"%d %d",u1.i,u2.i);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // TEMPERATURE_MONITORING_NY
     case 'P':
@@ -459,25 +488,27 @@ int EvseRapiProcessor::processCmd()
       strcat(buffer,u2a(g_TempMonitor.m_TMP007_temperature));
       */
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
 #endif // TEMPERATURE_MONITORING
     case 'S': // get state
       sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
       bufCnt = 1; // flag response text output
-
+      rc = 0;
       break;
 #ifdef RTC
     case 'T': // get time
       extern void GetRTC(char *buf);
       GetRTC(buffer);
       bufCnt = 1; // flag response text output
-
+      rc = 0;
       break;
 #endif // RTC
 #ifdef KWH_RECORDING
     case 'U':
       sprintf(buffer,"%lu %lu",g_WattSeconds,g_WattHours_accumulated);
       bufCnt = 1;
+      rc = 0;
       break;
 #endif // KWH_RECORDING
     case 'V': // get version
@@ -485,14 +516,29 @@ int EvseRapiProcessor::processCmd()
       strcat(buffer," ");
       strcat_P(buffer,RAPI_VER);
       bufCnt = 1; // flag response text output
+      rc = 0;
       break;
-    default:
-      rc = -1; // unknown
     }
     break;
 
+#ifdef RAPI_T_COMMANDS
+  case 'T': // set parameter
+    switch(*s) {
+#ifdef FAKE_CHARGING_CURRENT
+    case '0': // set fake charging current
+      if (tokenCnt == 2) {
+	g_EvseController.SetChargingCurrent(dtou32(tokens[1]));
+	g_OBD.SetAmmeterDirty(1);
+	rc = 0;
+      }
+      break;
+#endif // FAKE_CHARGING_CURRENT
+    }
+    break;
+#endif //RAPI_T_COMMANDS
+
   default:
-    rc = -1; // unknown
+    ; // do nothing
   }
 
   response((rc == 0) ? 1 : 0);
@@ -507,11 +553,30 @@ void EvseRapiProcessor::response(uint8_t ok)
   writeStart();
 
   write(ESRAPI_SOC);
-  write(ok ? "OK " : "NK ");
+#ifdef RAPI_RESPONSE_CHK
+  uint8_t chk;
+  write(ok ? "OK" : "NK");
+  if (ok) chk = 0x20;
+  else chk = 0x21;
 
   if (bufCnt) {
+    write(" ");
+    chk ^= ' ';
+    char *c = buffer;
+    do {
+      chk ^= *(c++);
+    } while(*c);
+    sprintf(buffer+strlen(buffer),"^%02X",chk);
     write(buffer);
   }
+#else // !RAPI_RESPONSE_CHK
+  write(ok ? "OK" : "NK");
+
+  if (bufCnt) {
+    write(" ");
+    write(buffer);
+  }
+#endif // RAPI_RESPONSE_CHK
   write(ESRAPI_EOC);
   if (echo) write('\n');
 

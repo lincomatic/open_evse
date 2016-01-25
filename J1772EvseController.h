@@ -54,7 +54,10 @@ typedef struct calibdata {
   uint16_t m_nMin;
 } CALIB_DATA,*PCALIB_DATA;
 
-
+// called whenever EVSE wants to transition state from curEvseState to newEvseState
+// return 0 to allow transition to newEvseState
+// else return desired state
+typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t curPilotState,uint8_t newPilotState,uint8_t curEvseState,uint8_t newEvseState);
 
 // J1772EVSEController m_wFlags bits - saved to EEPROM
 #define ECF_L2                 0x0001 // service level 2
@@ -126,6 +129,7 @@ class J1772EVSEController {
   uint8_t m_EvseState;
   uint8_t m_PrevEvseState;
   uint8_t m_TmpEvseState;
+  uint8_t m_PilotState;
   unsigned long m_TmpEvseStateStart;
   uint8_t m_CurrentCapacity; // max amps we can output
   unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
@@ -134,6 +138,7 @@ class J1772EVSEController {
   time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
+  EvseStateTransitionReqFunc m_StateTransitionReqFunc;
 
 #ifdef ADVPWR
 // power states for doPost() (active low)
@@ -317,6 +322,10 @@ public:
 #endif // VOLTMETER
 #ifdef AMMETER
   int32_t GetChargingCurrent() { return m_ChargingCurrent; }
+#ifdef FAKE_CHARGING_CURRENT
+  void SetChargingCurrent(int32_t current) { m_ChargingCurrent = current; }
+#endif
+
   int16_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
   int16_t GetCurrentScaleFactor() { return m_CurrentScaleFactor; }
   void SetAmmeterCurrentOffset(int16_t offset) {
@@ -359,6 +368,10 @@ public:
   uint8_t GetNoGndTripCnt() { return m_NoGndTripCnt+1; }
   uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt+1; }
 #endif // ADVPWR
+
+  void SetStateTransitionReqFunc(EvseStateTransitionReqFunc statetransitionreqfunc) {
+    m_StateTransitionReqFunc = statetransitionreqfunc;
+  }
 };
 
 #ifdef FT_ENDURANCE

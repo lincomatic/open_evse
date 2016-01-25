@@ -1,4 +1,13 @@
 Change Log
+
+vD4.0.0 SCL 20160125
+- RAPI wasn't always properly returning $NK when receiving invalid/badly formed commands ... fix it.
+- added RAPI_RESPONSE_CHK - appends XOR check byte to RAPI responses.
+	updates RAPI version to 2.0.0. May break
+	existing client code - turn off to disable
+- added StateTransitionReqFunc and m_PilotState to allow external code to hook into state transitions due to pilot changes
+- added PP_AUTO_AMPACITY - needs more testing and appropriate threshold tables
+- turn off by default TMP007_IS_ON_I2C to save memory
 	
 vD3.11.3 SCL 20160125
 - replace Adafruit_MCP9808 with new MCP9808 code
