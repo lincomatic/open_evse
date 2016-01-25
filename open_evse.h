@@ -72,7 +72,8 @@
 //#define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
-#define PP_TABLE_FF_TESLA // only 0,12,40A
+#define PP_TABLE_IEC
+//#define PP_TABLE_FF_TESLA // only 0,12,40A
 
 #include "AutoCurrentCapacityController.h"
 #endif

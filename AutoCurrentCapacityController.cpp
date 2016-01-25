@@ -16,6 +16,17 @@
 
 #ifdef PP_AUTO_AMPACITY
 
+#ifdef PP_TABLE_IEC
+static PP_AMPS s_ppAmps[] = {
+  {0,0},
+  {93,63},
+  {185,32},
+  {415,20},
+  {615,13},
+  {1023,0}
+};
+#endif //PP_TABLE_IEC
+
 #ifdef PP_TABLE_FF_TESLA
 // only 0,12,40A
 static PP_AMPS s_ppAmps[] = {
