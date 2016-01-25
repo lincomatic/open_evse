@@ -1,5 +1,9 @@
 Change Log
-
+	
+vD3.11.3 SCL 20160125
+- replace Adafruit_MCP9808 with new MCP9808 code
+- fix bug handling negative temperatures from MCP9808
+	
 vD3.11.2 SCL 20160120
 - fix error displaying negative temperatures... extra - sign leading decimals when negative temperature
 	

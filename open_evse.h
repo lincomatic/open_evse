@@ -30,13 +30,15 @@
 #include "./Wire.h"
 #include "./Time.h"
 #include "avrstuff.h"
+#include "i2caddr.h"
+
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D3.11.2"
+#define VERSION "D3.11.3"
 
 //-- begin features
 
@@ -185,8 +187,6 @@
 #define PAFC_PWM
 
 //-- end features
-
-#include "i2caddr.h"
 
 #ifndef RGBLCD
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
@@ -761,7 +761,7 @@ public:
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING
-#include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "./MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
 #define TEMPMONITOR_UPDATE_INTERVAL 1000ul
@@ -774,7 +774,7 @@ class TempMonitor {
   unsigned long m_LastUpdate;
 public:
 #ifdef MCP9808_IS_ON_I2C
-  Adafruit_MCP9808 m_tempSensor;
+  MCP9808 m_tempSensor;
 #endif  //MCP9808_IS_ON_I2C
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;

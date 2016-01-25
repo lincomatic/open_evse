@@ -24,14 +24,19 @@
 
 #ifndef _I2CADDR_H_
 #define _I2CADDR_H_
-
+//
 // I2C addresses
+//
 // LiquidTWI2
 #define MCP23017_ADDRESS 0x20
 #define MCP23008_ADDRESS 0x20
 
 //RTClib
 #define DS1307_ADDRESS 0x68
+
+// MCP9808
+#define MCP9808_ADDRESS 0x18
+
 
 //RAPI_I2C
 #define RAPI_I2C_LOCAL_ADDR 0x05

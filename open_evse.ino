@@ -51,7 +51,7 @@
 //#include "./LiquidCrystal_I2C.h"
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
-  #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+  #include "MCP9808.h"  //  adding the ambient temp sensor to I2C
   #endif 
   #ifdef TMP007_IS_ON_I2C
   #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
@@ -290,9 +290,7 @@ void TempMonitor::Read()
     m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
 #endif
 #ifdef MCP9808_IS_ON_I2C
-    m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
-    if (m_MCP9808_temperature == 2303) {
-      m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
+    m_MCP9808_temperature = m_tempSensor.readAmbient();  // for the MCP9808
 #endif
 
        
