@@ -89,11 +89,7 @@ int EvseRapiProcessor::doCmd()
   if (bcnt) {
     for (int i=0;i < bcnt;i++) {
       char c = read();
-      if (echo) {
-	writeStart();
-	write(c);
-	writeEnd();
-      }
+      if (echo) write(c);
 
       if (c == ESRAPI_SOC) {
 	buffer[0] = ESRAPI_SOC;

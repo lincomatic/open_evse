@@ -194,7 +194,7 @@ unsigned long g_WattSeconds;
 
 //-- end global variables
 
-inline void wiresend(uint8_t x) {
+static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
   Wire.write((uint8_t)x);
 #else
@@ -202,7 +202,7 @@ inline void wiresend(uint8_t x) {
 #endif
 }
 
-inline uint8_t wirerecv(void) {
+static inline uint8_t wirerecv(void) {
 #if ARDUINO >= 100
   return Wire.read();
 #else
