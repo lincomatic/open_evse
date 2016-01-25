@@ -65,15 +65,6 @@ int16_t MCP9808::read16(uint8_t reg) {
 // return C*10
 int16_t MCP9808::readAmbient()
 {
-  /*
- uint16_t t = read16(MCP9808_REG_AMBIENT_TEMP);
-
-  uint32_t temp = ((t & 0x0FFF)*10)/16;
-  if (t & 0x1000) temp -= 256;
-
-  return (int16_t) temp;
-  */
-
   if (isPresent) {
     int16_t temp = read16(MCP9808_REG_AMBIENT_TEMP) & 0x1FFF;
     if (temp & 0x1000) temp |= 0xF000; // sign extend negative number
