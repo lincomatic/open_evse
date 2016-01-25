@@ -191,7 +191,9 @@ void J1772EVSEController::Reboot()
 void J1772EVSEController::DisabledTest_P(PGM_P message)
 {
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
+#ifndef NOCHECKS
   delay(SHOW_DISABLED_DELAY);
+#endif
 }
 
 void J1772EVSEController::ShowDisabledTests()
