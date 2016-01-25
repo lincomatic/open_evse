@@ -73,6 +73,5 @@ int16_t MCP9808::readAmbient()
   else {
     return 0;
   }
-
 }
 #endif // MCP9808_IS_ON_I2C
