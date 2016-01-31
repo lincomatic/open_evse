@@ -1,5 +1,11 @@
 Change Log
 
+vD4.0.1 SCL 20160130
+- fix bug in AutoSetCurrentCapacity() - wasn't breaking out of for loop when match found, so it would only set the minimum current
+- PP: reset current to default max when returning to STATE A
+- added GetMaxCurrentCapacity()
+- fix bug in TEMPERATURE_MONITORING - was assuming that EEPROM contained a valid value in EOFS_CURRENT_CAPACITY_Lx - if not then current was getting set to FF after a temperature event was reset
+
 vD4.0.0 SCL 20160125
 - RAPI wasn't always properly returning $NK when receiving invalid/badly formed commands ... fix it.
 - added RAPI_RESPONSE_CHK - appends XOR check byte to RAPI responses.
