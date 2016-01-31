@@ -501,12 +501,27 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
     m_wFlags |= ECF_L2; // set to Level 2
   }
   else {
-    svclvl = 1;
+    svclvl = 1; // force invalid value to L1
     m_wFlags &= ~ECF_L2; // set to Level 1
   }
 
   SaveEvseFlags();
 
+  uint8_t ampacity = GetMaxCurrentCapacity();
+
+
+  LoadThresholds();
+
+  SetCurrentCapacity(ampacity);
+
+  if (updatelcd) {
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
+}
+
+uint8_t J1772EVSEController::GetMaxCurrentCapacity()
+{
+  uint8_t svclvl = GetCurSvcLevel();
   uint8_t ampacity =  eeprom_read_byte((uint8_t*)((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2));
 
   if ((ampacity == 0xff) || (ampacity == 0)) {
@@ -529,14 +544,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
     }
   }
 
-
-  LoadThresholds();
-
-  SetCurrentCapacity(ampacity);
-
-  if (updatelcd) {
-    g_OBD.Update(OBD_UPD_FORCE);
-  }
+  return ampacity;
 }
 
 #ifdef ADVPWR
@@ -1446,7 +1454,7 @@ if (TempChkEnabled()) {
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
-      uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
+      uint8_t currcap = GetMaxCurrentCapacity();
       uint8_t setit = 0;
  //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action

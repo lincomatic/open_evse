@@ -223,6 +223,7 @@ public:
   uint8_t GetCurrentCapacity() { 
     return m_CurrentCapacity; 
   }
+  uint8_t GetMaxCurrentCapacity();
   int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0,uint8_t nosave=0);
   //int GetCurrentReading() { return m_CurrentReading; }
   //float GetCurrentAmps();
