@@ -51,6 +51,7 @@ void AutoCurrentCapacityController::AutoSetCurrentCapacity()
   for (int8_t i=1;i < sizeof(s_ppAmps)/sizeof(s_ppAmps[0]);i++) {
     if (adcval <= (s_ppAmps[i].adcVal - (s_ppAmps[i].adcVal - s_ppAmps[i-1].adcVal)/2)) {
       amps = s_ppAmps[i-1].amps;
+      break;
     }
   }
 
