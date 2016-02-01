@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.0.1"
+#define VERSION "D4.0.2"
 
 //-- begin features
 
@@ -73,7 +73,7 @@
 
 #ifdef PP_AUTO_AMPACITY
 #define PP_TABLE_IEC
-//#define PP_TABLE_FF_TESLA // only 0,12,40A
+//#define PP_TABLE_TESLA
 
 #include "AutoCurrentCapacityController.h"
 #endif

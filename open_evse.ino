@@ -700,6 +700,17 @@ void OnboardDisplay::Update(int8_t updmode)
 
       uint32_t current = g_EvseController.GetChargingCurrent();
 
+#if defined(PP_AUTO_AMPACITY)
+      int a = current / 1000;
+      int ma = (current % 1000) / 100;
+      if (ma >= 5) {
+	a++;
+      }
+      sprintf(g_sTmp,"%d:%dA",a,g_EvseController.GetCurrentCapacity());
+
+      LcdPrint(9,0,"       ");
+      LcdPrint(LCD_MAX_CHARS_PER_LINE-strlen(g_sTmp),0,g_sTmp);
+#else //!PP_AUTO_AMPACITY
       if (current >= 1000) { // display only if > 1000
 	int a = current / 1000;
 	int ma = (current % 1000) / 100;
@@ -713,6 +724,7 @@ void OnboardDisplay::Update(int8_t updmode)
 	strcpy_P(g_sTmp,PSTR("    0A"));
       }
       LcdPrint(10,0,g_sTmp);
+#endif // PP_AUTO_AMPACITY
     }
 #endif // AMMETER
 

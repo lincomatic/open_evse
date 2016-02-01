@@ -27,11 +27,12 @@ static PP_AMPS s_ppAmps[] = {
 };
 #endif //PP_TABLE_IEC
 
-#ifdef PP_TABLE_FF_TESLA
-// only 0,12,40A
+#ifdef PP_TABLE_TESLA
 static PP_AMPS s_ppAmps[] = {
   {877,0},
   {923,40}, // 9.08K = 923
+  {995,24}, // 33.16K = 995
+  {1012,16}, // 75K = 1012
   {1018,12}, // 140K = 1018
   {1023,0}
 };
