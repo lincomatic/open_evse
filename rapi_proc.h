@@ -58,6 +58,7 @@ $ST state\r - EVSE state transition - sent whenever EVSE state changes
 $WF mode\r - Request client WiFi mode
  mode: WIFI_MODE_XXX
  (currently very long press (10 sec) of menu btn on OpenEVSE will send WIFI_MODE_AP_DEFAULT
+v2.0.1+: 2-hex-digit XOR checksum appended to asynchronous messages
 
 commands
 
@@ -200,7 +201,7 @@ T0 amps - set fake charging current
 #ifdef RAPI
 
 #ifdef RAPI_RESPONSE_CHK
-#define RAPIVER "2.0.0"
+#define RAPIVER "2.0.1"
 #else
 #define RAPIVER "1.0.3"
 #endif
@@ -236,6 +237,7 @@ class EvseRapiProcessor {
   int processCmd();
 
   void response(uint8_t ok);
+  void appendChk(char *buf);
   
 public:
   EvseRapiProcessor();

@@ -124,7 +124,8 @@ int EvseRapiProcessor::doCmd()
 
 void EvseRapiProcessor::sendEvseState()
 {
-  sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+  sprintf(g_sTmp,"%cST %02x",ESRAPI_SOC,g_EvseController.GetState());
+  appendChk(g_sTmp);
   writeStart();
   write(g_sTmp);
   writeEnd();
@@ -132,7 +133,8 @@ void EvseRapiProcessor::sendEvseState()
 
 void EvseRapiProcessor::setWifiMode(uint8_t mode)
 {
-  sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
+  sprintf(g_sTmp,"%cWF %02x",ESRAPI_SOC,(int)mode);
+  appendChk(g_sTmp);
   writeStart();
   write(g_sTmp);
   writeEnd();
@@ -548,36 +550,42 @@ int EvseRapiProcessor::processCmd()
   return rc;
 }
 
+// append
+void EvseRapiProcessor::appendChk(char *buf)
+{
+  char *s = buf;
+  uint8_t chk = 0;
+  while (*s) {
+    chk ^= *(s++);
+  }
+  sprintf(s,"^%02X",(unsigned)chk);
+  s[3] = ESRAPI_EOC;
+  s[4] = '\0';
+}
+
+
 void EvseRapiProcessor::response(uint8_t ok)
 {
   writeStart();
 
-  write(ESRAPI_SOC);
 #ifdef RAPI_RESPONSE_CHK
-  uint8_t chk;
-  write(ok ? "OK" : "NK");
-  if (ok) chk = 0x20;
-  else chk = 0x21;
-
+  sprintf(g_sTmp,"%c%s",ESRAPI_SOC,ok ? "OK" : "NK");
   if (bufCnt) {
-    write(" ");
-    chk ^= ' ';
-    char *c = buffer;
-    do {
-      chk ^= *(c++);
-    } while(*c);
-    sprintf(buffer+strlen(buffer),"^%02X",chk);
-    write(buffer);
+    strcat(g_sTmp," ");
+    strcat(g_sTmp,buffer);
   }
+  appendChk(g_sTmp);
+  write(g_sTmp);
 #else // !RAPI_RESPONSE_CHK
+  write(ESRAPI_SOC);
   write(ok ? "OK" : "NK");
 
   if (bufCnt) {
     write(" ");
     write(buffer);
   }
-#endif // RAPI_RESPONSE_CHK
   write(ESRAPI_EOC);
+#endif // RAPI_RESPONSE_CHK
   if (echo) write('\n');
 
   writeEnd();

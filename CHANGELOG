@@ -1,5 +1,8 @@
 Change Log
 
+vD4.1.0 20160201 SCL
+- RAPI v2.0.1: add XOR checksums to async messages
+
 vD4.0.2 SCL 20160131
 - update PP_TABLE_TESLA to include all possible values
 - when charging, and PP_AUTO_AMPACITY defined, display currentdraw:currentcapacityA
