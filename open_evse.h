@@ -307,12 +307,14 @@
 #define DEFAULT_CURRENT_CAPACITY_L2 16
 
 // minimum allowable current in amps
-#define MIN_CURRENT_CAPACITY_L1 6
+#define MIN_CURRENT_CAPACITY_J1772 6 // J1772 min = 6
+// values below are just for menu
+#define MIN_CURRENT_CAPACITY_L1 MIN_CURRENT_CAPACITY_J1772
 #define MIN_CURRENT_CAPACITY_L2 10
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit
-#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
+#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
+#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx

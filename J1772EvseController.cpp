@@ -528,8 +528,8 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
   }
   
-  if (ampacity < MIN_CURRENT_CAPACITY_L1) {
-    ampacity = MIN_CURRENT_CAPACITY_L1;
+  if (ampacity < MIN_CURRENT_CAPACITY_J1772) {
+    ampacity = MIN_CURRENT_CAPACITY_J1772;
   }
   else {
     if (svclvl == 1) { // L1
@@ -1575,11 +1575,11 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   int rc = 0;
   uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
 
-  if ((amps >= MIN_CURRENT_CAPACITY_L1) && (amps <= maxcurrentcap)) {
+  if ((amps >= MIN_CURRENT_CAPACITY_J1772) && (amps <= maxcurrentcap)) {
     m_CurrentCapacity = amps;
   }
-  else if (amps < MIN_CURRENT_CAPACITY_L1) {
-    m_CurrentCapacity = MIN_CURRENT_CAPACITY_L1;
+  else if (amps < MIN_CURRENT_CAPACITY_J1772) {
+    m_CurrentCapacity = MIN_CURRENT_CAPACITY_J1772;
     rc = 1;
   }
   else {
