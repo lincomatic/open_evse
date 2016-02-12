@@ -1223,12 +1223,6 @@ if (TempChkEnabled()) {
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
-      #ifdef KWH_RECORDING
-      if ((prevevsestate == EVSE_STATE_C) || (prevevsestate == EVSE_STATE_B)) {
-        g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
-        eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
-      }
-      #endif // KWH_RECORDING
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0);
 #endif // CHARGE_LIMIT
@@ -1241,6 +1235,8 @@ if (TempChkEnabled()) {
       m_Pilot.SetPWM(m_CurrentCapacity);
       #ifdef KWH_RECORDING
         if (prevevsestate == EVSE_STATE_A) {
+          g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
+          eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated);
           g_WattSeconds = 0;
         }
       #endif
@@ -1271,11 +1267,6 @@ if (TempChkEnabled()) {
 #endif // FT_GFI_LOCKOUT
 
       chargingOn(); // turn on charging current
-      #ifdef KWH_RECORDING
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
     }
     else if (m_EvseState == EVSE_STATE_D) {
       // vent required not supported
