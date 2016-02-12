@@ -53,7 +53,7 @@
 #define M17_BIT_B1 0x0002
 #define M17_BIT_B0 0x0001
 
-inline void wiresend(uint8_t x) {
+static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
   Wire.write((uint8_t)x);
 #else
@@ -61,7 +61,7 @@ inline void wiresend(uint8_t x) {
 #endif
 }
 
-inline uint8_t wirerecv(void) {
+static inline uint8_t wirerecv(void) {
 #if ARDUINO >= 100
   return Wire.read();
 #else

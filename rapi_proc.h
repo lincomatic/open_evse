@@ -43,10 +43,14 @@ xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
 
 
-response format
+response format (v1.0.3-)
 $OK [optional parameters]\r - success
-
 $NK [optional parameters]\r - failure
+
+response format (v2.0.0+)
+$OK [optional parameters]^xk\r - success
+$NK [optional parameters]^xk\r - failure
+xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 
 asynchronous messages
 $ST state\r - EVSE state transition - sent whenever EVSE state changes
@@ -54,6 +58,7 @@ $ST state\r - EVSE state transition - sent whenever EVSE state changes
 $WF mode\r - Request client WiFi mode
  mode: WIFI_MODE_XXX
  (currently very long press (10 sec) of menu btn on OpenEVSE will send WIFI_MODE_AP_DEFAULT
+v2.0.1+: 2-hex-digit XOR checksum appended to asynchronous messages
 
 commands
 
@@ -99,7 +104,7 @@ SE 0|1 - disable/enable command echo
  $SE 1*0D
  use this for interactive terminal sessions with RAPI.
  RAPI will echo back characters as they are typed, and add a <LF> character
- after its replies
+ after its replies. Valid only over a serial connection, DO NOT USE on I2C
 SF 0|1 - disable/enable GFI self test
  $SF 0*0D
  $SF 1*0E
@@ -185,12 +190,21 @@ GV - get version
  response: OK firmware_version protocol_version
  $GV*C1
 
+T commands for debugging only #define RAPI_T_COMMMANDS
+T0 amps - set fake charging current
+ response: OK
+ $T0 75
+
  *
  */
 
 #ifdef RAPI
 
+#ifdef RAPI_RESPONSE_CHK
+#define RAPIVER "2.0.1"
+#else
 #define RAPIVER "1.0.3"
+#endif
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1
@@ -207,10 +221,12 @@ class EvseRapiProcessor {
   int8_t tokenCnt;
   char echo;
 
-  int available() { return Serial.available(); }
-  int read() { return Serial.read(); }
-  void write(const char *str) { Serial.write(str); }
-  void write(uint8_t u8) { Serial.write(u8); }
+  virtual int available() = 0;
+  virtual int read() = 0;
+  virtual void writeStart() {}
+  virtual void writeEnd() {}
+  virtual int write(uint8_t u8) = 0;
+  virtual int write(const char *str) = 0;
 
   void reset() {
     buffer[0] = 0;
@@ -221,14 +237,48 @@ class EvseRapiProcessor {
   int processCmd();
 
   void response(uint8_t ok);
+  void appendChk(char *buf);
   
 public:
   EvseRapiProcessor();
+
   int doCmd();
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
+
+  virtual void init();
 };
 
-extern EvseRapiProcessor g_ERP;
+
+class EvseSerialRapiProcessor : public EvseRapiProcessor {
+  int available() { return Serial.available(); }
+  int read() { return Serial.read(); }
+  int write(const char *str) { return Serial.write(str); }
+  int write(uint8_t u8) { return Serial.write(u8); }
+
+public:
+  EvseSerialRapiProcessor();
+  void init();
+};
+
+#ifdef RAPI_I2C
+class EvseI2cRapiProcessor : public EvseRapiProcessor {
+  int available() { return Wire.available(); }
+  int read() { return Wire.read(); }
+  void writeStart() { Wire.beginTransmission(RAPI_I2C_REMOTE_ADDR); }
+  void writeEnd() { Wire.endTransmission(); }
+  int write(const char *str) { return Wire.write(str); }
+  int write(uint8_t u8) { return Wire.write(u8); }
+
+public:
+  EvseI2cRapiProcessor();
+  void init();
+};
+#endif // RAPI_I2C
+
+void RapiInit();
+void RapiDoCmd();
+void RapiSendEvseState(uint8_t nodupe=1);
+void RapiSetWifiMode(uint8_t mode);
 
 #endif // RAPI

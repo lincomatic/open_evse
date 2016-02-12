@@ -170,12 +170,11 @@ public:
   //make some noise
   void buzz(long,uint16_t);
 #endif
-	void setMCPType(uint8_t mcptype) {
+  void setMCPType(uint8_t mcptype) {
 #if defined(MCP23017)&&defined(MCP23008)
-	  _mcpType = mcptype;
+    _mcpType = mcptype;
 #endif //defined(MCP23017)&&defined(MCP23008)
-	}
-
+  }
 
 private:
 	void send(uint8_t, uint8_t);

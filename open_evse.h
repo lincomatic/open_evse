@@ -30,14 +30,15 @@
 #include "./Wire.h"
 #include "./Time.h"
 #include "avrstuff.h"
+#include "i2caddr.h"
+
 #if defined(ARDUINO) && (ARDUINO >= 100)
 #include "Arduino.h"
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-#include "i2caddr.h"
 
-#define VERSION "D3.10.4"
+#define VERSION "D4.1.0"
 
 //-- begin features
 
@@ -50,6 +51,15 @@
 // serial remote api
 #define RAPI
 
+// add checksum to RAPI responses RAPI v2.0.0+
+#define RAPI_RESPONSE_CHK
+
+// RAPI over serial
+#define RAPI_SERIAL
+
+// RAPI over I2C - NOT TESTED - CURRENTLY BROKEN
+//#define RAPI_I2C
+
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
 // There is a directive to take care of that if you forget.
@@ -57,6 +67,18 @@
 
 // enable watchdog timer
 #define WATCHDOG
+
+// auto detect ampacity by PP pin resistor
+//#define PP_AUTO_AMPACITY
+
+#ifdef PP_AUTO_AMPACITY
+#define PP_TABLE_IEC
+//#define PP_TABLE_TESLA
+
+#include "AutoCurrentCapacityController.h"
+#endif
+
+
 
 // charge for a specified amount of time and then stop
 #define TIME_LIMIT
@@ -285,16 +307,18 @@
 #define DEFAULT_CURRENT_CAPACITY_L2 16
 
 // minimum allowable current in amps
-#define MIN_CURRENT_CAPACITY_L1 6
+#define MIN_CURRENT_CAPACITY_J1772 6 // J1772 min = 6
+// values below are just for menu
+#define MIN_CURRENT_CAPACITY_L1 MIN_CURRENT_CAPACITY_J1772
 #define MIN_CURRENT_CAPACITY_L2 10
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit
-#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2
+#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
+#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
-#define VOLT_PIN 1 // analog pilot voltage reading pin ADCx
+#define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
 #ifdef OPENEVSE_2
 #define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin ADCx
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
@@ -307,6 +331,8 @@
 #define CHARGING_REG &PIND // OpenEVSE II has just one relay pin.
 #define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
+#define PP_PIN 2 // PP_READ - ADC2
+
  // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE1_REG &PIND
 #define ACLINE1_IDX 3
@@ -512,7 +538,7 @@
 #ifdef TEMPERATURE_MONITORING
 
 #define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
-#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
 #define TEMPERATURE_DISPLAY_ALWAYS 0     // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
                                          // Set to it 0 to only display when temperatures become elevated 
 // #define TESTING_TEMPERATURE_OPERATION // Set this flag to play with very low sensor thresholds or to evaluate the code.
@@ -754,7 +780,7 @@ public:
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING
-#include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+#include "./MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
 #define TEMPMONITOR_UPDATE_INTERVAL 1000ul
@@ -767,7 +793,7 @@ class TempMonitor {
   unsigned long m_LastUpdate;
 public:
 #ifdef MCP9808_IS_ON_I2C
-  Adafruit_MCP9808 m_tempSensor;
+  MCP9808 m_tempSensor;
 #endif  //MCP9808_IS_ON_I2C
 #ifdef TMP007_IS_ON_I2C
   Adafruit_TMP007 m_tmp007;

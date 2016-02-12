@@ -51,7 +51,7 @@
 //#include "./LiquidCrystal_I2C.h"
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
-  #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
+  #include "MCP9808.h"  //  adding the ambient temp sensor to I2C
   #endif 
   #ifdef TMP007_IS_ON_I2C
   #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
@@ -191,10 +191,14 @@ unsigned long g_WattHours_accumulated;
 unsigned long g_WattSeconds;
 #endif // KWH_RECORDING
 
+#ifdef PP_AUTO_AMPACITY
+AutoCurrentCapacityController g_ACCController;
+#endif
+
 
 //-- end global variables
 
-inline void wiresend(uint8_t x) {
+static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
   Wire.write((uint8_t)x);
 #else
@@ -202,7 +206,7 @@ inline void wiresend(uint8_t x) {
 #endif
 }
 
-inline uint8_t wirerecv(void) {
+static inline uint8_t wirerecv(void) {
 #if ARDUINO >= 100
   return Wire.read();
 #else
@@ -290,14 +294,15 @@ void TempMonitor::Read()
     m_TMP007_temperature = m_tmp007.readObjTempC10();   //  using the TI TMP007 IR sensor
 #endif
 #ifdef MCP9808_IS_ON_I2C
-    m_MCP9808_temperature = m_tempSensor.readTempC10();  // for the MCP9808
-    if (m_MCP9808_temperature == 2303) {
-      m_MCP9808_temperature = 0; }  // return 0 if the sensor is not present on the I2C bus
+    m_MCP9808_temperature = m_tempSensor.readAmbient();  // for the MCP9808
 #endif
 
        
 #ifdef RTC
-    // This code chunck below reads the DS3231 RTC's internal temperature sensor            
+#ifdef OPENEVSE_2
+    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
+#else // !OPENEVSE_2
+    // This code chunk below reads the DS3231 RTC's internal temperature sensor            
     Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x0e));
     wiresend( 0x20 );               // write bit 5 to initiate conversion of temperature
@@ -308,12 +313,17 @@ void TempMonitor::Read()
     Wire.endTransmission();
       
     Wire.requestFrom(DS1307_ADDRESS, 2);
-    m_DS3231_temperature = 10 * wirerecv();	// Here's the MSB
-    m_DS3231_temperature = m_DS3231_temperature + (5*(wirerecv()>>6))/2;  // keep the reading like 235 meaning 23.5C
-    if (m_DS3231_temperature == 0x09FD) m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
-#ifdef OPENEVSE_2
-    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
-#endif
+    m_DS3231_temperature = (((int16_t)wirerecv()) << 2) | (wirerecv() >> 6);
+    if (m_DS3231_temperature == 0x3FF) {
+      // assume chip not present
+      m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
+    }
+    else {
+      if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00; // sign extend negative number
+      // convert from .25C to .1C
+      m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;
+    }
+#endif // OPENEVSE_2
 #endif // RTC
 
     m_LastUpdate = curms;
@@ -690,6 +700,17 @@ void OnboardDisplay::Update(int8_t updmode)
 
       uint32_t current = g_EvseController.GetChargingCurrent();
 
+#if defined(PP_AUTO_AMPACITY)
+      int a = current / 1000;
+      int ma = (current % 1000) / 100;
+      if (ma >= 5) {
+	a++;
+      }
+      sprintf(g_sTmp,"%d:%dA",a,g_EvseController.GetCurrentCapacity());
+
+      LcdPrint(9,0,"       ");
+      LcdPrint(LCD_MAX_CHARS_PER_LINE-strlen(g_sTmp),0,g_sTmp);
+#else //!PP_AUTO_AMPACITY
       if (current >= 1000) { // display only if > 1000
 	int a = current / 1000;
 	int ma = (current % 1000) / 100;
@@ -703,6 +724,7 @@ void OnboardDisplay::Update(int8_t updmode)
 	strcpy_P(g_sTmp,PSTR("    0A"));
       }
       LcdPrint(10,0,g_sTmp);
+#endif // PP_AUTO_AMPACITY
     }
 #endif // AMMETER
 
@@ -741,21 +763,21 @@ void OnboardDisplay::Update(int8_t updmode)
 	const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
 	if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, g_TempMonitor.m_MCP9808_temperature % 10);  //  Ambient sensor near or on the LCD
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, abs(g_TempMonitor.m_MCP9808_temperature % 10));  //  Ambient sensor near or on the LCD
 	  LcdPrint(0,1,g_sTmp);
 	}
 #endif
 
 #ifdef RTC	
 	if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, g_TempMonitor.m_DS3231_temperature % 10);      //  sensor built into the DS3231 RTC Chip
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, abs(g_TempMonitor.m_DS3231_temperature % 10));      //  sensor built into the DS3231 RTC Chip
 	  LcdPrint(5,1,g_sTmp);
 	}
 #endif
 	
 #ifdef TMP007_IS_ON_I2C
 	if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
-	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, g_TempMonitor.m_TMP007_temperature % 10);  //  Infrared sensor probably looking at 30A fuses
+	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, abs(g_TempMonitor.m_TMP007_temperature % 10));  //  Infrared sensor probably looking at 30A fuses
 	  LcdPrint(11,1,g_sTmp);
 	}
 #endif
@@ -893,7 +915,7 @@ void Btn::read()
   else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
     if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
       vlongDebounceTime = 0;
-      g_ERP.setWifiMode(WIFI_MODE_AP_DEFAULT);
+      RapiSetWifiMode(WIFI_MODE_AP_DEFAULT);
     }
   }
 #endif // RAPI
@@ -2207,7 +2229,7 @@ void DelayTimer::PrintTimerIcon(){
 void ProcessInputs()
 {
 #ifdef RAPI
-  g_ERP.doCmd();
+  RapiDoCmd();
 #endif
 #ifdef SERIALCLI
   g_CLI.getInput();
@@ -2238,8 +2260,46 @@ void EvseReset()
 
   g_OBD.Init();
 
+#ifdef RAPI
+  RapiInit();
+#endif
+
   g_EvseController.Init();
+
+#ifdef PP_AUTO_AMPACITY
+  g_ACCController.SetMaxAmps(g_EvseController.GetCurrentCapacity());
+  g_ACCController.AutoSetCurrentCapacity();
+#endif
 }
+
+#ifdef PP_AUTO_AMPACITY
+uint8_t StateTransitionReqFunc(uint8_t curPilotState,uint8_t newPilotState,uint8_t curEvseState,uint8_t newEvseState)
+{
+  uint8_t retEvseState = newEvseState;
+
+  if ((newEvseState >= EVSE_STATE_B) && (newEvseState <= EVSE_STATE_C)) {
+    //n.b. no debounce delay needed because J1772EvseController::Update()
+    // already debounces before requesting the state transition, so we can
+    // be absolutely sure that the PP pin has firm contact by the time we
+    // get here
+    g_ACCController.AutoSetCurrentCapacity();
+    if (!g_ACCController.GetCurAmps()) {
+      // invalid PP so 0 amps - force to stay in State A
+      retEvseState = EVSE_STATE_A;
+    }
+  }
+  else { // EVSE_STATE_A
+    // reset back to default max current
+    uint8_t amps = g_EvseController.GetMaxCurrentCapacity();
+    g_EvseController.SetCurrentCapacity(amps,0,1);
+  }
+  //  Serial.print(" r: ");Serial.print(retEvseState);Serial.print(" a: ");Serial.print(g_ACCController.GetCurAmps());
+  //  Serial.print(" c: ");Serial.print(curEvseState);Serial.print(" n: ");Serial.print(newEvseState);Serial.print(" r: ");Serial.print(retEvseState);
+
+  return retEvseState;
+}
+#endif //PP_AUTO_AMPACITY
+
 
 void setup()
 {
@@ -2252,6 +2312,10 @@ void setup()
 #ifdef BTN_MENU
   g_BtnHandler.init();
 #endif // BTN_MENU
+
+#ifdef PP_AUTO_AMPACITY
+  g_EvseController.SetStateTransitionReqFunc(&StateTransitionReqFunc);
+#endif //PP_AUTO_AMPACITY
 
   EvseReset();
 

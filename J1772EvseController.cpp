@@ -140,7 +140,7 @@ uint32_t MovingAverage(uint32_t samp)
 #endif // AMMETER
 
 J1772EVSEController::J1772EVSEController() :
-  adcPilot(VOLT_PIN)
+  adcPilot(PILOT_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -148,6 +148,7 @@ J1772EVSEController::J1772EVSEController() :
   , adcVoltMeter(VOLTMETER_PIN)
 #endif
 {
+  m_StateTransitionReqFunc = NULL;
 }
 
 void J1772EVSEController::SaveSettings()
@@ -191,7 +192,9 @@ void J1772EVSEController::Reboot()
 void J1772EVSEController::DisabledTest_P(PGM_P message)
 {
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
+#ifndef NOCHECKS
   delay(SHOW_DISABLED_DELAY);
+#endif
 }
 
 void J1772EVSEController::ShowDisabledTests()
@@ -272,6 +275,7 @@ void J1772EVSEController::HardFault()
 {
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
+  RapiSendEvseState();
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
     // if we're in P12 state, we can recover from the hard fault when EV
@@ -449,7 +453,7 @@ void J1772EVSEController::Disable()
     chargingOff();
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
   }
 }
@@ -466,7 +470,7 @@ void J1772EVSEController::Sleep()
 
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
@@ -491,20 +495,35 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
     m_wFlags |= ECF_L2; // set to Level 2
   }
   else {
-    svclvl = 1;
+    svclvl = 1; // force invalid value to L1
     m_wFlags &= ~ECF_L2; // set to Level 1
   }
 
   SaveEvseFlags();
 
+  uint8_t ampacity = GetMaxCurrentCapacity();
+
+
+  LoadThresholds();
+
+  SetCurrentCapacity(ampacity);
+
+  if (updatelcd) {
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
+}
+
+uint8_t J1772EVSEController::GetMaxCurrentCapacity()
+{
+  uint8_t svclvl = GetCurSvcLevel();
   uint8_t ampacity =  eeprom_read_byte((uint8_t*)((svclvl == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2));
 
   if ((ampacity == 0xff) || (ampacity == 0)) {
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
   }
   
-  if (ampacity < MIN_CURRENT_CAPACITY_L1) {
-    ampacity = MIN_CURRENT_CAPACITY_L1;
+  if (ampacity < MIN_CURRENT_CAPACITY_J1772) {
+    ampacity = MIN_CURRENT_CAPACITY_J1772;
   }
   else {
     if (svclvl == 1) { // L1
@@ -519,14 +538,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
     }
   }
 
-
-  LoadThresholds();
-
-  SetCurrentCapacity(ampacity);
-
-  if (updatelcd) {
-    g_OBD.Update(OBD_UPD_FORCE);
-  }
+  return ampacity;
 }
 
 #ifdef ADVPWR
@@ -767,6 +779,11 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+  m_EvseState = EVSE_STATE_UNKNOWN;
+  m_PrevEvseState = EVSE_STATE_UNKNOWN;
+
+  RapiSendEvseState(0);
+
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
@@ -873,10 +890,6 @@ void J1772EVSEController::Init()
   m_NoGndStart = 0;
 #endif // ADVPWR
 
-  m_EvseState = EVSE_STATE_UNKNOWN;
-  m_PrevEvseState = EVSE_STATE_UNKNOWN;
-
-
 #ifdef ADVPWR
 
 #ifdef FT_READ_AC_PINS
@@ -905,6 +918,7 @@ void J1772EVSEController::Init()
     if (fault) {
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
+      RapiSendEvseState();
       while (1) { // spin forever
 	  ProcessInputs();
       }
@@ -1146,6 +1160,9 @@ if (TempChkEnabled()) {
 }
 #endif // TEMPERATURE_MONITORING
 
+ uint8_t prevpilotstate = m_PilotState;
+ uint8_t tmppilotstate = EVSE_STATE_UNKNOWN;
+
   if (nofault) {
     if ((prevevsestate >= EVSE_FAULT_STATE_BEGIN) &&
 	(prevevsestate <= EVSE_FAULT_STATE_END)) {
@@ -1160,17 +1177,21 @@ if (TempChkEnabled()) {
     if (DiodeCheckEnabled() && (m_Pilot.GetState() == PILOT_STATE_PWM) && (plow >= m_ThreshData.m_ThreshDS)) {
       // diode check failed
       tmpevsestate = EVSE_STATE_DIODE_CHK_FAILED;
+      tmppilotstate = EVSE_STATE_DIODE_CHK_FAILED;
     }
     else if (phigh >= m_ThreshData.m_ThreshAB) {
       // 12V EV not connected
       tmpevsestate = EVSE_STATE_A;
+      tmppilotstate = EVSE_STATE_A;
     }
     else if (phigh >= m_ThreshData.m_ThreshBC) {
       // 9V EV connected, waiting for ready to charge
       tmpevsestate = EVSE_STATE_B;
+      tmppilotstate = EVSE_STATE_B;
     }
     else if (phigh  >= m_ThreshData.m_ThreshCD) {
       // 6V ready to charge
+      tmppilotstate = EVSE_STATE_C;
       if (m_Pilot.GetState() == PILOT_STATE_PWM) {
 	tmpevsestate = EVSE_STATE_C;
       }
@@ -1180,6 +1201,7 @@ if (TempChkEnabled()) {
       }
     }
     else if (phigh > m_ThreshData.m_ThreshD) {
+      tmppilotstate = EVSE_STATE_D;
       // 3V ready to charge vent required
       if (VentReqEnabled()) {
 	tmpevsestate = EVSE_STATE_D;
@@ -1248,6 +1270,16 @@ if (TempChkEnabled()) {
     }
   }
 #endif // FT_GFI_RETRY
+
+  // check request for state transition to A/B/C
+  if (m_StateTransitionReqFunc && (m_EvseState != prevevsestate) &&
+      ((m_EvseState >= EVSE_STATE_A) && (m_EvseState <= EVSE_STATE_C))) {
+    m_PilotState = tmppilotstate;
+    uint8_t newstate = (*m_StateTransitionReqFunc)(prevpilotstate,m_PilotState,prevevsestate,m_EvseState);
+    if (newstate) {
+      m_EvseState = newstate;
+    }
+  }
 
   
   // state transition
@@ -1354,7 +1386,7 @@ if (TempChkEnabled()) {
     }
 
 #ifdef RAPI
-    g_ERP.sendEvseState();
+    RapiSendEvseState();
 #endif // RAPI
 #ifdef SERDBG
     if (SerDbgEnabled()) {
@@ -1394,6 +1426,7 @@ if (TempChkEnabled()) {
 #ifdef AMMETER
   if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
     
+#ifndef FAKE_CHARGING_CURRENT
     readAmmeter();
     uint32_t ma = MovingAverage(m_AmmeterReading);
     if (ma != 0xffffffff) {
@@ -1403,6 +1436,7 @@ if (TempChkEnabled()) {
       }
       g_OBD.SetAmmeterDirty(1);
     }
+#endif // !FAKE_CHARGING_CURRENT
   }
 #endif // AMMETER
   if (m_EvseState == EVSE_STATE_C) {
@@ -1412,7 +1446,7 @@ if (TempChkEnabled()) {
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
-      uint8_t currcap = eeprom_read_byte((uint8_t*) ((GetCurSvcLevel() == 2) ? EOFS_CURRENT_CAPACITY_L2 : EOFS_CURRENT_CAPACITY_L1));
+      uint8_t currcap = GetMaxCurrentCapacity();
       uint8_t setit = 0;
  //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
@@ -1533,11 +1567,11 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   int rc = 0;
   uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
 
-  if ((amps >= MIN_CURRENT_CAPACITY_L1) && (amps <= maxcurrentcap)) {
+  if ((amps >= MIN_CURRENT_CAPACITY_J1772) && (amps <= maxcurrentcap)) {
     m_CurrentCapacity = amps;
   }
-  else if (amps < MIN_CURRENT_CAPACITY_L1) {
-    m_CurrentCapacity = MIN_CURRENT_CAPACITY_L1;
+  else if (amps < MIN_CURRENT_CAPACITY_J1772) {
+    m_CurrentCapacity = MIN_CURRENT_CAPACITY_J1772;
     rc = 1;
   }
   else {

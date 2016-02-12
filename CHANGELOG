@@ -1,5 +1,52 @@
 Change Log
 
+20160209 SCL
+- cleanup of MIN_CURRENT_CAPACITY - added MIN_CURRENT_CAPACITY_J1772
+	
+vD4.1.0 20160201 SCL
+- RAPI v2.0.1: add XOR checksums to async messages
+
+vD4.0.2 SCL 20160131
+- update PP_TABLE_TESLA to include all possible values
+- when charging, and PP_AUTO_AMPACITY defined, display currentdraw:currentcapacityA
+	instead of just currentdrawA
+	
+vD4.0.1 SCL 20160130
+- fix bug in AutoSetCurrentCapacity() - wasn't breaking out of for loop when match found, so it would only set the minimum current
+- PP: reset current to default max when returning to STATE A
+- added GetMaxCurrentCapacity()
+- fix bug in TEMPERATURE_MONITORING - was assuming that EEPROM contained a valid value in EOFS_CURRENT_CAPACITY_Lx - if not then current was getting set to FF after a temperature event was reset
+
+vD4.0.0 SCL 20160125
+- RAPI wasn't always properly returning $NK when receiving invalid/badly formed commands ... fix it.
+- added RAPI_RESPONSE_CHK - appends XOR check byte to RAPI responses.
+	updates RAPI version to 2.0.0. May break
+	existing client code - turn off to disable
+- added StateTransitionReqFunc and m_PilotState to allow external code to hook into state transitions due to pilot changes
+- added PP_AUTO_AMPACITY - needs more testing and appropriate threshold tables
+- turn off by default TMP007_IS_ON_I2C to save memory
+	
+vD3.11.3 SCL 20160125
+- replace Adafruit_MCP9808 with new MCP9808 code
+- fix bug handling negative temperatures from MCP9808
+	
+vD3.11.2 SCL 20160120
+- fix error displaying negative temperatures... extra - sign leading decimals when negative temperature
+	
+vD3.11.1 SCL 20160120
+- fix bug in handling negative temperatures from DS3231
+	
+vD3.11.0 SCL 20160112
+- added RAPI_I2C. Serial RAPI now enabled by RAPI_SERIAL.
+  *WARNING* RAPI_I2C not tested yet and probably doesn't work
+  both RAPI_I2C and RAPI_SERIAL may be enabled simultaneously
+- call RapiSendEvseState() if POST error
+- fix bug, wasn't calling RapiSendEvseState() if HardFault()
+- in J1772EvseController::Init() - call RapiSendCommand() with EVSE_STATE_UNKNOWN
+
+SCL 20160111
+- change VOLT_PIN to PILOT_PIN
+	
 SCL 20151211
 - change static inline to inline for wiresend/wirerecv() to fix compiler error
 	in Arduino 1.6.6
@@ -91,6 +138,11 @@ vD3.9.2 SCL 20150606
 vD3.9.1 SCL 20150605
 - boost I2C bus to 400KHz
 	
+
+SCL20150605
+-> promote to v3.9.0 in stable branch
+Many thanks to CraigK for his numerous contributions and top notch testing.
+
 vD3.9.0 SCL 20150604-5
 - split out Gfi/J1772Pilot/J1772EvseController into separate files
 - add support for changing I2C frequency
