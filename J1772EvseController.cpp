@@ -173,7 +173,7 @@ void J1772EVSEController::Reboot()
   m_Pilot.SetState(PILOT_STATE_P12);
 
 #ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR(STR_RESETTING));
+  g_OBD.LcdPrint_P(1,PSTR(STRING057));
 #endif
 
   if (chargingIsOn()) {

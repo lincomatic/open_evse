@@ -498,10 +498,10 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
       
 #ifdef KWH_RECORDING 
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRING058,(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRING059,(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -533,10 +533,10 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
       
 #ifdef KWH_RECORDING
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRING058,(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // Display accumulated kWh
+      sprintf(g_sTmp,STRING059,(g_WattHours_accumulated / 1000));  // Display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -745,14 +745,14 @@ void OnboardDisplay::Update(int8_t updmode)
 	g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
       }
 #endif // VOLTMETER
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRING058,(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
 
 #ifdef VOLTMETER
       sprintf(g_sTmp,STRING60,(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
       LcdPrint(11,1,g_sTmp);
 #else
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRING059,(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // VOLTMETER
 #endif // KWH_RECORDING
@@ -1092,10 +1092,10 @@ Menu *SetupMenu::Select()
 #endif // ADVPWR
 const char *g_SvcLevelMenuItems[] = {
 #ifdef ADVPWR
-  STR_AUTO,
+  STRING061,
 #endif // ADVPWR
-  STR_LEVEL_1,
-  STR_LEVEL_2
+  STRING062,
+  STRING063
 };
 
 #ifdef RGBLCD
