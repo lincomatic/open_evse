@@ -501,7 +501,7 @@ void OnboardDisplay::Update(int8_t updmode)
       sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -536,7 +536,7 @@ void OnboardDisplay::Update(int8_t updmode)
       sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // Display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // Display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -749,10 +749,10 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(0,1,g_sTmp);
 
 #ifdef VOLTMETER
-      sprintf(g_sTmp,STRING60,(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
+      sprintf(g_sTmp,STRF_VOLT,(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
       LcdPrint(11,1,g_sTmp);
 #else
-      sprintf(g_sTmp,STRF_WH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // VOLTMETER
 #endif // KWH_RECORDING

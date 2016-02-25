@@ -70,6 +70,7 @@
 #define STR_RESETTING				   "Resetting..." 
 #define STRF_WH						     "%5luWh"  
 #define STRF_KWH					     "%6lukWh" 
+#define STRF_VOLT              " %3luV"
 #define STR_AUTO					     "Auto" 
 #define STR_LEVEL_1					   "Level 1" 
 #define STR_LEVEL_2					   "Level 2"  
