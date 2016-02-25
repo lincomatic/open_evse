@@ -25,94 +25,94 @@ const char VERSTR[] PROGMEM = VERSION;
 
 
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)
-const char g_psSettings[] PROGMEM = "Settings";
-const char g_psSetup[] PROGMEM = "Setup";
-const char g_psSvcLevel[] PROGMEM = "Service Level";
-const char g_psMaxCurrent[] PROGMEM = "Max Current";
-const char g_psDiodeCheck[] PROGMEM = "Diode Check";
-const char g_psVentReqChk[] PROGMEM = "Vent Req'd Check";
+const char g_psSettings[] PROGMEM = STR_SETTINGS;
+const char g_psSetup[] PROGMEM = STR_SETUP;
+const char g_psSvcLevel[] PROGMEM = STR_SERVICE_LEVEL;
+const char g_psMaxCurrent[] PROGMEM = STR_MAX_CURRENT;
+const char g_psDiodeCheck[] PROGMEM = STR_DIODE_CHECK;
+const char g_psVentReqChk[] PROGMEM = STR_VENT_REQD_CHECK;
 #ifdef RGBLCD
-const char g_psBklType[] PROGMEM = "Backlight Type";
+const char g_psBklType[] PROGMEM = STR_BACKLIGHT_TYPE;
 #endif
 #ifdef ADVPWR
-const char g_psGndChk[] PROGMEM = "Ground Check";
-const char g_psRlyChk[] PROGMEM = "Stuck Relay Chk";
+const char g_psGndChk[] PROGMEM = STR_GROUND_CHECK;
+const char g_psRlyChk[] PROGMEM = STR_STUCK_RELAY_CHK;
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
-const char g_psGfiTest[] PROGMEM = "GFI Self Test";
+const char g_psGfiTest[] PROGMEM = STR_GFI_SELF_TEST;
 #endif
 #ifdef TEMPERATURE_MONITORING
-const char g_psTempChk[] PROGMEM = "Temperature Chk";
+const char g_psTempChk[] PROGMEM = STR_TEMPERATURE_CHK;
 #endif
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
 #ifdef BTN_MENU
-const char *g_YesNoMenuItems[] = {"Yes","No"};
-const char g_psResetNow[] PROGMEM = "Restart Now?";
-const char g_psReset[] PROGMEM = "Restart";
-const char g_psExit[] PROGMEM = "Exit";
+const char *g_YesNoMenuItems[] = STR_YES_NO;
+const char g_psResetNow[] PROGMEM = STR_RESTART_NOW;
+const char g_psReset[] PROGMEM = STR_RESTART;
+const char g_psExit[] PROGMEM = STR_EXIT;
 // Add additional strings - GoldServe
 #ifdef DELAYTIMER_MENU
-const char g_psRTC[] PROGMEM = "Date/Time";
-const char g_psRTC_Month[] PROGMEM = "Month";
-const char g_psRTC_Day[] PROGMEM = "Day";
-const char g_psRTC_Year[] PROGMEM = "Year";
-const char g_psRTC_Hour[] PROGMEM = "Hour";
-const char g_psRTC_Minute[] PROGMEM = "Minute";
-const char g_psDelayTimer[] PROGMEM = "Delay Timer";
-const char g_psDelayTimerStartHour[] PROGMEM = "Start Hour";
-const char g_psDelayTimerStartMin[] PROGMEM = "Start Min";
-const char g_psDelayTimerStopHour[] PROGMEM = "Stop Hour";
-const char g_psDelayTimerStopMin[] PROGMEM = "Stop Min";
+const char g_psRTC[] PROGMEM = STR_DATE_TIME;
+const char g_psRTC_Month[] PROGMEM = STR_MONTH;
+const char g_psRTC_Day[] PROGMEM = STR_DAY;
+const char g_psRTC_Year[] PROGMEM = STR_YEAR;
+const char g_psRTC_Hour[] PROGMEM = STR_HOUR;
+const char g_psRTC_Minute[] PROGMEM = STR_MINUTE;
+const char g_psDelayTimer[] PROGMEM = STR_DELAY_TIMER;
+const char g_psDelayTimerStartHour[] PROGMEM = STR_START_HOUR;
+const char g_psDelayTimerStartMin[] PROGMEM = STR_START_MIN;
+const char g_psDelayTimerStopHour[] PROGMEM = STR_STOP_HOUR;
+const char g_psDelayTimerStopMin[] PROGMEM = STR_STOP_MIN;
 #endif // DELAYTIMER_MENU
 #ifdef CHARGE_LIMIT
-const char g_psChargeLimit[] PROGMEM = "Charge Limit";
+const char g_psChargeLimit[] PROGMEM = STR_CHARGE_LIMIT;
 #endif // CHARGE_LIMIT
 #ifdef TIME_LIMIT
-const char g_psTimeLimit[] PROGMEM = "Time Limit";
+const char g_psTimeLimit[] PROGMEM = STR_TIME_LIMIT;
 #endif // TIME_LIMIT
 #ifdef RGBLCD
-const char *g_BklMenuItems[] = {"RGB","Monochrome"};
+const char *g_BklMenuItems[] = STR_RGB_MONOCHROME;
 #endif // RGBLCD
 #endif // BTN_MENU
 
 #ifdef LCD16X2
 #ifdef ADVPWR
-const char g_psPwrOn[] PROGMEM = "Power On";
-const char g_psSelfTest[] PROGMEM = "Self Test";
-const char g_psAutoDetect[] PROGMEM = "Auto Detect";
-const char g_psLevel1[] PROGMEM = "Svc Level: L1";
-const char g_psLevel2[] PROGMEM = "Svc Level: L2";
-const char g_psTestFailed[] PROGMEM = "TEST FAILED";
+const char g_psPwrOn[] PROGMEM = STR_POWER_ON;
+const char g_psSelfTest[] PROGMEM = STR_SELF_TEST;
+const char g_psAutoDetect[] PROGMEM = STR_AUTO_DETECT;
+const char g_psLevel1[] PROGMEM = STR_SVC_LEVEL_L1;
+const char g_psLevel2[] PROGMEM = STR_SVC_LEVEL_L2;
+const char g_psTestFailed[] PROGMEM = STR_TEST_FAILED;
 #endif // ADVPWR
-const char g_psEvseError[] PROGMEM =  "EVSE ERROR";
-const char g_psSvcReq[] PROGMEM =  "SERVICE REQUIRED";
-const char g_psVentReq[] PROGMEM = "VENT REQUIRED";
-const char g_psDiodeChkFailed[] PROGMEM = "DIODE CHECK";
-const char g_psGfciFault[] PROGMEM = "GFCI FAULT";
-const char g_psGfci[] PROGMEM = "GFCI";
-const char g_sRetryIn[] = "RETRY IN ";
+const char g_psEvseError[] PROGMEM =  STR_EVSE_ERROR;
+const char g_psSvcReq[] PROGMEM =  STR_SERVICE_REQUIRED;
+const char g_psVentReq[] PROGMEM = STR_VENT_REQUIRED;
+const char g_psDiodeChkFailed[] PROGMEM = STR_DIODE_CHECK_FAILED;
+const char g_psGfciFault[] PROGMEM = STR_GFCI_FAULT;
+const char g_psGfci[] PROGMEM = STR_GFCI;
+const char g_sRetryIn[] = STR_RETRY_IN;
 
 #ifdef TEMPERATURE_MONITORING
-const char g_psTemperatureFault[] PROGMEM = "OVER TEMPERATURE";
+const char g_psTemperatureFault[] PROGMEM = STR_OVER_TEMPERATURE;
 #endif
-const char g_psNoGround[] PROGMEM = "NO GROUND";
-const char g_psStuckRelay[] PROGMEM = "STUCK RELAY";
-const char g_psDisabled[] PROGMEM =  "Disabled";
-//const char g_psWaiting[] PROGMEM =  "Waiting";
-const char g_psSleeping[] PROGMEM = "Sleeping";
-const char g_psEvConnected[] PROGMEM = "Connected";
+const char g_psNoGround[] PROGMEM = STR_NO_GROUND;
+const char g_psStuckRelay[] PROGMEM = STR_STUCK_RELAY;
+const char g_psDisabled[] PROGMEM =  STR_DISABLED;
+//const char g_psWaiting[] PROGMEM =  STR_WAITING;
+const char g_psSleeping[] PROGMEM = STR_SLEEPING;
+const char g_psEvConnected[] PROGMEM = STR_CONNECTED;
 #ifdef SHOW_DISABLED_TESTS
-const char g_psDisabledTests[] PROGMEM = "TEST DISABLED";
+const char g_psDisabledTests[] PROGMEM = STR_TEST_DISABLED;
 #endif
 
-const char g_sRdyLAstr[] = "L%d:%dA";
-const char g_psReady[] PROGMEM = "Ready";
-const char g_psCharging[] PROGMEM = "Charging";
-const char *g_sMaxCurrentFmt = "%s Max Current";
+const char g_sRdyLAstr[] = STRF_L_A;
+const char g_psReady[] PROGMEM = STR_READY;
+const char g_psCharging[] PROGMEM = STR_CHARGING;
+const char *g_sMaxCurrentFmt = STRF_MAX_CURRENT;
 #endif // LCD16X2
 
 #ifdef DELAYTIMER_MENU
-const char g_psSetDateTime[] PROGMEM = "Set Date/Time?";
-const char *g_DelayMenuItems[] = {"Yes/No","Set Start","Set Stop"};
+const char g_psSetDateTime[] PROGMEM = STR_SET_DATE_TIME;
+const char *g_DelayMenuItems[] = STR_YESNO_SETSTART_SETSTOP;
 #endif // DELAYTIMER_MENU
