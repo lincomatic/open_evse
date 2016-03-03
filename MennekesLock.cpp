@@ -23,6 +23,8 @@
  */
 #include "open_evse.h"
 
+#ifdef MENNEKES_LOCK
+
 void MennekesLock::Init()
 {
   pinA.init(MENNEKES_LOCK_PINA_REG,MENNEKES_LOCK_PINA_IDX,DigitalPin::OUT);
@@ -49,3 +51,4 @@ void MennekesLock::Unlock()
   pinB.write(0);
 }
 
+#endif // MENNEKES_LOCK
