@@ -1,5 +1,8 @@
 Change Log
 
+vD4.2.1 20160303 SCL
+- added MENNEKES_LOCK code for supporting lock pin motor on Mennekes (IEC 62196) type 2 socket
+
 vD4.1.1 20160225 SCL
 - merged jamyrb's framework for supporting different languages
   Thanks, Joakim!

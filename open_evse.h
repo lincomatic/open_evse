@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.1.1"
+#define VERSION "D4.2.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -84,11 +84,11 @@
 #include "AutoCurrentCapacityController.h"
 #endif
 
-
-
 // charge for a specified amount of time and then stop
 #define TIME_LIMIT
 
+// support Mennekes (IEC 62196) type 2 locking pin
+//#define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -369,6 +369,23 @@
 #define PILOT_REG &PINB
 #define PILOT_IDX 2
 
+#ifdef MENNEKES_LOCK
+// requires external 12V H-bridge driver such as Polulu 1451
+#define MENNEKES_LOCK_STATE EVSE_STATE_B // lock in State B
+//#define MENNEKES_LOCK_STATE EVSE_STATE_C // lock in State C
+
+//D11 - MOSI
+#define MENNEKES_LOCK_PINA_REG &PINB
+#define MENNEKES_LOCK_PINA_IDX 3
+
+//D12 - MISO
+#define MENNEKES_LOCK_PINB_REG &PINB
+#define MENNEKES_LOCK_PINB_IDX 4
+#include "MennekesLock.h"
+#endif // MENNEKES_LOCK
+
+
+
 
 #define SERIAL_BAUD 115200
 
@@ -399,6 +416,15 @@
 #define EOFS_THRESH_AMBIENT 26 // 2 bytes
 #define EOFS_THRESH_IR 28 // 2 bytes
 
+// for I2C RAPI
+#define EOFS_LOCAL_I2C_ADDR 30 // 1 byte
+//
+// for DUOSHARE
+//
+// for shared power pool
+#define EOFS_GROUP_CURRENT_CAPACITY 31 // 1 byte
+// non-volatile flags
+#define EOFS_DUO_NVFLAGS 32 // 1 byte
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250

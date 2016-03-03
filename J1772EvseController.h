@@ -139,6 +139,9 @@ class J1772EVSEController {
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
   EvseStateTransitionReqFunc m_StateTransitionReqFunc;
+#ifdef MENNEKES_LOCK
+  MennekesLock m_MennekesLock;
+#endif // MENNEKES_LOCK
 
 #ifdef ADVPWR
 // power states for doPost() (active low)

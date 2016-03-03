@@ -276,6 +276,9 @@ void J1772EVSEController::HardFault()
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
   RapiSendEvseState();
+#ifdef MENNEKES_LOCK
+  m_MennekesLock.Unlock();
+#endif // MENNEKES_LOCK
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
     // if we're in P12 state, we can recover from the hard fault when EV
@@ -785,6 +788,10 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+#ifdef MENNEKES_LOCK
+  m_MennekesLock.Init();
+#endif // MENNEKES_LOCK
+
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
@@ -1290,6 +1297,16 @@ if (TempChkEnabled()) {
   
   // state transition
   if (m_EvseState != prevevsestate) {
+#ifdef MENNEKES_LOCK
+    if (m_EvseState == MENNEKES_LOCK_STATE) {
+      m_MennekesLock.Lock();
+    }
+    else {
+      m_MennekesLock.Unlock();
+    }
+#endif // MENNEKES_LOCK
+
+
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
