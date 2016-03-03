@@ -674,7 +674,7 @@ void OnboardDisplay::Update(int8_t updmode)
   // put anything that needs to be updated periodically here
   // the code below will only run once per second
   //
-  if ((curms-m_LastUpdateMs) >= 1000) {
+  if (((curms-m_LastUpdateMs) >= 1000) || (updmode == OBD_UPD_FORCE)) {
     m_LastUpdateMs = curms;
     
     if (!g_EvseController.InHardFault() &&

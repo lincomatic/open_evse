@@ -19,7 +19,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
-
+#pragma once
 
 #define OPEN_EVSE
 
@@ -300,7 +300,7 @@
 #ifdef SERIALCLI
 #define TMP_BUF_SIZE 64
 #else
-#define TMP_BUF_SIZE (LCD_MAX_CHARS_PER_LINE*2)
+#define TMP_BUF_SIZE ((LCD_MAX_CHARS_PER_LINE+1)*2)
 #endif // SERIALCLI
 
 
