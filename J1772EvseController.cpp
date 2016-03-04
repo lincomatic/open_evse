@@ -1002,10 +1002,13 @@ void J1772EVSEController::Update()
     if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
       // wait for pilot voltage to go > STATE C. This will happen if
-      // a) EV reacts and goes back to state B (opens its contacts)
+      // a) EV reacts and goes back to state B
       // b) user pulls out the charge connector
       // if it doesn't happen within 3 sec, we'll just open our relay anyway
+      // c) no current draw means EV opened its contacts even if it stays in STATE C
+      //    allow 3A slop for ammeter inaccuracy
       if ((phigh >= m_ThreshData.m_ThreshBC)
+	  || (m_AmmeterReading <= 3000)
 	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
 	chargingOff();
 #ifdef FT_SLEEP_DELAY

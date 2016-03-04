@@ -1,5 +1,9 @@
 Change Log
 
+vD4.2.2 20160304 SCL
+- waiting for relay opening on sleep transition, also test current draw
+
+	
 vD4.2.1 20160303 SCL
 - added MENNEKES_LOCK code for supporting lock pin motor on Mennekes (IEC 62196) type 2 socket
 
