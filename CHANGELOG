@@ -1,6 +1,6 @@
 Change Log
 
-vD4.2.3 20160304 SCL
+vD4.2.3 20160307 SCL
 - GFCI hard fault display SERVICE REQUIRED instead of EVSE ERROR
 - OnboardDisplay::Update() .. need to override with OBD_UPD_HARDFAULT during
 	hard fault in case it's called outside of J1772EvseController::HardFault() during a hard fault
