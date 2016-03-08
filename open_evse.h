@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.2.2"
+#define VERSION "D4.2.3"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 

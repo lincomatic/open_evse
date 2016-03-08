@@ -592,7 +592,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       if (updmode == OBD_UPD_HARDFAULT) {
-        LcdMsg_P(g_psEvseError,g_psGfciFault);
+        LcdMsg_P(g_psSvcReq,g_psGfciFault);
       }
       else {
 	// 2nd line will be updated below with auto retry count
