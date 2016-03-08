@@ -481,6 +481,12 @@ void OnboardDisplay::Update(int8_t updmode)
   if (g_EvseController.StateTransition() || (updmode != OBD_UPD_NORMAL)) {
     curms += 1000; // trigger periodic update code below
 
+    if (g_EvseController.InHardFault()) {
+      // need this in case we're called outside of J1772EvseController.HardFault()
+      // during a hard fault
+      updmode = OBD_UPD_HARDFAULT;
+    }
+
     sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,currentcap);
     switch(curstate) {
     case EVSE_STATE_A: // not connected
