@@ -45,7 +45,7 @@
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
 
-#define NOCHECKS
+//#define NOCHECKS
 
 //-- begin features
 
