@@ -1519,7 +1519,10 @@ if (TempChkEnabled()) {
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
     if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
-      SetChargeLimit(0); // reset charge limit
+      SetChargeLimit(0); // clear charge limit
+#ifdef TIME_LIMIT
+      SetTimeLimit(0); // clear time limit
+#endif // TIME_LIMIT
       SetLimitSleep(1);
       Sleep();
     }
@@ -1529,7 +1532,10 @@ if (TempChkEnabled()) {
       // must call millis() below because curms is sampled before transition to
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
       if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
-	SetTimeLimit(0); // reset time limit
+	SetTimeLimit(0); // clear time limit
+#ifdef CHARGE_LIMIT
+	SetChargeLimit(0); // clear charge limit
+#endif // CHARGE_LIMIT
 	SetLimitSleep(1);
 	Sleep();
       }

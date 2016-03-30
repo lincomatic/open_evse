@@ -1,5 +1,11 @@
 Change Log
 
+vD4.3.0 2016030 SCL
+- charge & time limit are no longer mutually exclusive. If user sets both, the
+	first one that's met will terminate the charge
+	-> slight bug: due to having both icons on the screen, the text for
+	"Connected" is slightly cut off if both are set ("Connecte")
+	
 vD4.2.3 20160307 SCL
 - GFCI hard fault display SERVICE REQUIRED instead of EVSE ERROR
 - OnboardDisplay::Update() .. need to override with OBD_UPD_HARDFAULT during

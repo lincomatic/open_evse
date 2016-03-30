@@ -1937,11 +1937,6 @@ Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetChargeLimit(m_CurIdx);
-#ifdef TIME_LIMIT
-  if (m_CurIdx) {
-    g_EvseController.SetTimeLimit(0);
-  }
-#endif // TIME_LIMIT
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2006,11 +2001,6 @@ Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetTimeLimit(m_CurIdx);
-#ifdef CHARGE_LIMIT
-  if (m_CurIdx) {
-    g_EvseController.SetChargeLimit(0);
-  }
-#endif // CHARGE_LIMIT
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
