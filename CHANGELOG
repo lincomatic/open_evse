@@ -1,5 +1,9 @@
 Change Log
 
+vD4.3.1 2016030 SCL
+- merge PR#57 - only set backlight when needed on overtemp
+- don't clear g_WattSeconds in Sleep()
+	
 vD4.3.0 2016030 SCL
 - charge & time limit are no longer mutually exclusive. If user sets both, the
 	first one that's met will terminate the charge

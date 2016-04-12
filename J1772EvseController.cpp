@@ -464,11 +464,13 @@ void J1772EVSEController::Disable()
 
 void J1772EVSEController::Sleep()
 {
+  /*
 #ifdef KWH_RECORDING   // Reset the Wh when exiting State A for any reason
   if (m_EvseState == EVSE_STATE_A) {
     g_WattSeconds = 0;
   }
 #endif
+  */
 
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
