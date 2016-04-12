@@ -795,16 +795,17 @@ void OnboardDisplay::Update(int8_t updmode)
 	  LcdSetBacklightColor(RED);
 #endif //Adafruit RGB LCD            
 	}
-	else  {
-	  g_TempMonitor.SetBlinkAlarm(1);        // toggle the alarm flag so we can blink
+	else if (g_TempMonitor.BlinkAlarm() == 0) { // If baclkight was left RED while last blinking
+	  g_TempMonitor.SetBlinkAlarm(1);           // toggle the alarm flag so we can blink
 	  SetRedLed(0);
 #ifdef LCD16X2 //Adafruit RGB LCD
 	  LcdSetBacklightColor(TEAL);
 #endif
 	}           
       }  // (g_TempMonitor.OverTemperature()) || TEMPERATURE_DISPLAY_ALWAYS) 
-      else  {
-	SetRedLed(0);          // restore the normal TEAL backlight in case it was left RED while last blinking
+      else if (g_TempMonitor.BlinkAlarm() == 0) { // If baclkight was left RED while last blinking
+	g_TempMonitor.SetBlinkAlarm(1); // reset the alarm flag
+	SetRedLed(0);                   // restore the normal TEAL backlight
 #ifdef LCD16X2 //Adafruit RGB LCD
 	LcdSetBacklightColor(TEAL);
 #endif
