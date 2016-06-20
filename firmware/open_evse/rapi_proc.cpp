@@ -271,8 +271,14 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // AMMETER
     case 'C': // current capacity
-      if (tokenCnt == 2) {
-	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1);
+      if ((tokenCnt == 2) || (tokenCnt == 3)) {
+	if ((tokenCnt == 3) && (*tokens[2] = 'N')) {
+	  u1.u8 = 1; // nosave = 1
+	}
+	else {
+	  u1.u8 = 0; // nosave = 0
+	}
+	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1,u1.u8);
       }
       break;
     case 'D': // diode check
