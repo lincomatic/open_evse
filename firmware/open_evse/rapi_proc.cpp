@@ -279,6 +279,8 @@ int EvseRapiProcessor::processCmd()
 	  u1.u8 = 0; // nosave = 0
 	}
 	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1,u1.u8);
+	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
+	bufCnt = 1; // flag response text output
       }
       break;
     case 'D': // diode check

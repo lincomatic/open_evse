@@ -94,11 +94,13 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [N]- set current capacity
-   if amps < minimum current capacity, will set to minimum and return $NK
-   if amps > maximum current capacity, will set to maximum and return $NK
+ response:
+   if amps < minimum current capacity, will set to minimum and return $NK amps
+   if amps > maximum current capacity, will set to maximum and return $NK amps
+   otherwise return $OK amps
    default action is to save new current capacity to EEPROM.
-   if N is specified (ver 2.0.2+/1.0.4+), then new current capacity is
-     volatile, and will be lost at next reboot
+   if N is specified, then new current capacity is volatile, and will be
+     reset to previous value at next reboot
 SD 0|1 - disable/enable diode check
  $SD 0*0B
  $SD 1*0C
@@ -204,9 +206,9 @@ T0 amps - set fake charging current
 #ifdef RAPI
 
 #ifdef RAPI_RESPONSE_CHK
-#define RAPIVER "2.0.2"
+#define RAPIVER "2.0.3"
 #else
-#define RAPIVER "1.0.4"
+#define RAPIVER "1.0.5"
 #endif
 
 #define WIFI_MODE_AP 0
