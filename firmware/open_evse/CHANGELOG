@@ -1,0 +1,539 @@
+Change Log
+
+vD4.3.2 20160623 SCL
+- $SC returns current
+
+20160620 SCL
+- add optional N parameter to $SC
+
+	
+vD4.3.1 2016030 SCL
+- merge PR#57 - only set backlight when needed on overtemp
+- don't clear g_WattSeconds in Sleep()
+	
+vD4.3.0 2016030 SCL
+- charge & time limit are no longer mutually exclusive. If user sets both, the
+	first one that's met will terminate the charge
+	-> slight bug: due to having both icons on the screen, the text for
+	"Connected" is slightly cut off if both are set ("Connecte")
+	
+vD4.2.3 20160307 SCL
+- GFCI hard fault display SERVICE REQUIRED instead of EVSE ERROR
+- OnboardDisplay::Update() .. need to override with OBD_UPD_HARDFAULT during
+	hard fault in case it's called outside of J1772EvseController::HardFault() during a hard fault
+	
+vD4.2.2 20160304 SCL
+- waiting for relay opening on sleep transition, also test current draw
+
+	
+vD4.2.1 20160303 SCL
+- added MENNEKES_LOCK code for supporting lock pin motor on Mennekes (IEC 62196) type 2 socket
+
+vD4.1.1 20160225 SCL
+- merged jamyrb's framework for supporting different languages
+  Thanks, Joakim!
+
+20160209 SCL
+- cleanup of MIN_CURRENT_CAPACITY - added MIN_CURRENT_CAPACITY_J1772
+	
+vD4.1.0 20160201 SCL
+- RAPI v2.0.1: add XOR checksums to async messages
+
+vD4.0.2 SCL 20160131
+- update PP_TABLE_TESLA to include all possible values
+- when charging, and PP_AUTO_AMPACITY defined, display currentdraw:currentcapacityA
+	instead of just currentdrawA
+	
+vD4.0.1 SCL 20160130
+- fix bug in AutoSetCurrentCapacity() - wasn't breaking out of for loop when match found, so it would only set the minimum current
+- PP: reset current to default max when returning to STATE A
+- added GetMaxCurrentCapacity()
+- fix bug in TEMPERATURE_MONITORING - was assuming that EEPROM contained a valid value in EOFS_CURRENT_CAPACITY_Lx - if not then current was getting set to FF after a temperature event was reset
+
+vD4.0.0 SCL 20160125
+- RAPI wasn't always properly returning $NK when receiving invalid/badly formed commands ... fix it.
+- added RAPI_RESPONSE_CHK - appends XOR check byte to RAPI responses.
+	updates RAPI version to 2.0.0. May break
+	existing client code - turn off to disable
+- added StateTransitionReqFunc and m_PilotState to allow external code to hook into state transitions due to pilot changes
+- added PP_AUTO_AMPACITY - needs more testing and appropriate threshold tables
+- turn off by default TMP007_IS_ON_I2C to save memory
+	
+vD3.11.3 SCL 20160125
+- replace Adafruit_MCP9808 with new MCP9808 code
+- fix bug handling negative temperatures from MCP9808
+	
+vD3.11.2 SCL 20160120
+- fix error displaying negative temperatures... extra - sign leading decimals when negative temperature
+	
+vD3.11.1 SCL 20160120
+- fix bug in handling negative temperatures from DS3231
+	
+vD3.11.0 SCL 20160112
+- added RAPI_I2C. Serial RAPI now enabled by RAPI_SERIAL.
+  *WARNING* RAPI_I2C not tested yet and probably doesn't work
+  both RAPI_I2C and RAPI_SERIAL may be enabled simultaneously
+- call RapiSendEvseState() if POST error
+- fix bug, wasn't calling RapiSendEvseState() if HardFault()
+- in J1772EvseController::Init() - call RapiSendCommand() with EVSE_STATE_UNKNOWN
+
+SCL 20160111
+- change VOLT_PIN to PILOT_PIN
+	
+SCL 20151211
+- change static inline to inline for wiresend/wirerecv() to fix compiler error
+	in Arduino 1.6.6
+	
+SCL 20151125
+- added i2caddr.h
+- take Wire.begin() out of RTClib.cpp
+
+vD3.10.4 SCL 20151110
+- update version number
+	
+SCL 20151022
+- added SERDBG - decouple serial diags from SERIALCLI
+	
+SCL 20151019
+- slight tweak to RTClib.cpp compiler warning fix in 3.10.2
+	
+vD3.10.3 CWK 20151018
+- Correcting accumulating kWh and resetting Wh going in and out of sleep state
+
+vD3.10.2 SCL 20151017
+- lots of changes to get rid of 1.6.5 compiler warnings(More)
+- wmcbrine PR 48: more code shrinking from - manually merged
+	
+vD3.10.1 SCL 20151017
+- merge PR 47 from wmcbrine
+ - faster ulong_sqrt()
+ - code saving tweaks to u2a() & SaveSettings()
+	
+vD3.10.0 SCL 20151017
+- fix compile error caused by include for LiquidCrystal_I2C.h
+	
+vD3.10.0 SCL 20151012
+- fix bug introduced by diode check state oscillation fix in D3.9.9 - if 
+  transition to sleep while charging, on sleep exit would go into VENT REQ error
+  -> if pilot voltage in State C range, but PWM off, go to State B
+     this is an added safety feature, because State C should never be allowed
+     when PWM is off
+- fix bug: if enter sleep mode due to time/charge limit met, sleep should
+  automatically be cancelled when car disconnected but it was staying in sleep
+	
+vD3.9.10 CWK 20150920
+- GFI Self Test Duty Cylce restored to 50%
+
+vD3.9.9 CWK/SCL 20150914
+- fix diode check state oscillation bug (cwk/scl)
+- hard fault on vent required (scl)
+- setup() - increase I2C device delay from 200 -> 400ms (cwk) for Danny ter Haars board
+- code cleanup of temperature monitoring to save 62 bytes
+	
+vD3.9.8 CWK 20150912
+- fix Temperature Monitoring, broken by accident in D3.9.5 
+      The original users amperage level is restored properly after an event.
+
+vD3.9.7 SCL 20150905
+- raise OpenEVSE temperature thresholds +10C to match OE-II
+
+SCL 20150905
+- fix compile error when AMMETER disabled
+	
+vD3.9.6 SCL 20150818
+- for OpenEVSE II, bump up TEMPERATURE_AMBIENT_xxx by 10 due to extra headroom of CUI VSK-S3-12U power supply
+	
+vD3.9.5 SCL 20150722
+- merge changes from temp branch:
+	1. EVSE goes to sleep after time/charge limit met.. would stay in sleep
+	-> automatically cancel sleep mode when car disconnected *only if* the
+	   sleep was induced by time/charge limit
+	2. decouple temperature monitoring from J1772EVSEController::Update()
+	-> so that temperature is still monitored when EVSE disabled/sleeping
+	3. ProcessInputs() removed from J1772EVSEController
+	4. added TEMPERATURE_MONITORING_NY (not yet) code .. currently disabled
+	-> $GO/$SO RAPI 
+	-> added ambient/ir_thresh support
+	
+vD3.9.4 SCL 20150611
+- reduce GFI self test pulse duration from 50% to 33%
+	
+vD3.9.3.1 SCL 20150611
+- craigK PR #46
+	
+vD3.9.3 SCL 20150608
+- add files and edits to restore I2CLCD_PCF8574 build capability
+- broken DelayTimer() introduced in 3.9.0
+	
+vD3.9.2 SCL 20150606
+- fix $GF bug
+	
+vD3.9.1 SCL 20150605
+- boost I2C bus to 400KHz
+	
+
+SCL20150605
+-> promote to v3.9.0 in stable branch
+Many thanks to CraigK for his numerous contributions and top notch testing.
+
+vD3.9.0 SCL 20150604-5
+- split out Gfi/J1772Pilot/J1772EvseController into separate files
+- add support for changing I2C frequency
+- increase I2C bus from 100KHz -> 200KHz
+- use modified local Wire/twi to get rid of digitalWrite()
+- on POST failure, go directly to Setup menu. Setup menu exits to reboot on POST failure
+- shrink MaxCurrent/ChargeLimit/TimeLimit menu memory/code by calculating allowed
+	values rather than using RAM lookup tables
+- put strings in strings.cpp
+- fix bugs from 3.8.4: 1) Setup menu Exit sometimes didn't work 2) Setup menu would
+	start on Exit item after first use
+- GFCI and No Ground faults auto reset when EV is unplugged, even if hard fault
+- GFCI and No Ground faults display auto reset countdown when applicable
+	GFCI FAULT
+	RETRY IN 04:55
+- when waiting for timer, just display Sleeping instead of Waiting
+- during a fault, short press goes directly to Setup menu instead of putting
+	EVSE in Sleep state
+- send $WF WIFI_MODE_AP_DEFAULT instead of WIFI_MODE_AP to client on very long
+	button press
+- fix RAPI bug: $GF was returning FF as trip counts if zero. New max value for
+	any trip count = FE
+- fix documentation for $SC & $GG
+- got rid of superfluous AUTOSTART_MENU and MANUALSTART code
+- fixes for TEMPERATURE_MONITORING from CraigK
+- fix bugs in Charging screen when KWH_RECORDING or TEMPERATURE_MONITORING not defined
+
+vD3.8.4 SCL 20150526
+- display "Disabled" when EVSE_STATE_DISABLED instead of "Stopped"
+- fix bug: RAPI wasn't sending EVSE state ($ST) properly
+	
+vD3.8.3 SCL 20150518
+- fix RAPI bug caused by code compaction in 3.8.x
+- have Setup menu exit out of menus instead of back to Settings
+	
+vD3.8.2 SCL 20150518
+- got rid of LcdDetected() .. superfluous, since LiquidTWI2 handles it
+	
+vD3.8.1 SCL 20150516
+- fix bug in settings menu - charge & time limit should only display when EV connected
+- when charge or time limit set, exit directly out of menus
+- display clock icon when time limit set, lightning bolt icon when charge limit set
+- code compaction
+	
+vD3.8.0 SCL 20150516
+- added TIME_LIMIT - charge for a specified time and stop
+	
+vD3.7.9 SCL 20150515
+- fix bug in u2a() when digits=0
+- added CHARGE_LIMIT - charge to a certain kWh and then go to sleep
+  kudos to AndreE for the charge limit idea.
+- move all setup menus to separate "Setup" submenu. Top level menu now
+  called "Settings"
+	
+SCL 20150513
+- cleanup, move SERIALCLI to serialcli.cpp/h
+
+v3.7.8 SCL 20150512
+* promoted to official release
+- Special thanks to CraigK for his hard work in making this release possible,
+  with his numerous enhancements, and invaluable testing.
+
+vD3.7.8 SCL 20150511-12
+* RELEASE CANDIDATE 3 *
+- added RAPI SM,GM to set/get voltmeter
+- EEPROM settings for voltmeter scale/offset
+- RAPI $GG now returns voltage as well
+- read voltmeter in J1772EVSEController::Update() instead of on demand
+	(added GetVoltage())
+	
+vD3.7.7 SCL 20150511
+* RELEASE CANDIDATE 2 *
+- added RAPI SK,GP,GU commands
+- added RAPI XOR checksum and no checksum support (kudos to AndreE for
+	suggesting XOR checksum support)
+
+vD3.7.6 SCL 20150510
+* RELEASE CANDIDATE 1 *
+- added u2a()
+- code size reduction of DELAYTIMER_MENU and TEMPERATURE_MONITORING
+  -> now, RAPI, DELAYTIMER_MENU, and TEMPERATURE_MONITORING can all be enabled simultaneously
+- remove floats from Adafruit libraries (CraigK remove float from open_evse.ino)
+- merge CraigK PR#34,35
+- added more amp selections to L2 (CraigK)
+- change RTC year range from 12-20 -> 15->25
+- change RTC/DelayTimer menu behavior - keep leading + when adjusting a value
+
+Much gratitude to CraigK for his many contributions to coding and testing, including,
+but not limited to temperature monitoring and kWh logging
+	
+vD3.7.5 SCL 20150506
+- code cleanup
+- remove sscanf() - save 2K (thanks to AndreE for the heads up)
+- merge CraigK PR#33
+- roll back version from .8 -> .5
+- change DelayTimer::CheckTime() delay from 1m to 1s
+- get rid of FlexiTimer2
+	
+	
+vD3.7.4 SCL 20150429
+- enable SAMPLE_ACPINS by default
+	
+vD3.7.3 SCL 20150429
+- no substantial changes.. mainly reorganizing of the code to use the libraries
+	in place -> no more copying to Arduino libraries folder
+- shorten short button press from 100ms -> 50ms
+	
+vD3.7.2 SCL 20150428
+- added SHOW_DISABLED_TESTS
+- try to fix random GFI fault due to UL-mandated GFI self test just before
+  closing contacts. Gfi::SelfTest() - add 200ms delay and then clear m_GfiFault
+- add code to avoid arcing contacts if user reboots while EVSE is charging
+
+vD3.7.1 SCL 20150427
+- fix bug: if entered menu during charging, relay would stay open when user pulled plug from EV
+- clean up OnboardDisplay::Update() - added OBD_UPD_xxx
+- disable OnboardDisplay::Update() when in menu
+- GFI hard fault .. change status to EVSE_STATE_GFI_TEST_FAILED instead of EVSE_GFCI_FAULT
+- when rebooting EVSE if our relay is closed, set pilot to +12VDC and wait 3 sec
+	to give EV time to open its contactor before we open ours
+- UL-mandated GFI test before closing contacts causing spurious GFI faults
+	-> add a 200ms delay after GFI test
+- during hard fault, disable Exit menu item
+- misc code cleanup
+
+vD3.7.0 SCL 20150423
+- added avrstuff.h/cpp -> switch from Arduino digital pin functions to
+	DigitalPin
+
+vD3.6.9 SCL 20150423
+- GFCI test message now "GFCI". Only fault will cause "GFCI FAULT"
+
+vD3.6.8 SCL 20150413
+- merge NSayer PR #32 OpenEVSE II streamline
+
+vD3.6.7 SCL 20150410
+- merge NSayer PR: Latest OpenEVSE II 1.0 hardware changes #30
+1. Gut ReadACPins(). It s unused.
+2. GROUND_TEST_PIN is gone in the 1.0 hardware.
+3. RELAY_TEST_PIN is high when charging or it s a ground fail. It s low
+when not charging or it s a stuck relay.
+
+vD3.6.6 SCL 20150406
+- added SAMPLE_ACPINS logic for setup with MID400 using inline diodes
+- added FT_ENDURANCE and FT_READ_AC_PINS
+- replace booleans w/ uint8_t
+- in GfiSelfTest() delay(50) when reading GFI_PIN
+- add GFI self test before closing relay per UL (UL_GFI_SELFTEST)
+- change GFI_TEST_CYCLES 50->60 GFI_PULSE_DURATION_US 8000->8333
+
+vD3.6.5 SCL 20150406
+- added HardFault()
+- GFI_RETRY_COUNT 255 -> 6 and GFI_TIMEOUT 1min -> 5min
+- set SERVICE REQUIRED message after GFI retries exhausted
+- added nosave parm to SetCurrentCapacity()
+
+vD3.6.4 SCL 20150406
+- fix compile error in rapi_proc.cpp due to prog_char fix
+- CraigK Patch 6: temp monitoring and kWh recording
+- CraigK OpenEvse II ammeter calibration (Craigk46 patch 8)
+- SCL move g_ampacity to g_TempMonitor.m_ampacity
+
+vD3.6.3 SCL 20150403
+- fix compile errors in Arduino 1.5.8+ due to deprecation of prog_char
+
+vD3.6.2 SCL 20150326
+- add delay(200) to beginning of setup() to fix random LCD black out at boot
+	Thanks to CraigK!
+- code cleanup on KWH_RECORDING .. change eeprom_read_byte() to eeprom_read_dword()
+
+vD3.6.1 SCL 20150311
+- merge CraigK patch-4 temp monitoring fixes
+
+vD3.6.0 SCL 20150301
+- add CraigK TEMPERATURE_MONITORING
+
+vD3.5.2 SCL 20150226
+- minor fixes for millis() overflow handling
+- change code to allow RED_LED_PIN and GREEN_LED_PIN to be commented out w/o causing compile errors
+
+SCL 20150220
+- merge NSayer pull request OpenEVSE II hardware now only performs ground test during charging
+
+vD3.5.1 SCL 20150218
+- added FT_GFI_LOCKOUT/FT_GFI_RETRY for functional testing
+- per UL Fred Reyes, stuck relay always results in hard fault (lockout)
+- GFI_RETRY_COUNT to 255 (infinite) instead of 15
+
+vD3.5.0 SCL 20150216
+- added UL_COMPLIANT: UL wants EVSE to hard fault (cease operation until manual intervention)
+  1) if POST fails
+  2) if fault happens immediately after charge starts
+- consolidated some redundant fault strings
+- if AutoSvcLevel couldn't be detected due to car being plugged in during POST,
+  and L1 was set because of this, upon first charge session, we will detect the
+  actual svc level, and switch to L2 if detected
+
+vD3.4.3 SCL 20150213
+- don't do GFI self test in doPost() if other fault already found
+- when in menus, lock out all other functions until exit 
+- do stuck relay chk in POST even if EV is plugged in and AutoSvcLevel()
+- for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
+  because we can't auto detect level.
+
+vD3.4.2 SCL 20150210
+- added SLEEP_STATUS_PIN
+	
+vD3.4.1 SCL 20150205
+- forgot to set svcState to SR when stuck relay test fails in doPost() and
+	not AutoSvcLevel()
+	
+vD3.4.0 SCL 20150123
+- added writing of safety check trip counters to EEPROM
+- added RAPI $GF
+- setting GFI_RETRY_COUNT to 255 will make it retry indefinitely
+- changed GFI_RETRY_COUNT from 3 to 15, GFI_TIMEOUT from 15min to 1min
+  -> now, tests will retry 15 times at one minute intervals
+     instead of 3 retries at 15 min intervals
+	
+vD3.3.7 SCL 20150122
+- merged NSayer pull requests #19,#20
+  - OpenEVSE II changes + added relay check menu item
+	
+vD3.3.6 SCL 20150120
+- enable WATCHDOG by default
+- minor refactoring of watchdog code
+- perform relay stuck check in doPost() even if not auto svc level
+	
+vD3.3.5 SCL 20150113
+- merge NSAYER pull request for OpenEVSE II code
+	
+vD3.3.4 SCL 20150102
+- switch from EEPROM.h to avr/eeprom.h functions
+	
+vD3.3.3 SCL 20150102
+- clear charging current in chargingOff() - thanks to CapnBry
+	
+vD3.3.2 SCL 20141205
+- added very long press RAPI code for WiFi AP mode reset ($WF)
+	
+vD3.3.1 SCL 20141124
+- fix some random crashes caused by string overflow on LCD display
+  one such crash was when I2CLCD enabled and RTC enabled w/o RTC hardware
+	
+vD3.3.0 SCL 20141120
+- promote version to 3.3.x since features were added
+	
+vD3.2.9 SCL 20141120
+- make ammeter calibration mode volatile
+	
+vD3.2.8 SCL 20141119
+- restructure and fix ammeter bugs
+- don't update charging amps display unless ammeter value is updated
+- don't show charging amps if m_CurrentScaleFactor == 0
+- replace moving average w/ sliding window average to save RAM
+- added ammeter calibration RAPI function $S2
+- replace redundant calls to millis() with variable in J1772EVSEController::Update()
+	
+vD3.2.7 SCL 20141111
+- fixed ammeter no display bug introduced in 3.2.6
+
+v3.2.6 SCL 20141111
+- restructured ammeter code
+- add RAPI SF,SA,GA,GG commands
+
+v3.2.5 SCL 20141111
+- don't display charging current <1A
+	
+v3.2.4 SCL 20141110
+- minor fixes to RAPI
+- added CraigK's current averaging AMMETER_AVERAGING
+	
+v3.2.3 SCL 20140829
+- added support for PCF8574-based I2C LCD backpacks
+	
+v3.2.2 SCL 20140829
+- setting RGB/mono backlight fixes
+	
+v3.2.1 SCL 20140826
+- fix POST problem when LCD not attached
+- remove superfluous m_menuidx added in last update
+	
+v3.2.0 SCL 20140825
+- revamped SetupMenu to greatly simplify adding/removing items
+- added LCD backlight type setting to menus (C. Howell)
+	
+v3.1.0 SCL 20140822
+- added CHARGING_PINAC
+- promote from alpha to production status
+	
+v3.1.A9 SCL 20140418
+- fixed bug in saving GFI self test setting
+	
+v3.1.A8 SCL 20140417
+- added S.Low's (scanchain) CheckTime() fixes
+	
+v3.1.A7 SCL 20140417
+- bumped version to 3.x.x to avoid confusion w/ main branch code
+	
+v2.1.A7 SCL 20140417
+- added nsayer's GFI_SELFTEST + menu tweaks
+	
+v2.0.B8 20131118
+- merge v2.0.B7 from open_evse google group + some minor tweaks
+	
+v2.0.B3 20130714
+- fix LCD display error
+- merged changes from Scott Rubin
+	
+v2.0.B1 20130119
+- added RTC + delay timer code from Goldserve
+	
+v1.0.9 SCL 20130101
+- don't hang when I2CLCD/RGBLCD enabled, and no LCD installed. requires
+  LiquidTWI2 v1.2.0+
+	
+v1.0.8 SCL 20121025
+- change button reading from analogRead() to digitalRead(), enable internal pullup
+	
+v1.0.7 SCL 20121023
+- fix bug in Max Current Menu.. couldn't display highest selectable value
+  on init
+	
+v1.0.6 SCL
+- switch LCD library to LiquidTWI2 to save memory, speed up LCD
+  writing, and decrease latency
+	
+v1.0.5 SCL
+- move g_psEnabled/g_psEnabled to #ifdef SERIALCLI to fix compile
+  error when LCD and BTN_MENU disabled
+	
+v1.0.4 SCL
+- BTN_ENABLE_TOGGLE reverts code from v1.0.3
+- refine duty cycle calc in SetPWM() (thanks to Lee Howard)
+	
+v1.0.3 SCL
+- short press no longer does anything when menus not active
+  instead of emergency start/stop
+- button menus only available in connected and charging states
+	
+v1.0.0
+First official release
+Button Menu
+
+v0.5.0
+Adafruit RGB LCD and LCD backpack support
+Support for Advanced Power Supply
+	
+v0.4.0
+Command Line Interface (CLI)
+Write Current setting to EEPROM
+Serial Baud Rate 38400
+CLI Commands: "show" "set amp" "save" "help"
+
+
+v0.3.0
+GFI code debugged and working.
+Now compiles with Arduino 1.0
+
+v.0.2.0	
+Firmware for use with Arduino-0022. Tested as working.
