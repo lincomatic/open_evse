@@ -129,9 +129,6 @@ SO ambientthresh irthresh - set Overtemperature thresholds
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
-SS 0|1 - disable/enable GFI self-test
- $SS 0*1A
- $SS 1*1B
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0*0B - cancel timer
 SV 0|1 - disable/enable vent required

@@ -1,5 +1,8 @@
 Change Log
 
+vD4.3.3 20160714 SCL
+- remove duplicate RAPI $SS command (use $SF instead)
+
 vD4.3.2 20160623 SCL
 - $SC returns current
 

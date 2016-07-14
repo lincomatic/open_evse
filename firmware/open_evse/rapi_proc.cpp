@@ -372,14 +372,6 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR      
-#ifdef GFI_SELFTEST
-    case 'S': // GFI self-test
-      if (tokenCnt == 2) {
-	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#endif // GFI_SELFTEST   
 #ifdef DELAYTIMER     
     case 'T': // timer
       if (tokenCnt == 5) {
