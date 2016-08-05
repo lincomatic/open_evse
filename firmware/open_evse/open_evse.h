@@ -326,8 +326,13 @@
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
+#define PP_PIN 2 // PP_READ - ADC2
+#ifdef VOLTMETER
+// N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
+// voltmeter pin is ADC2 on OPENEVSE_2
+#define VOLTMETER_PIN 2 // analog AC Line voltage voltmeter pin ADCx
+#endif // VOLTMETER
 #ifdef OPENEVSE_2
-#define VOLTMETER_PIN 2 // analog AC Line voltage voltemeter pin ADCx
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
@@ -338,7 +343,6 @@
 #define CHARGING_REG &PIND // OpenEVSE II has just one relay pin.
 #define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
 #else // !OPENEVSE_2
-#define PP_PIN 2 // PP_READ - ADC2
 
  // TEST PIN 1 for L1/L2, ground and stuck relay
 #define ACLINE1_REG &PIND
