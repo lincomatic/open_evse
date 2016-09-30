@@ -1010,7 +1010,9 @@ void J1772EVSEController::Update()
       // c) no current draw means EV opened its contacts even if it stays in STATE C
       //    allow 3A slop for ammeter inaccuracy
       if ((phigh >= m_ThreshData.m_ThreshBC)
+#ifdef AMMETER
 	  || (m_AmmeterReading <= 3000)
+#endif // AMMETER
 	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
 	chargingOff();
 #ifdef FT_SLEEP_DELAY
