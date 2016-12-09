@@ -60,6 +60,7 @@
 #endif // TEMPERATURE_MONITORING
 
 
+#ifdef BTN_MENU
 SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
@@ -142,7 +143,6 @@ Menu *g_SetupMenuList[] = {
   NULL
 };
 
-#ifdef BTN_MENU
 BtnHandler g_BtnHandler;
 #endif // BTN_MENU
 
@@ -357,11 +357,13 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
+#ifdef LCD16X2
 void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
 {
   memcpy_P(g_sTmp, bytes, 8);
   m_Lcd.createChar(n, (uint8_t*)g_sTmp);
 }
+#endif // LCD16X2
 
 void OnboardDisplay::Init()
 {
@@ -487,12 +489,14 @@ void OnboardDisplay::Update(int8_t updmode)
       updmode = OBD_UPD_HARDFAULT;
     }
 
+#ifdef LCD16X2
     sprintf(g_sTmp,g_sRdyLAstr,(int)svclvl,currentcap);
+#endif
     switch(curstate) {
     case EVSE_STATE_A: // not connected
       SetGreenLed(1);
       SetRedLed(0);
-#ifdef LCD16X2 //Adafruit RGB LCD
+#ifdef LCD16X2
       LcdSetBacklightColor(GREEN);
       // Display Timer and Stop Icon - GoldServe
       LcdClear();
@@ -655,8 +659,10 @@ void OnboardDisplay::Update(int8_t updmode)
     case EVSE_STATE_GFI_TEST_FAILED:
       SetGreenLed(0);
       SetRedLed(1);
+#ifdef LCD16X2
       LcdSetBacklightColor(RED);
       LcdMsg_P(g_psTestFailed,g_psGfci);
+#endif
       break;
     case EVSE_STATE_SLEEPING:
       SetGreenLed(1);
@@ -685,6 +691,7 @@ void OnboardDisplay::Update(int8_t updmode)
     
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
+#ifdef LCD16X2
       strcpy(g_sTmp,g_sRetryIn);
       int resetsec = (int)(g_EvseController.GetResetMs() / 1000ul);
       if (resetsec >= 0) {
@@ -692,6 +699,7 @@ void OnboardDisplay::Update(int8_t updmode)
 	strcat(g_sTmp,g_sTmp+sizeof(g_sTmp)-6);
 	LcdPrint(1,g_sTmp);
       }
+#endif // LCD16X2
       return;
     }
 

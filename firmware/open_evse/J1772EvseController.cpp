@@ -24,6 +24,7 @@ long g_CycleHalfStart;
 uint8_t g_CycleState;
 #endif 
 
+//                                 A/B B/C C/D D DS
 THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
 
 J1772EVSEController g_EvseController;
@@ -191,7 +192,9 @@ void J1772EVSEController::Reboot()
 #ifdef SHOW_DISABLED_TESTS
 void J1772EVSEController::DisabledTest_P(PGM_P message)
 {
+#ifdef LCD16X2
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
+#endif
 #ifndef NOCHECKS
   delay(SHOW_DISABLED_DELAY);
 #endif
@@ -205,7 +208,9 @@ void J1772EVSEController::ShowDisabledTests()
 		  ECF_STUCK_RELAY_CHK_DISABLED|
 		  ECF_GFI_TEST_DISABLED|
                   ECF_TEMP_CHK_DISABLED)) {
+#ifdef LCD16X2
     g_OBD.LcdSetBacklightColor(YELLOW);
+#endif // #ifdef LCD16X2
 
     if (!DiodeCheckEnabled()) {
       DisabledTest_P(g_psDiodeCheck);
@@ -232,7 +237,9 @@ void J1772EVSEController::ShowDisabledTests()
     }
 #endif // TEMPERATURE_MONITORING
 
+#ifdef LCD16X2
     g_OBD.LcdSetBacklightColor(WHITE);
+#endif
   }
 }
 #endif //SHOW_DISABLED_TESTS
@@ -275,7 +282,9 @@ void J1772EVSEController::HardFault()
 {
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
+#ifdef RAPI
   RapiSendEvseState();
+#endif
 #ifdef MENNEKES_LOCK
   m_MennekesLock.Unlock();
 #endif // MENNEKES_LOCK
@@ -766,7 +775,9 @@ uint8_t J1772EVSEController::doPost()
 #endif
 
   if ((svcState == OG)||(svcState == SR)||(svcState == FG)) {
+#ifdef LCD16X2
     g_OBD.LcdSetBacklightColor(RED);
+#endif // LCD16X2
     g_OBD.SetGreenLed(0);
     g_OBD.SetRedLed(1);
   }
@@ -797,7 +808,9 @@ void J1772EVSEController::Init()
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
+#ifdef RAPI
   RapiSendEvseState(0);
+#endif
 
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
@@ -933,7 +946,9 @@ void J1772EVSEController::Init()
     if (fault) {
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
+#ifdef RAPI
       RapiSendEvseState();
+#endif
       while (1) { // spin forever
 	  ProcessInputs();
       }

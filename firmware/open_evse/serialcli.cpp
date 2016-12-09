@@ -3,8 +3,8 @@
 #ifdef SERIALCLI
 CLI g_CLI;
 
-const char g_psEnabled[] PROGMEM = "enabled";
-const char g_psDisabled[] PROGMEM = "disabled";
+static const char s_psEnabled[] PROGMEM = "enabled";
+static const char s_psDisabled[] PROGMEM = "disabled";
 
 CLI::CLI()
 {
@@ -80,27 +80,27 @@ void CLI::getInput()
         print_P(PSTR("Current capacity (Amps): "));
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
         print_P(PSTR("Min Current Capacity: "));
-        Serial.println(MIN_CURRENT_CAPACITY);
+        Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MIN_CURRENT_CAPACITY_L2 : MIN_CURRENT_CAPACITY_L1);
         print_P(PSTR("Max Current Capacity: "));
         Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
 	print_P(PSTR("Vent Required: "));
-	println_P(g_EvseController.VentReqEnabled() ? g_psEnabled : g_psDisabled);
+	println_P(g_EvseController.VentReqEnabled() ? s_psEnabled : s_psDisabled);
          print_P(PSTR("Diode Check: "));
-	println_P(g_EvseController.DiodeCheckEnabled() ? g_psEnabled : g_psDisabled);
+	println_P(g_EvseController.DiodeCheckEnabled() ? s_psEnabled : s_psDisabled);
 
 #ifdef ADVPWR
 	print_P(PSTR("Ground Check: "));
-	println_P(g_EvseController.GndChkEnabled() ? g_psEnabled : g_psDisabled);
+	println_P(g_EvseController.GndChkEnabled() ? s_psEnabled : s_psDisabled);
 	print_P(PSTR("Stuck Relay Check: "));
-	println_P(g_EvseController.StuckRelayChkEnabled() ? g_psEnabled : g_psDisabled);
+	println_P(g_EvseController.StuckRelayChkEnabled() ? s_psEnabled : s_psDisabled);
 #endif // ADVPWR           
         // Start Delay Timer feature - GoldServe
 #ifdef DELAYTIMER
         print_P(PSTR("Delay Timer: "));
         if (g_DelayTimer.IsTimerEnabled()){
-          println_P(g_psEnabled);
+          println_P(s_psEnabled);
         } else {
-          println_P(g_psDisabled);
+          println_P(s_psDisabled);
         }
         print_P(PSTR("Start Time: "));
         Serial.print(g_DelayTimer.GetStartTimerHour(), DEC);
@@ -161,11 +161,11 @@ void CLI::getInput()
      print_P(PSTR("serial debugging "));
      if (!strcmp_P(p,g_pson)) {
        g_EvseController.EnableSerDbg(1);
-       println_P(g_psEnabled);
+       println_P(s_psEnabled);
      }
      else {
        g_EvseController.EnableSerDbg(0);
-       println_P(g_psDisabled);
+       println_P(s_psDisabled);
      }
    }
    else if (!strncmp_P(p,PSTR("vntreq "),7)) {
@@ -173,11 +173,11 @@ void CLI::getInput()
      print_P(PSTR("vent required "));
      if (!strcmp_P(p,g_pson)) {
        g_EvseController.EnableVentReq(1);
-       println_P(g_psEnabled);
+       println_P(s_psEnabled);
      }
      else {
        g_EvseController.EnableVentReq(0);
-       println_P(g_psDisabled);
+       println_P(s_psDisabled);
      }
    }
    else if (!strncmp_P(p,PSTR("diochk "),7)) {
@@ -185,11 +185,11 @@ void CLI::getInput()
      print_P(PSTR("diode check "));
      if (!strcmp_P(p,g_pson)) {
        g_EvseController.EnableDiodeCheck(1);
-       println_P(g_psEnabled);
+       println_P(s_psEnabled);
      }
      else {
        g_EvseController.EnableDiodeCheck(0);
-       println_P(g_psDisabled);
+       println_P(s_psDisabled);
      }
    }
 #ifdef ADVPWR
@@ -198,11 +198,11 @@ void CLI::getInput()
      print_P(PSTR("ground check "));
      if (!strcmp_P(p,g_pson)) {
        g_EvseController.EnableGndChk(1);
-       println_P(g_psEnabled);
+       println_P(s_psEnabled);
      }
      else {
        g_EvseController.EnableGndChk(0);
-       println_P(g_psDisabled);
+       println_P(s_psDisabled);
      }
    }
    else if (!strncmp_P(p,PSTR("rlychk "),7)) {
@@ -210,11 +210,11 @@ void CLI::getInput()
      print_P(PSTR("stuck relay check "));
      if (!strcmp_P(p,g_pson)) {
        g_EvseController.EnableStuckRelayChk(1);
-       println_P(g_psEnabled);
+       println_P(s_psEnabled);
      }
      else {
        g_EvseController.EnableStuckRelayChk(0);
-       println_P(g_psDisabled);
+       println_P(s_psDisabled);
      }
    }
 #endif // ADVPWR
@@ -222,7 +222,7 @@ void CLI::getInput()
      println_P(PSTR("WARNING - Do not set higher than 80% of breaker value"));
      printlnn();
      print_P(PSTR("Enter amps ("));
-     Serial.print(MIN_CURRENT_CAPACITY);
+          Serial.print((g_EvseController.GetCurSvcLevel() == 2) ? MIN_CURRENT_CAPACITY_L2 : MIN_CURRENT_CAPACITY_L1);
      print_P(PSTR("-"));
      Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2);
      print_P(PSTR("): "));

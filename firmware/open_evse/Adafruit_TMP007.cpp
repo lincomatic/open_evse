@@ -42,7 +42,6 @@ boolean Adafruit_TMP007::begin(uint16_t samplerate) {
   return true;
 }
 
-//////////////////////////////////////////////////////
 /*
 int16_t Adafruit_TMP007::readDieTempC(void) {
   double Tdie = readRawDieTemperature();
