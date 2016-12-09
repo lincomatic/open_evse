@@ -356,6 +356,18 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
+#ifdef AUTH_LOCK
+const char CustomChar_4[8] PROGMEM = { // padlock
+	0b00000,
+	0b01110,
+	0b01010,
+	0b11111,
+	0b11011,
+	0b11011,
+	0b01110,
+	0b00000
+};
+#endif // AUTH_LOCK
 
 #ifdef LCD16X2
 void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
@@ -397,6 +409,9 @@ void OnboardDisplay::Init()
 #endif //#ifdef DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
   MakeChar(3,CustomChar_3);
+#endif
+#ifdef AUTH_LOCK
+  MakeChar(4,CustomChar_4);
 #endif
   m_Lcd.clear();
 
@@ -497,10 +512,20 @@ void OnboardDisplay::Update(int8_t updmode)
       SetGreenLed(1);
       SetRedLed(0);
 #ifdef LCD16X2
-      LcdSetBacklightColor(GREEN);
       // Display Timer and Stop Icon - GoldServe
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdSetBacklightColor(TEAL);
+	LcdWrite(4); 
+      }
+      else {
+	LcdSetBacklightColor(GREEN);
+      }
+#else
+      LcdSetBacklightColor(GREEN);
+#endif // AUTH_LOCK
 #ifdef DELAYTIMER
       g_DelayTimer.PrintTimerIcon();
 #endif //#ifdef DELAYTIMER
@@ -522,9 +547,19 @@ void OnboardDisplay::Update(int8_t updmode)
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
-      LcdSetBacklightColor(YELLOW);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+	LcdSetBacklightColor(TEAL);
+      }
+      else {
+	LcdSetBacklightColor(YELLOW);
+      }
+#else
+      LcdSetBacklightColor(YELLOW);
+#endif // AUTH_LOCK
 #ifdef CHARGE_LIMIT
       if (g_EvseController.GetChargeLimit()) {
 	LcdWrite(3); // lightning
