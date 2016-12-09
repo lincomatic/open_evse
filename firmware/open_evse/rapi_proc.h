@@ -92,6 +92,11 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
  $S2 0*F9
  $S2 1*FA
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
+S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
+   0 = unlocked
+   1 = locked - EVSE won't charge until unlocked
+   when auth lock is on, will not transition to State C and a lock icon is
+   displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [N]- set current capacity
  response:
@@ -139,6 +144,9 @@ G3 - get time limit
  response: OK cnt
  cnt*15 = minutes
         = 0 = no time limit
+G4 - get auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
+ response: $OK lockstate
+  lockstate = 0=unlocked, =1=locked
 GA - get ammeter settings
  response: OK currentscalefactor currentoffset
  $GA*AC

@@ -38,7 +38,7 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.3.3"
+#define VERSION "D4.4.0"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -57,6 +57,12 @@
 
 // serial remote api
 #define RAPI
+
+// charging access control - if defined, enables RAPI G4/S4 commands
+//  to enable/disable charging function
+// if AUTH_LOCK_REG/IDX are also defined (see below), then a hardware pin is
+//  used to control access, rather than RAPI
+//#define AUTH_LOCK
 
 // add checksum to RAPI responses RAPI v2.0.0+
 #define RAPI_RESPONSE_CHK
@@ -199,6 +205,16 @@
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
 //#define SLEEP_STATUS_REG &PINB
 //#define SLEEP_STATUS_IDX 4
+
+#ifdef AUTH_LOCK
+// AUTH_LOCK_REG/IDX - use an input pin to control AUTH_LOCK instead of
+// manual function calls
+// digital pin is configured as input with internal pull-up enabled
+// EVSE is locked when input HIGH and unlocked when input LOW
+//#define AUTH_LOCK_REG &PINC
+//#define AUTH_LOCK_IDX 2
+#endif // AUTH_LOCK
+
 
 
 // for stability testing - shorter timeout/higher retry count

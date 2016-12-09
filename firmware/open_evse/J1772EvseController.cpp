@@ -167,6 +167,15 @@ void J1772EVSEController::SaveSettings()
 }
 
 
+#ifdef AUTH_LOCK
+void J1772EVSEController::AuthLock(int8_t tf)
+{
+  if (tf) m_bVFlags |= ECVF_AUTH_LOCKED;
+  else m_bVFlags &= ~ECVF_AUTH_LOCKED;
+  g_OBD.Update(OBD_UPD_FORCE);
+}
+#endif // AUTH_LOCK
+
 
 // use watchdog to perform a reset
 void J1772EVSEController::Reboot()
@@ -837,6 +846,9 @@ void J1772EVSEController::Init()
 #ifdef SLEEP_STATUS_REG
   pinSleepStatus.init(SLEEP_STATUS_REG,SLEEP_STATUS_IDX,DigitalPin::OUT);
 #endif
+#ifdef AUTH_LOCK_REG
+  pinAuthLock.init(AUTH_LOCK_REG,AUTH_LOCK_IDX,DigitalPin::INP_PU);
+#endif
 
 #ifdef GFI
   m_Gfi.Init();
@@ -1306,7 +1318,29 @@ if (TempChkEnabled()) {
   }
 #endif // FT_GFI_RETRY
 
+  //
   // check request for state transition to A/B/C
+  //
+
+#ifdef AUTH_LOCK
+#ifdef AUTH_LOCK_REG
+  {
+    int8_t locked;
+    if (pinAuthLock.read()) locked = ECVF_AUTH_LOCKED;
+    else locked = 0;
+    if (locked != (m_bVFlags & ECVF_AUTH_LOCKED)) {
+      AuthLock(locked);
+      g_OBD.Update(OBD_UPD_FORCE);
+    }
+  }
+#endif // AUTH_LOCK_REG
+
+  if (AuthLockIsOn() && (m_EvseState == EVSE_STATE_C)) {
+    // force to STATE B when lock is on
+    m_EvseState = EVSE_STATE_B;
+  }
+#endif // AUTH_LOCK
+
   if (m_StateTransitionReqFunc && (m_EvseState != prevevsestate) &&
       ((m_EvseState >= EVSE_STATE_A) && (m_EvseState <= EVSE_STATE_C))) {
     m_PilotState = tmppilotstate;
@@ -1454,6 +1488,14 @@ if (TempChkEnabled()) {
         }
       #endif
   } // state transition
+
+#ifdef AUTH_LOCK
+  if ((m_EvseState != prevevsestate) ||
+      (m_PilotState != prevpilotstate)) {
+    RapiSendEvseState(0);
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
+#endif // AUTH_LOCK
 
 #ifdef UL_COMPLIANT
   if (!nofault && (prevevsestate == EVSE_STATE_C)) {

@@ -78,11 +78,17 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t curPilotState,uint8_t newP
 #define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
 #define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
 #define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
+#define ECVF_AUTH_LOCKED        0x08 // locked pending authentication
 #define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
 #define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x40 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x80 // gfi has tripped at least once
+
+#ifdef AUTH_LOCK
+#define ECVF_DEFAULT            ECVF_AUTH_LOCKED
+#else
 #define ECVF_DEFAULT            0x00
+#endif
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
@@ -115,6 +121,9 @@ class J1772EVSEController {
 #endif
 #ifdef SLEEP_STATUS_REG
   DigitalPin pinSleepStatus;
+#endif
+#ifdef AUTH_LOCK_REG
+  DigitalPin pinAuthLock;
 #endif
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
@@ -376,6 +385,10 @@ public:
   void SetStateTransitionReqFunc(EvseStateTransitionReqFunc statetransitionreqfunc) {
     m_StateTransitionReqFunc = statetransitionreqfunc;
   }
+#ifdef AUTH_LOCK
+  void AuthLock(int8_t tf);
+  int8_t AuthLockIsOn() { return (int8_t)((m_bVFlags & ECVF_AUTH_LOCKED)?1:0); }
+#endif // AUTH_LOCK
 };
 
 #ifdef FT_ENDURANCE

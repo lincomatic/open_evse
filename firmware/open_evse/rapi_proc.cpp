@@ -262,6 +262,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // TIME_LIMIT
+#if defined(AUTH_LOCK) && !defined(AUTH_LOCK_REG)
+    case '4': // auth lock
+      if (tokenCnt == 2) {
+	g_EvseController.AuthLock((int8_t)dtou32(tokens[1]));
+	rc = 0;
+      }
+      break;
+#endif // AUTH_LOCK && !AUTH_LOCK_REG
     case 'A':
       if (tokenCnt == 3) {
 	g_EvseController.SetCurrentScaleFactor(dtou32(tokens[1]));
@@ -406,6 +414,13 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // TIME_LIMIT
+#if defined(AUTH_LOCK) && !defined(AUTH_LOCK_REG)
+    case '4': // get auth lock
+      sprintf(buffer,"%d",(int)g_EvseController.AuthLockIsOn());
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // AUTH_LOCK && !AUTH_LOCK_REG
 #ifdef AMMETER
     case 'A':
       u1.i = g_EvseController.GetCurrentScaleFactor();

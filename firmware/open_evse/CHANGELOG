@@ -1,5 +1,14 @@
 Change Log
 
+vD4.4.0 20161209 SCL	
+- minor code cleanup. also fix some compile errors when certain features disabled
+- added AUTH_LOCK code	
+ charging access control for RFID readers, etc
+ if AUTH_LOCK defined, enables RAPI G4/S4 commands
+  to enable/disable charging function
+ if AUTH_LOCK_REG/IDX are also defined, then a hardware pin is
+  used to control access, rather than RAPI
+	
 vD4.3.3 20160714 SCL
 - remove duplicate RAPI $SS command (use $SF instead)
 
