@@ -770,6 +770,7 @@ uint8_t J1772EVSEController::doPost()
 #endif //#else OPENEVSE_2
   }
   else { // ! AutoSvcLevelEnabled
+#endif // AUTOSVCLEVEL
 #ifndef OPENEVSE_2
   stuckrelaychk:
 #endif
