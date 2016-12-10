@@ -1478,10 +1478,9 @@ if (TempChkEnabled()) {
       m_Pilot.SetState(PILOT_STATE_P12);
       chargingOff(); // turn off charging current
     }
-
-#ifdef RAPI
+#if defined(RAPI) && !defined(AUTH_LOCK)
     RapiSendEvseState();
-#endif // RAPI
+#endif // RAPI && !AUTH_LOCK
 #ifdef SERDBG
     if (SerDbgEnabled()) {
       Serial.print("state: ");
