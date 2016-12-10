@@ -1325,6 +1325,18 @@ if (TempChkEnabled()) {
     }
   } // nofault
 
+  // debounce state transitions
+  if (tmppilotstate != prevpilotstate) {
+    if (tmppilotstate != m_TmpPilotState) {
+      m_TmpPilotStateStart = curms;
+    }
+    else if ((curms - m_TmpPilotStateStart) >= DELAY_STATE_TRANSITION) {
+      m_PilotState = tmppilotstate;
+    }
+  }
+
+
+  m_TmpPilotState = tmppilotstate;
   m_TmpEvseState = tmpevsestate;
 
 #ifdef FT_GFI_RETRY

@@ -145,8 +145,10 @@ class J1772EVSEController {
   uint8_t m_EvseState;
   uint8_t m_PrevEvseState;
   uint8_t m_TmpEvseState;
+  uint8_t m_TmpPilotState;
   uint8_t m_PilotState;
   unsigned long m_TmpEvseStateStart;
+  unsigned long m_TmpPilotStateStart;
   uint8_t m_CurrentCapacity; // max amps we can output
   unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
   unsigned long m_ChargeOffTimeMS; // millis() when relay last opened
