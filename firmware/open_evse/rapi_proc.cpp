@@ -38,13 +38,22 @@ uint8_t htou8(const char *s)
 {
   uint8_t u = 0;
   for (int i=0;i < 2;i++) {
-    if (i == 1) u <<= 4;
     char c = s[i];
+    if (c != '\0') {
+      if (i == 1) u <<= 4;
     if ((c >= '0') && (c <= '9')) {
       u += c - '0';
     }
     else if ((c >= 'A') && (c <= 'F')) {
       u += c - 'A' + 10;
+    }
+      else if ((c >= 'a') && (c <= 'f')) {
+	u += c - 'a' + 10;
+      }
+      else {
+	// invalid character received
+	return 0;
+      }
     }
   }
   return u;
@@ -73,6 +82,12 @@ void receiveEvent(int numBytes)
 
 EvseRapiProcessor::EvseRapiProcessor()
 {
+#ifdef RAPI_SEQUENCE_ID
+  curReceivedSeqId = INVALID_SEQUENCE_ID;
+#ifdef RAPI_SENDER
+  curSentSeqId = INVALID_SEQUENCE_ID;
+#endif
+#endif
 }
 
 void EvseRapiProcessor::init()
@@ -99,11 +114,14 @@ int EvseRapiProcessor::doCmd()
 	if (bufCnt < ESRAPI_BUFLEN) {
 	  if (c == ESRAPI_EOC) {
 	    buffer[bufCnt++] = 0;
-	    if (!tokenize()) {
+	    if (!tokenize(buffer)) {
 	      rc = processCmd();
 	    }
 	    else {
 	      reset();
+#ifdef RAPI_SEQUENCE_ID
+	      curReceivedSeqId = INVALID_SEQUENCE_ID;
+#endif // RAPI_SEQUENCE_ID
 	      response(0);
 	    }
 	  }
@@ -124,8 +142,12 @@ int EvseRapiProcessor::doCmd()
 
 void EvseRapiProcessor::sendEvseState()
 {
+#ifdef RAPI_RESPONSE_CHK
   sprintf(g_sTmp,"%cST %02x",ESRAPI_SOC,g_EvseController.GetState());
   appendChk(g_sTmp);
+#else
+  sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
+#endif //RAPI_RESPONSE_CHK
   writeStart();
   write(g_sTmp);
   writeEnd();
@@ -133,20 +155,24 @@ void EvseRapiProcessor::sendEvseState()
 
 void EvseRapiProcessor::setWifiMode(uint8_t mode)
 {
+#ifdef RAPI_RESPONSE_CHK
   sprintf(g_sTmp,"%cWF %02x",ESRAPI_SOC,(int)mode);
   appendChk(g_sTmp);
+#else
+  sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
+#endif //RAPI_RESPONSE_CHK
   writeStart();
   write(g_sTmp);
   writeEnd();
 }
 
-int EvseRapiProcessor::tokenize()
+int EvseRapiProcessor::tokenize(char *buf)
 {
-  tokens[0] = &buffer[1];
-  char *s = &buffer[2];
+  tokens[0] = &buf[1];
+  char *s = &buf[2];
   tokenCnt = 1;
-  uint8_t achkSum = ESRAPI_SOC + buffer[1];
-  uint8_t xchkSum = ESRAPI_SOC ^ buffer[1];
+  uint8_t achkSum = ESRAPI_SOC + buf[1];
+  uint8_t xchkSum = ESRAPI_SOC ^ buf[1];
   uint8_t hchkSum;
   uint8_t chktype=0; // 0=none,1=additive,2=xor
   while (*s) {
@@ -169,16 +195,38 @@ int EvseRapiProcessor::tokenize()
       xchkSum ^= *(s++);
     }
   }
-  
-  return ((chktype == 0) ||
-	  ((chktype == 1) && (hchkSum == achkSum)) ||
-	  ((chktype == 2) && (hchkSum == xchkSum))) ? 0 : 1;
+
+  int rc = ((chktype == 0) ||
+	   ((chktype == 1) && (hchkSum == achkSum)) ||
+ 	   ((chktype == 2) && (hchkSum == xchkSum))) ? 0 : 1;
+  if (rc) tokenCnt = 0;
+  //  sprintf(g_sTmp,"trc: %d",rc);
+  //  g_EIRP.writeStr(g_sTmp);
+
+  return rc;
 }
 
 int EvseRapiProcessor::processCmd()
 {
   UNION4B u1,u2,u3;
   int rc = -1;
+
+#ifdef RAPI_SENDER
+  // throw away extraneous responses that we weren't expecting
+  // these could be from commands that we already timed out
+  if (isRespToken()) {
+    return rc;
+  }
+#endif // RAPI_SENDER
+
+#ifdef RAPI_SEQUENCE_ID
+  curReceivedSeqId = INVALID_SEQUENCE_ID;
+  const char *seqtoken = tokens[tokenCnt-1];
+  if ((tokenCnt > 1) && (*seqtoken == ESRAPI_SOS)) {
+    curReceivedSeqId = htou8(++seqtoken);
+    tokenCnt--;
+  }
+#endif // RAPI_SEQUENCE_ID
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -539,13 +587,14 @@ int EvseRapiProcessor::processCmd()
     break;
 
 #ifdef RAPI_T_COMMANDS
-  case 'T': // set parameter
+  case 'T': // testing op
     switch(*s) {
 #ifdef FAKE_CHARGING_CURRENT
     case '0': // set fake charging current
       if (tokenCnt == 2) {
-	g_EvseController.SetChargingCurrent(dtou32(tokens[1]));
+	g_EvseController.SetChargingCurrent(dtou32(tokens[1])*1000);
 	g_OBD.SetAmmeterDirty(1);
+	g_OBD.Update(OBD_UPD_FORCE);
 	rc = 0;
       }
       break;
@@ -558,7 +607,9 @@ int EvseRapiProcessor::processCmd()
     ; // do nothing
   }
 
+  if (bufCnt != -1){
   response((rc == 0) ? 1 : 0);
+  }
 
   reset();
 
@@ -589,6 +640,11 @@ void EvseRapiProcessor::response(uint8_t ok)
     strcat(g_sTmp," ");
     strcat(g_sTmp,buffer);
   }
+#ifdef RAPI_SEQUENCE_ID
+  if (curReceivedSeqId != INVALID_SEQUENCE_ID) {
+    appendSequenceId(g_sTmp,curReceivedSeqId);
+  }
+#endif // RAPI_SEQUENCE_ID
   appendChk(g_sTmp);
   write(g_sTmp);
 #else // !RAPI_RESPONSE_CHK
@@ -606,6 +662,141 @@ void EvseRapiProcessor::response(uint8_t ok)
   writeEnd();
 }
 
+#ifdef RAPI_SEQUENCE_ID
+void EvseRapiProcessor::appendSequenceId(char *s,uint8_t seqId)
+{
+  sprintf(s+strlen(s)," %c%02X",ESRAPI_SOS,seqId);
+}
+#endif // RAPI_SEQUENCE_ID
+
+#ifdef RAPI_SENDER
+#ifdef RAPI_SEQUENCE_ID
+uint8_t EvseRapiProcessor::getSendSequenceId()
+{
+  if (++curSentSeqId == INVALID_SEQUENCE_ID) ++curSentSeqId;
+  return curSentSeqId;
+}
+
+int8_t EvseRapiProcessor::isAsyncToken()
+{
+  if ((*tokens[0] == 'A') ||
+      !strcmp(tokens[0],"WF") ||
+      (!strcmp(tokens[0],"ST") && (tokenCnt == 2))) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
+// OK or NK
+int8_t EvseRapiProcessor::isRespToken()
+{
+  const char *token = tokens[0];
+  if ((strlen(token) == 2) && (token[1] == 'K') &&
+      ((*token == 'O') || (*token == 'N'))) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+#endif // RAPI_SEQUENCE_ID
+
+
+void EvseRapiProcessor::_sendCmd(const char *cmdstr)
+{
+  *sendbuf = ESRAPI_SOC;
+  strcpy(sendbuf+1,cmdstr);
+#ifdef RAPI_SEQUENCE_ID
+  appendSequenceId(sendbuf,getSendSequenceId());
+#endif
+  appendChk(sendbuf);
+  writeStart();
+  write(sendbuf);
+  writeEnd();
+}
+
+int8_t EvseRapiProcessor::receiveResp(unsigned long msstart)
+{
+  tokenCnt = 0;
+  *sendbuf = 0;
+  int bufpos = 0;
+
+  // wait for response
+  do {
+    WDT_RESET();
+    int bytesavail = available();
+    if (bytesavail) {
+      for (int i=0;i < bytesavail;i++) {
+	char c = read();
+
+	if (!bufpos && c != ESRAPI_SOC) {
+	  // wait for start character
+	  continue;
+	}
+	else if (c == ESRAPI_EOC) {
+	  sendbuf[bufpos] = '\0';
+	  if (!tokenize(sendbuf)) return 0;
+	  else return 1;
+	  
+	}
+	else {
+	  sendbuf[bufpos++] = c;
+	  if (bufpos >= (RAPIS_BUFLEN-1)) return 2;
+	}
+      }
+    }
+  } while (!tokenCnt && ((millis() - msstart) < RAPIS_TIMEOUT_MS));
+
+  return -1;
+}
+
+int8_t EvseRapiProcessor::sendCmd(const char *cmdstr)
+{
+  _sendCmd(cmdstr);
+
+  unsigned long msstart = millis();
+ start:
+  while (receiveResp(msstart) > 0) WDT_RESET();
+  if (tokenCnt) {
+#ifdef RAPI_SEQUENCE_ID
+    uint8_t seqId = INVALID_SEQUENCE_ID;
+    const char *seqtoken = tokens[tokenCnt-1];
+    if ((tokenCnt > 1) && isRespToken() && (*seqtoken == ESRAPI_SOS)) {
+      seqId = htou8(++seqtoken);
+      tokenCnt--;
+    }
+#endif // RAPI_SEQUENCE_ID
+    if (!strcmp(tokens[0],"OK")
+#ifdef RAPI_SEQUENCE_ID
+	&& (seqId == curSentSeqId)
+#endif // RAPI_SEQUENCE_ID
+	) {
+      return 0;
+    }
+    else if (!strcmp(tokens[0],"NK")
+#ifdef RAPI_SEQUENCE_ID
+	     && (seqId == curSentSeqId)
+#endif // RAPI_SEQUENCE_ID
+	     ) {
+      return 1;
+    }
+    else { // command or async notification received - process it
+      processCmd();
+      msstart = millis();
+      goto start;
+    }
+  }
+  else {
+    return -1;
+  }
+}
+
+#endif // RAPI_SENDER
+
+
+#ifdef RAPI_SERIAL
 EvseSerialRapiProcessor::EvseSerialRapiProcessor()
 {
 }
@@ -614,6 +805,7 @@ void EvseSerialRapiProcessor::init()
 {
   EvseRapiProcessor::init();
 }
+#endif // RAPI_SERIAL
 
 
 #ifdef RAPI_I2C

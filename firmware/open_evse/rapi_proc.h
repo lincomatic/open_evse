@@ -35,12 +35,17 @@ $cc pp pp ...^xk\r
 $cc pp pp ...*ck\r
 3. no checksum (FOR TESTING ONLY! DON'T USE FOR APPS)
 $cc pp pp ...\r
+4. checksum + sequence id (v3.0.0+)
+$cc pp pp .. :ss^xk\r
 
 \r = carriage return = 13d = 0x0D
 cc = 2-letter command
 pp = parameters
 xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 ck = 2-hex-digit checksum - 8-bit sum of all characters before '*'
+ss = optional 2-hex-digit sequence id - response will echo the sequence id
+     so that receiver can verify that the response matches the command
+     ss CANNOT be 00, which is reserved as an invalid value
 
 
 response format (v1.0.3-)
@@ -52,7 +57,14 @@ $OK [optional parameters]^xk\r - success
 $NK [optional parameters]^xk\r - failure
 xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 
-asynchronous messages
+response format (v3.0.0+)
+$OK [optional parameters] [:ss]^xk\r - success
+$NK [optional parameters] [:ss]^xk\r - failure
+xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
+ss = optional 2-hex-digit sequence ID which was sent with the command
+     only present if a sequence ID was send with the command
+
+asynchronous notification messages
 $ST state\r - EVSE state transition - sent whenever EVSE state changes
  state: EVSE_STATE_xxx
 $WF mode\r - Request client WiFi mode
@@ -141,68 +153,68 @@ SV 0|1 - disable/enable vent required
  $SV 1*1E
 
 G3 - get time limit
- response: OK cnt
+ response: $OK cnt
  cnt*15 = minutes
         = 0 = no time limit
 G4 - get auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
  response: $OK lockstate
   lockstate = 0=unlocked, =1=locked
 GA - get ammeter settings
- response: OK currentscalefactor currentoffset
+ response: $OK currentscalefactor currentoffset
  $GA*AC
 GC - get current capacity range in amps
- response: OK minamps maxamps
+ response: $OK minamps maxamps
  $GC*AE
 GE - get settings
- response: OK amps(decimal) flags(hex)
+ response: $OK amps(decimal) flags(hex)
  $GE*B0
 GF - get fault counters
- response: OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
+ response: $OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
  maximum trip count = 0xFF for any counter
  $GF*B1
 GG - get charging current and voltage
- response: OK milliamps millivolts
+ response: $OK milliamps millivolts
  AMMETER must be defined in order to get amps, otherwise returns -1 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns -1 volts
  $GG*B2
 GH - get cHarge limit
- response: OK kWh
+ response: $OK kWh
  kWh = 0 = no charge limit
 GM - get voltMeter settings
- response: OK voltcalefactor voltoffset
+ response: $OK voltcalefactor voltoffset
  $GM^2E
 GO get Overtemperature thresholds
- response: OK ambientthresh irthresh
+ response: $OK ambientthresh irthresh
  thresholds are in 10ths of a degree Celcius
  $GO^2C
 GP - get temPerature (v1.0.3+)
  $GP*BB
- response: OK ds3231temp mcp9808temp tmp007temp
+ response: $OK ds3231temp mcp9808temp tmp007temp
  ds3231temp - temperature from DS3231 RTC
  mcp9808temp - temperature from MCP9808
  tmp007temp - temperature from TMP007
  all temperatures are in 10th's of a degree Celcius
  if any temperature sensor is not installed, its return value will be 0
 GS - get state
- response: OK state elapsed
- state: EVSE_STATE_xxx
- elapsed: elapsed charge time in seconds (valid only when in state C)
+ response: $OK evsestate elapsed
+ evsestate(dec): EVSE_STATE_xxx
+ elapsed(dec): elapsed charge time in seconds (valid only when in state C)
  $GS*BE
 GT - get time (RTC)
- response OK yr mo day hr min sec       yr=2-digit year
+ response: $OK yr mo day hr min sec       yr=2-digit year
  $GT*BF
 GU - get energy usage (v1.0.3+)
  $GU*C0
- response OK Wattseconds Whacc
+ response: $OK Wattseconds Whacc
  Wattseconds - Watt-seconds used this charging session, note you'll divide Wattseconds by 3600 to get Wh
  Whacc - total Wh accumulated over all charging sessions, note you'll divide Wh by 1000 to get kWh
 GV - get version
- response: OK firmware_version protocol_version
+ response: $OK firmware_version protocol_version
  $GV*C1
 
 T commands for debugging only #define RAPI_T_COMMMANDS
 T0 amps - set fake charging current
- response: OK
+ response: $OK
  $T0 75
 
  *
@@ -210,8 +222,10 @@ T0 amps - set fake charging current
 
 #ifdef RAPI
 
-#ifdef RAPI_RESPONSE_CHK
-#define RAPIVER "2.0.3"
+#ifdef RAPI_SEQUENCE_ID
+#define RAPIVER "3.0.1"
+#elif defined(RAPI_RESPONSE_CHK)
+#define RAPIVER "2.0.4"
 #else
 #define RAPIVER "1.0.5"
 #endif
@@ -220,16 +234,33 @@ T0 amps - set fake charging current
 #define WIFI_MODE_CLIENT 1
 #define WIFI_MODE_AP_DEFAULT 2
 
-#define ESRAPI_BUFLEN 30
+#define ESRAPI_BUFLEN 32
 #define ESRAPI_SOC '$' // start of command
 #define ESRAPI_EOC 0xd // CR end of command
+#define ESRAPI_SOS ':' // start of sequence id
 #define ESRAPI_MAX_ARGS 10
+// for RAPI_SENDER
+#define RAPIS_TIMEOUT_MS 500
+#define RAPIS_BUFLEN 20
+
+#define INVALID_SEQUENCE_ID 0
+
 class EvseRapiProcessor {
   char buffer[ESRAPI_BUFLEN]; // input buffer
   int8_t bufCnt; // # valid bytes in buffer
   char *tokens[ESRAPI_MAX_ARGS];
   int8_t tokenCnt;
   char echo;
+#ifdef RAPI_SEQUENCE_ID
+  uint8_t curReceivedSeqId;
+  void appendSequenceId(char *s,uint8_t seqId);
+#ifdef RAPI_SENDER
+  uint8_t curSentSeqId;
+  uint8_t getSendSequenceId();
+  int8_t isAsyncToken();
+  int8_t isRespToken();
+#endif // RAPI_SENDER
+#endif // RAPI_SEQUENCE_ID
 
   virtual int available() = 0;
   virtual int read() = 0;
@@ -243,11 +274,16 @@ class EvseRapiProcessor {
     bufCnt = 0;
   }
 
-  int tokenize();
+  int tokenize(char *buf);
   int processCmd();
 
   void response(uint8_t ok);
   void appendChk(char *buf);
+  
+#ifdef RAPI_SENDER
+  char sendbuf[RAPIS_BUFLEN]; // input buffer
+  void _sendCmd(const char *cmdstr);
+#endif // RAPI_SENDER
   
 public:
   EvseRapiProcessor();
@@ -255,21 +291,31 @@ public:
   int doCmd();
   void sendEvseState();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
+  void writeStr(const char *msg) { writeStart();write(msg);writeEnd(); }
 
   virtual void init();
+
+#ifdef RAPI_SENDER
+  int8_t sendCmd(const char *cmdstr);
+  int8_t receiveResp(unsigned long msstart);
+#endif // RAPI_SENDER
 };
 
-
+#ifdef RAPI_SERIAL
 class EvseSerialRapiProcessor : public EvseRapiProcessor {
   int available() { return Serial.available(); }
   int read() { return Serial.read(); }
-  int write(const char *str) { return Serial.write(str); }
   int write(uint8_t u8) { return Serial.write(u8); }
+  int write(const char *str) { return Serial.write(str); }
 
 public:
   EvseSerialRapiProcessor();
   void init();
 };
+
+extern EvseSerialRapiProcessor g_ESRP;
+#endif // RAPI_SERIAL
+
 
 #ifdef RAPI_I2C
 class EvseI2cRapiProcessor : public EvseRapiProcessor {
@@ -277,13 +323,15 @@ class EvseI2cRapiProcessor : public EvseRapiProcessor {
   int read() { return Wire.read(); }
   void writeStart() { Wire.beginTransmission(RAPI_I2C_REMOTE_ADDR); }
   void writeEnd() { Wire.endTransmission(); }
-  int write(const char *str) { return Wire.write(str); }
   int write(uint8_t u8) { return Wire.write(u8); }
+  int write(const char *str) { return Wire.write(str); }
 
 public:
   EvseI2cRapiProcessor();
   void init();
 };
+
+extern EvseI2cRapiProcessor g_EIRP;
 #endif // RAPI_I2C
 
 void RapiInit();

@@ -1,5 +1,17 @@
 Change Log
 
+vD4.5.0 20161209 SCL	
+- added STATE_TRANSITION_REQ_FUNC #ifdef
+- added AUTOSVCLEVEL #ifdef
+- heavily revamped RAPI code
+  - fix RAPI_I2C lock up issue
+  - add RAPI sender & sequence id support
+  when RAPI_SEQUENCE_ID is enabled, an optional sequence ID may be inserted
+	into RAPI commands. The corresponding RAPI response will echo the
+	sequence ID, making it possible to determine the origin of each
+	RAPI response - makes it possible to detect RAPI commands that weren't
+	received by the target
+
 vD4.4.0 20161209 SCL	
 - minor code cleanup. also fix some compile errors when certain features disabled
 - added AUTH_LOCK code	

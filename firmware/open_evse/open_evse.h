@@ -58,14 +58,17 @@
 // current measurement
 #define AMMETER
 
-// serial remote api
-#define RAPI
-
 // charging access control - if defined, enables RAPI G4/S4 commands
 //  to enable/disable charging function
 // if AUTH_LOCK_REG/IDX are also defined (see below), then a hardware pin is
 //  used to control access, rather than RAPI
 //#define AUTH_LOCK
+
+// serial remote api
+#define RAPI
+
+// optional sequence id can be inserted as last parameter to commands/responses
+//#define RAPI_SEQUENCE_ID
 
 // add checksum to RAPI responses RAPI v2.0.0+
 #define RAPI_RESPONSE_CHK
@@ -73,8 +76,11 @@
 // RAPI over serial
 #define RAPI_SERIAL
 
-// RAPI over I2C - NOT TESTED - CURRENTLY BROKEN
+// RAPI over I2C
 //#define RAPI_I2C
+
+// enable sending of RAPI commands
+//#define RAPI_SENDER
 
 // serial port command line
 // For the RTC version, only CLI or LCD can be defined at one time. 
@@ -92,6 +98,7 @@
 //#define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
+#define STATE_TRANSITION_REQ_FUNC
 #define PP_TABLE_IEC
 //#define PP_TABLE_TESLA
 
