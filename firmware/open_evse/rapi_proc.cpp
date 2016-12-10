@@ -340,17 +340,17 @@ int EvseRapiProcessor::processCmd()
 	case '1':
 	case '2':
 	  g_EvseController.SetSvcLevel(*tokens[1] - '0',1);
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
 	  g_EvseController.EnableAutoSvcLevel(0);
 #endif
 	  rc = 0;
 	  break;
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
 	case 'A':
 	  g_EvseController.EnableAutoSvcLevel(1);
 	  rc = 0;
 	  break;
-#endif // ADVPWR
+#endif // ADVPWR && AUTOSVCLEVEL
 	}
       }
       break;

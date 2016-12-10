@@ -49,6 +49,9 @@
 
 //-- begin features
 
+// auto detect L1/L2
+#define AUTOSVCLEVEL
+
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
 

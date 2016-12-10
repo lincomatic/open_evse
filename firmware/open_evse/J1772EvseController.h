@@ -276,16 +276,18 @@ public:
   uint8_t StuckRelayChkEnabled() { 
     return (m_wFlags & ECF_STUCK_RELAY_CHK_DISABLED) ? 0 : 1;
   }
+#ifdef AUTOSVCLEVEL
   uint8_t AutoSvcLevelEnabled() { return (m_wFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
   void EnableAutoSvcLevel(uint8_t tf);
-  void SetNoGndTripped();
-  uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
-
   void SetAutoSvcLvlSkipped(uint8_t tf) {
     if (tf) m_bVFlags |= ECVF_AUTOSVCLVL_SKIPPED;
     else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+#endif // AUTOSVCLEVEL
+  void SetNoGndTripped();
+  uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
+
 
 
   uint8_t ReadACPins();

@@ -1194,7 +1194,7 @@ SvcLevelMenu::SvcLevelMenu()
 void SvcLevelMenu::Init()
 {
   g_OBD.LcdPrint_P(0,m_Title);
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
   if (g_EvseController.AutoSvcLevelEnabled()) {
     m_CurIdx = 0;
   }
@@ -1203,7 +1203,7 @@ void SvcLevelMenu::Init()
   }
 #else
   m_CurIdx = (g_EvseController.GetCurSvcLevel() == 1) ? 0 : 1;
-#endif // ADVPWR
+#endif // ADVPWR && AUTOSVCLEVEL
   //sprintf(g_sTmp,"+%s",g_SvcLevelMenuItems[m_CurIdx]);
   //g_OBD.LcdPrint(1,g_sTmp);
   g_OBD.LcdClearLine(1);
@@ -1226,7 +1226,7 @@ void SvcLevelMenu::Next()
 
 Menu *SvcLevelMenu::Select()
 {
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
   if (m_CurIdx == 0) {
     g_EvseController.EnableAutoSvcLevel(1);
   }
@@ -1236,7 +1236,7 @@ Menu *SvcLevelMenu::Select()
   }
 #else
   g_EvseController.SetSvcLevel(m_CurIdx+1);
-#endif // ADVPWR
+#endif // ADVPWR && AUTOSVCLEVEL
   g_OBD.LcdPrint(0,1,g_sPlus);
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 

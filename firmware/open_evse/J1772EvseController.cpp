@@ -411,6 +411,7 @@ void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
   SaveEvseFlags();
 }
 
+#ifdef AUTOSVCLEVEL
 void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 {
   if (tf) {
@@ -421,6 +422,8 @@ void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
   }
   SaveEvseFlags();
 }
+#endif // AUTOSVCLEVEL
+
 
 
 #endif // ADVPWR
@@ -634,6 +637,7 @@ uint8_t J1772EVSEController::doPost()
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
 #endif //Adafruit RGB LCD 
 
+#ifdef AUTOSVCLEVEL
   if (AutoSvcLevelEnabled()) {
 #ifdef OPENEVSE_2
     // For OpenEVSE II, there is a voltmeter for auto L1/L2.
@@ -770,7 +774,9 @@ uint8_t J1772EVSEController::doPost()
 #endif // LCD16X2
       }
     }
+#ifdef AUTOSVCLEVEL
   } // endif AutoSvcLevelEnabled
+#endif // AUTOSVCLEVEL
   
 #ifdef GFI_SELFTEST
   // only run GFI test if no fault detected above
@@ -951,7 +957,9 @@ void J1772EVSEController::Init()
     fault = 0; // reset post fault
     uint8_t psvclvl = doPost(); // auto detect service level overrides any saved values
     
+#ifdef AUTOSVCLEVEL
     if ((AutoSvcLevelEnabled()) && ((psvclvl == L1) || (psvclvl == L2)))  svclvl = psvclvl; //set service level
+#endif // AUTOSVCLEVEL
     if ((GndChkEnabled()) && (psvclvl == OG))  { m_EvseState = EVSE_STATE_NO_GROUND; fault = 1;} // set No Ground error
     if ((StuckRelayChkEnabled()) && (psvclvl == SR)) { m_EvseState = EVSE_STATE_STUCK_RELAY; fault = 1; } // set Stuck Relay error
 #ifdef GFI_SELFTEST
@@ -1094,6 +1102,7 @@ void J1772EVSEController::Update()
 	nofault = 0;
       }
 
+#ifdef AUTOSVCLEVEL
       // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
       // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
       if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
@@ -1103,6 +1112,7 @@ void J1772EVSEController::Update()
 	}
 	SetAutoSvcLvlSkipped(0);
       }
+#endif // AUTOSVCLEVEL
     }
   }
   else { // !chargingIsOn() - relay open
