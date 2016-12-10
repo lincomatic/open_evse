@@ -57,7 +57,7 @@ typedef struct calibdata {
 // called whenever EVSE wants to transition state from curEvseState to newEvseState
 // return 0 to allow transition to newEvseState
 // else return desired state
-typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t curPilotState,uint8_t newPilotState,uint8_t curEvseState,uint8_t newEvseState);
+typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t curPilotState,uint8_t curEvseState,uint8_t newEvseState);
 
 // J1772EVSEController m_wFlags bits - saved to EEPROM
 #define ECF_L2                 0x0001 // service level 2
@@ -147,7 +147,9 @@ class J1772EVSEController {
   time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
+#ifdef STATE_TRANSITION_REQ_FUNC
   EvseStateTransitionReqFunc m_StateTransitionReqFunc;
+#endif // STATE_TRANSITION_REQ_FUNC
 #ifdef MENNEKES_LOCK
   MennekesLock m_MennekesLock;
 #endif // MENNEKES_LOCK
@@ -382,9 +384,11 @@ public:
   uint8_t GetStuckRelayTripCnt() { return m_StuckRelayTripCnt+1; }
 #endif // ADVPWR
 
+#ifdef STATE_TRANSITION_REQ_FUNC
   void SetStateTransitionReqFunc(EvseStateTransitionReqFunc statetransitionreqfunc) {
     m_StateTransitionReqFunc = statetransitionreqfunc;
   }
+#endif
 #ifdef AUTH_LOCK
   void AuthLock(int8_t tf);
   int8_t AuthLockIsOn() { return (int8_t)((m_bVFlags & ECVF_AUTH_LOCKED)?1:0); }

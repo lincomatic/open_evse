@@ -149,7 +149,9 @@ J1772EVSEController::J1772EVSEController() :
   , adcVoltMeter(VOLTMETER_PIN)
 #endif
 {
+#ifdef STATE_TRANSITION_REQ_FUNC
   m_StateTransitionReqFunc = NULL;
+#endif // STATE_TRANSITION_REQ_FUNC
 }
 
 void J1772EVSEController::SaveSettings()
@@ -1341,13 +1343,19 @@ if (TempChkEnabled()) {
   }
 #endif // AUTH_LOCK
 
-  if (m_StateTransitionReqFunc && (m_EvseState != prevevsestate) &&
+  if (
+#ifdef STATE_TRANSITION_REQ_FUNC
+      m_StateTransitionReqFunc &&
+#endif // STATE_TRANSITION_REQ_FUNC
+      (m_EvseState != prevevsestate) &&
       ((m_EvseState >= EVSE_STATE_A) && (m_EvseState <= EVSE_STATE_C))) {
     m_PilotState = tmppilotstate;
+#ifdef STATE_TRANSITION_REQ_FUNC
     uint8_t newstate = (*m_StateTransitionReqFunc)(prevpilotstate,m_PilotState,prevevsestate,m_EvseState);
     if (newstate) {
       m_EvseState = newstate;
     }
+#endif // STATE_TRANSITION_REQ_FUNC
   }
 
   

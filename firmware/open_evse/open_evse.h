@@ -78,6 +78,10 @@
 // There is a directive to take care of that if you forget.
 //#define SERIALCLI
 
+// EVSE must call state transition function for permission to change states
+//#define STATE_TRANSITION_REQ_FUNC
+
+
 // enable watchdog timer
 #define WATCHDOG
 
