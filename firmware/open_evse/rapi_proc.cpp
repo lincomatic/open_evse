@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2014 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2016 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -656,6 +656,18 @@ void RapiDoCmd()
   g_ESRP.doCmd();
 #endif
 #ifdef RAPI_I2C
+  // kludge - delay below is needed when RapiDoCmd() is running in a tight loop
+  // such as during a hard fault. without the delay, I2C can't receive characters
+#define RDCDELAY 6
+#ifdef RDCDELAY
+  static unsigned long lastdocmd;
+  unsigned long msnow = millis();
+  if ((msnow-lastdocmd) < RDCDELAY) {
+    delay(RDCDELAY - (msnow-lastdocmd));
+  }
+  lastdocmd = msnow;
+#endif // RDCDELAY
+
   g_EIRP.doCmd();
 #endif
 }
