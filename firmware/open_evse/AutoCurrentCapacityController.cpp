@@ -39,8 +39,10 @@ static PP_AMPS s_ppAmps[] = {
 #endif // PP_TABLE_FF_TESLA
 
 AutoCurrentCapacityController::AutoCurrentCapacityController() :
-  adcPP(PP_PIN), curAmps(0), maxAmps(0)
+  adcPP(PP_PIN)
 {
+  curAmps = 0;
+  maxAmps = 0;
 }
 
 void AutoCurrentCapacityController::AutoSetCurrentCapacity()
@@ -49,7 +51,7 @@ void AutoCurrentCapacityController::AutoSetCurrentCapacity()
   uint16_t adcval = adcPP.read();
 
   uint8_t amps = 0;
-  for (int8_t i=1;i < sizeof(s_ppAmps)/sizeof(s_ppAmps[0]);i++) {
+  for (uint8_t i=1;i < sizeof(s_ppAmps)/sizeof(s_ppAmps[0]);i++) {
     if (adcval <= (s_ppAmps[i].adcVal - (s_ppAmps[i].adcVal - s_ppAmps[i-1].adcVal)/2)) {
       amps = s_ppAmps[i-1].amps;
       break;
