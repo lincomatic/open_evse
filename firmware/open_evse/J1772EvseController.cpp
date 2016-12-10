@@ -257,10 +257,12 @@ void J1772EVSEController::ShowDisabledTests()
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
+#ifdef CHARGING_REG
   pinCharging.write(1);
+#endif
 #ifdef CHARGING2_REG
   pinCharging2.write(1);
-#endif
+#endif // CHARGING2_REG
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(1);
 #endif
@@ -272,7 +274,9 @@ void J1772EVSEController::chargingOn()
 
 void J1772EVSEController::chargingOff()
 { // turn off charging current
+#ifdef CHARGING_REG
   pinCharging.write(0);
+#endif
 #ifdef CHARGING2_REG
   pinCharging2.write(0);
 #endif
@@ -674,13 +678,17 @@ uint8_t J1772EVSEController::doPost()
       RelayOff = ReadACPins();
           
       // save state with Relay 1 on 
+#ifdef CHARGING_REG
       pinCharging.write(1);
+#endif
 #ifdef CHARGINGAC_REG
       pinChargingAC.write(1);
 #endif
       delay(RelaySettlingTime);
       Relay1 = ReadACPins();
+#ifdef CHARGING_REG
       pinCharging.write(0);
+#endif
 #ifdef CHARGINGAC_REG
       pinChargingAC.write(0);
 #endif
@@ -838,7 +846,9 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
+#ifdef CHARGING_REG
   pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
+#endif
 #ifdef CHARGING2_REG
   pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
 #endif
@@ -1041,7 +1051,7 @@ void J1772EVSEController::Update()
     if (chargingIsOn()) {
       ReadPilot(&plow,&phigh);
       // wait for pilot voltage to go > STATE C. This will happen if
-      // a) EV reacts and goes back to state B
+      // a) EV reacts and goes back to state B (opens its contacts)
       // b) user pulls out the charge connector
       // if it doesn't happen within 3 sec, we'll just open our relay anyway
       // c) no current draw means EV opened its contacts even if it stays in STATE C

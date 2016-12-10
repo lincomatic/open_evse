@@ -37,6 +37,11 @@
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
 
+inline int8_t IsEvseFaultState(uint8_t state) {
+  if ((state >= EVSE_FAULT_STATE_BEGIN) && (state <= EVSE_FAULT_STATE_END)) return 1;
+  else return 0;
+}
+
 typedef struct threshdata {
   uint16_t m_ThreshAB; // state A -> B
   uint16_t m_ThreshBC; // state B -> C
@@ -106,7 +111,9 @@ class J1772EVSEController {
   AdcPin adcVoltMeter;
 #endif
 
+#ifdef CHARGING_REG
   DigitalPin pinCharging;
+#endif
 #ifdef CHARGING2_REG
   DigitalPin pinCharging2;
 #endif
@@ -211,6 +218,7 @@ public:
   void LoadThresholds();
 
   uint16_t GetFlags() { return m_wFlags; }
+  uint8_t GetVFlags() { return m_bVFlags; }
   uint8_t GetState() { 
     return m_EvseState; 
   }
@@ -239,8 +247,7 @@ public:
   }
   uint8_t GetMaxCurrentCapacity();
   int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0,uint8_t nosave=0);
-  //int GetCurrentReading() { return m_CurrentReading; }
-  //float GetCurrentAmps();
+
   time_t GetElapsedChargeTime() { 
     return m_ElapsedChargeTime; 
   }
@@ -340,7 +347,10 @@ public:
 #ifdef AMMETER
   int32_t GetChargingCurrent() { return m_ChargingCurrent; }
 #ifdef FAKE_CHARGING_CURRENT
-  void SetChargingCurrent(int32_t current) { m_ChargingCurrent = current; }
+  void SetChargingCurrent(int32_t current) {
+    m_ChargingCurrent = current;
+    m_AmmeterReading = current;
+  }
 #endif
 
   int16_t GetAmmeterCurrentOffset() { return m_AmmeterCurrentOffset; }
@@ -391,6 +401,20 @@ public:
     m_StateTransitionReqFunc = statetransitionreqfunc;
   }
 #endif
+  void ZeroChargingCurrent() { m_ChargingCurrent = 0; }
+  J1772Pilot *GetPilot() { return &m_Pilot; }
+  uint8_t GetPilotState() { return m_PilotState; }
+  uint8_t GetInstantaneousChargingAmps() {
+    readAmmeter();
+    return m_AmmeterReading / 1000;
+  }
+  void CloseRelay() {
+    chargingOn();
+  }
+  void OpenRelay() {
+    chargingOff();
+  }
+  uint8_t RelayIsClosed() { return m_bVFlags & ECVF_CHARGING_ON; }
 #ifdef AUTH_LOCK
   void AuthLock(int8_t tf);
   int8_t AuthLockIsOn() { return (int8_t)((m_bVFlags & ECVF_AUTH_LOCKED)?1:0); }
