@@ -1,5 +1,9 @@
 Change Log
 
+20161212 SCL
+- fix compile errors when GFI not defined
+- fix compile errors when AUTH_LOCK && !RAPI
+	
 vD4.5.0 20161209 SCL	
 - added STATE_TRANSITION_REQ_FUNC #ifdef
 - added AUTOSVCLEVEL #ifdef
