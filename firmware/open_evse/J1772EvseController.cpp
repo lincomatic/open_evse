@@ -1532,7 +1532,9 @@ if (TempChkEnabled()) {
 #ifdef AUTH_LOCK
   if ((m_EvseState != prevevsestate) ||
       (m_PilotState != prevpilotstate)) {
+#ifdef RAPI
     RapiSendEvseState(0);
+#endif // RAPI
     g_OBD.Update(OBD_UPD_FORCE);
   }
 #endif // AUTH_LOCK
