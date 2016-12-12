@@ -499,7 +499,11 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
     case 'F': // get fault counters
+#ifdef GFI
       u1.u = g_EvseController.GetGfiTripCnt();
+#else
+      u1.u = 0;
+#endif // GFI
       u2.u = g_EvseController.GetNoGndTripCnt();
       u3.u = g_EvseController.GetStuckRelayTripCnt();
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);

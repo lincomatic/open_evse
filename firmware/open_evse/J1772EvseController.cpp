@@ -1731,7 +1731,11 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
 
 unsigned long J1772EVSEController::GetResetMs()
 {
+#ifdef GFI
   return GFI_TIMEOUT - (millis() - ((m_EvseState == EVSE_STATE_GFCI_FAULT) ? m_GfiFaultStartMs : m_NoGndStart));
+#else
+  return GFI_TIMEOUT - (millis() - m_NoGndStart);
+#endif // GFI
 }
 
 
