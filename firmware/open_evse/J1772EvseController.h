@@ -376,6 +376,12 @@ public:
       m_bVFlags &= ~ECVF_AMMETER_CAL;
     }
   }
+  void ZeroChargingCurrent() { m_ChargingCurrent = 0; }
+  uint8_t GetInstantaneousChargingAmps() {
+    readAmmeter();
+    return m_AmmeterReading / 1000;
+  }
+
 #ifdef CHARGE_LIMIT
   void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
@@ -403,13 +409,8 @@ public:
     m_StateTransitionReqFunc = statetransitionreqfunc;
   }
 #endif
-  void ZeroChargingCurrent() { m_ChargingCurrent = 0; }
   J1772Pilot *GetPilot() { return &m_Pilot; }
   uint8_t GetPilotState() { return m_PilotState; }
-  uint8_t GetInstantaneousChargingAmps() {
-    readAmmeter();
-    return m_AmmeterReading / 1000;
-  }
   void CloseRelay() {
     chargingOn();
   }
