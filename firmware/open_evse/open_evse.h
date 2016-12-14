@@ -237,7 +237,7 @@
 
 //-- end features
 
-#ifndef RGBLCD
+#ifndef DEFAULT_LCD_BKL_TYPE
 #define DEFAULT_LCD_BKL_TYPE BKL_TYPE_MONO
 #endif
 

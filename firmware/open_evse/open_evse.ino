@@ -492,8 +492,10 @@ void OnboardDisplay::Update(int8_t updmode)
   if (updateDisabled()) return;
 
   uint8_t curstate = g_EvseController.GetState();
+#ifdef LCD16X2
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int currentcap = g_EvseController.GetCurrentCapacity();
+#endif
   unsigned long curms = millis();
 
   if (g_EvseController.StateTransition() || (updmode != OBD_UPD_NORMAL)) {
@@ -2260,9 +2262,11 @@ void DelayTimer::Disable(){
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
+#ifdef LCD16X2
   if (IsTimerEnabled() && IsTimerValid()){
     g_OBD.LcdWrite(0x0);
   }
+#endif // LCD16X2
 }
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER

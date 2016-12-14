@@ -302,6 +302,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
+#endif // AMMETER
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
@@ -318,6 +319,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // AUTH_LOCK && !AUTH_LOCK_REG
+#ifdef AMMETER
     case 'A':
       if (tokenCnt == 3) {
 	g_EvseController.SetCurrentScaleFactor(dtou32(tokens[1]));
