@@ -57,7 +57,6 @@ int16_t Adafruit_TMP007::readDieTempC(void) {
 int16_t Adafruit_TMP007::readObjTempC10(void) {
   int16_t raw = read16(TMP007_TOBJ);
 
-  if (raw & 0x1) return NAN;
   if (raw & 0x1) return (int16_t)NAN;
 
   uint32_t temp = ((int32_t)raw) * 78125;
