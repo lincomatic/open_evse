@@ -37,15 +37,12 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-
-#define VERSION "D4.4.0"
+#define VERSION "D4.5.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
-
-//#define NOCHECKS
 
 //-- begin features
 
@@ -68,7 +65,7 @@
 #define RAPI
 
 // optional sequence id can be inserted as last parameter to commands/responses
-//#define RAPI_SEQUENCE_ID
+#define RAPI_SEQUENCE_ID
 
 // add checksum to RAPI responses RAPI v2.0.0+
 #define RAPI_RESPONSE_CHK

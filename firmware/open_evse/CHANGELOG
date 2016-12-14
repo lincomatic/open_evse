@@ -1,5 +1,14 @@
 Change Log
 
+vD4.5.1 20161213 SCL
+- fix broken watchdog when compiling with AVR 1.6.10+. optimizer was
+	eliminating wdt_init(), so we add "used" attribute to it
+- Adafruit_TMP007.cpp - fix 1.6.10+ compiler warning
+- turn on RAPI_SEQUENCE_ID by default
+- compile with AVR board support 1.6.10+ from now on to save 2K+ code space
+	if using an older compiler and output is too big,
+	disable RAPI_SEQUENCE_ID
+	
 20161212 SCL
 - fix compile errors when GFI not defined
 - fix compile errors when AUTH_LOCK && !RAPI
