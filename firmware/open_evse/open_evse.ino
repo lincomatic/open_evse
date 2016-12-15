@@ -1138,15 +1138,15 @@ Menu *SetupMenu::Select()
   }
 }
 
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
 #define SVC_LVL_MNU_ITEMCNT 3
 #else
 #define SVC_LVL_MNU_ITEMCNT 2
-#endif // ADVPWR
+#endif // ADVPWR && AUTOSVCLEVEL
 const char *g_SvcLevelMenuItems[] = {
-#ifdef ADVPWR
+#if defined(ADVPWR) && defined(AUTOSVCLEVEL)
   STR_AUTO,
-#endif // ADVPWR
+#endif // ADVPWR && AUTOSVCLEVEL
   STR_LEVEL_1,
   STR_LEVEL_2
 };

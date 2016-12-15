@@ -2,6 +2,7 @@ Change Log
 
 vD4.5.1 20161214 SCL
 - minor #ifdef code cleanup
+- fix bug in service level menu when AUTOSVCLEVEL not defined
 	
 vD4.5.1 20161213 SCL
 - fix broken watchdog when compiling with AVR 1.6.10+. optimizer was
