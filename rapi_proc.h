@@ -153,6 +153,10 @@ GG - get charging current and voltage
 GH - get cHarge limit
  response: OK kWh
  kWh = 0 = no charge limit
+GL - get service level L1/L2
+ response: OK level
+ level = 1 = level L1
+ level = 2 = level L2
 GM - get voltMeter settings
  response: OK voltcalefactor voltoffset
  $GM^2E
@@ -190,7 +194,7 @@ GV - get version
 
 #ifdef RAPI
 
-#define RAPIVER "1.0.3"
+#define RAPIVER "1.0.4"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1
