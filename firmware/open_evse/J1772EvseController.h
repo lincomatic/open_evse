@@ -213,7 +213,7 @@ class J1772EVSEController {
 public:
   J1772EVSEController();
   void Init();
-  void Update(); // read sensors
+  void Update(uint8_t forcetransition=0); // read sensors
   void Enable();
   void Disable(); // panic stop - open relays abruptly
   void Sleep(); // graceful stop - e.g. waiting for timer to fire- give the EV time to stop charging first
@@ -393,7 +393,7 @@ public:
   void SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
   uint8_t GetTimeLimit() { return m_timeLimit; }
 #endif // TIME_LIMIT
-  void ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt=PILOT_LOOP_CNT);
+  void ReadPilot(uint16_t *plow,uint16_t *phigh);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void DisabledTest_P(PGM_P message);

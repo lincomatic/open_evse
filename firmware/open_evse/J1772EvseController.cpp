@@ -1007,13 +1007,13 @@ void J1772EVSEController::Init()
   g_OBD.SetGreenLed(0);
 }
 
-void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh,int loopcnt)
+void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
 {
   uint16_t pl = 1023;
   uint16_t ph = 0;
 
   // 1x = 114us 20x = 2.3ms 100x = 11.3ms
-  for (int i=0;i < 100;i++) {
+  for (int i=0;i < PILOT_LOOP_CNT;i++) {
     uint16_t reading = adcPilot.read();  // measures pilot voltage
     
     if (reading > ph) {
