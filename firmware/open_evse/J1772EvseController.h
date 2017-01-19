@@ -304,11 +304,11 @@ public:
 
   void HardFault();
 
-  void SetLimitSleep(int8_t tf) {
+  void SetLimitSleep(uint8_t tf) {
     if (tf) m_bVFlags |= ECVF_LIMIT_SLEEP;
     else m_bVFlags &= ~ECVF_LIMIT_SLEEP;
   }
-  int8_t LimitSleepIsSet() { return (int8_t)(m_bVFlags & ECVF_LIMIT_SLEEP); }
+  uint8_t LimitSleepIsSet() { return m_bVFlags & ECVF_LIMIT_SLEEP; }
 
 #ifdef GFI
   void SetGfiTripped();
