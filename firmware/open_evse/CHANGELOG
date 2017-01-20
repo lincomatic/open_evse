@@ -1,7 +1,11 @@
 Change Log
 
-20170118
+vD4.6.0 20170119 SCL
 - get rid of superfluous loopcnt arg in ReadPilot()
+- fix problem with AUTH_LOCK - Tesla didn't like PWM when locked. Turn
+	off PWM when locked
+- added AUTH_LOCK_REG code - for hardware auth lock via hardware pin
+- added RAPI $G0 - get EV connect state
 
 vD4.5.1 20161214 SCL
 - minor #ifdef code cleanup

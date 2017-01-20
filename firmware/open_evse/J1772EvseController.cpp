@@ -170,10 +170,11 @@ void J1772EVSEController::SaveSettings()
 
 
 #ifdef AUTH_LOCK
-void J1772EVSEController::AuthLock(int8_t tf)
+void J1772EVSEController::AuthLock(uint8_t tf)
 {
-  if (tf) m_bVFlags |= ECVF_AUTH_LOCKED;
-  else m_bVFlags &= ~ECVF_AUTH_LOCKED;
+  if (tf) setVFlags(ECVF_AUTH_LOCKED);
+  else clrVFlags(ECVF_AUTH_LOCKED);
+  Update(1);
   g_OBD.Update(OBD_UPD_FORCE);
 }
 #endif // AUTH_LOCK
@@ -305,12 +306,11 @@ void J1772EVSEController::HardFault()
 #endif // MENNEKES_LOCK
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
-    // if we're in P12 state, we can recover from the hard fault when EV
+    // if pilot not in N12 state, we can recover from the hard fault when EV
     // is unplugged
-    if (m_Pilot.GetState() == PILOT_STATE_P12) {
-      uint16_t plow,phigh;
-      ReadPilot(&plow,&phigh);
-      if (phigh >= m_ThreshData.m_ThreshAB) {
+    if (m_Pilot.GetState() != PILOT_STATE_N12) {
+      ReadPilot(); // update EV connect state
+      if (!EvConnected()) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
 	break;
@@ -934,6 +934,7 @@ void J1772EVSEController::Init()
 #endif
 
   m_bVFlags = ECVF_DEFAULT;
+  m_bVFlags2 = ECVF2_DEFAULT;
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
@@ -1024,8 +1025,16 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
     }
   }
 
-  *plow = pl;
-  *phigh = ph;
+  if (m_Pilot.GetState() != PILOT_STATE_N12) {
+    // can determine connected state only if not -12VDC
+    if (ph >= m_ThreshData.m_ThreshAB) ClrEvConnected();
+    else SetEvConnected();
+  }
+
+  if (plow) {
+    *plow = pl;
+    *phigh = ph;
+  }
 }
 
 
@@ -1036,7 +1045,7 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
 //Positive Voltage, State C  5.48 6.00 6.49 
 //Positive Voltage, State D  2.62 3.00 3.25 
 //Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60 
-void J1772EVSEController::Update()
+void J1772EVSEController::Update(uint8_t forcetransition)
 {
   uint16_t plow;
   uint16_t phigh = 0xffff;
@@ -1048,9 +1057,10 @@ void J1772EVSEController::Update()
     return;
   }
   else if (m_EvseState == EVSE_STATE_SLEEPING) {
+    ReadPilot(&plow,&phigh); // always read so we can update EV connect state, too
+
     int8_t cancelTransition = 1;
     if (chargingIsOn()) {
-      ReadPilot(&plow,&phigh);
       // wait for pilot voltage to go > STATE C. This will happen if
       // a) EV reacts and goes back to state B (opens its contacts)
       // b) user pulls out the charge connector
@@ -1072,8 +1082,8 @@ void J1772EVSEController::Update()
     }
 #if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
     else if (LimitSleepIsSet()) {
-      ReadPilot(&plow,&phigh);
-      if (phigh >= m_ThreshData.m_ThreshAB) {
+      ReadPilot(); // update EV connect state
+      if (!EvConnected()) {
 	// if we went into sleep due to time/charge limit met, then
 	// automatically cancel the sleep when the car is unplugged
 	cancelTransition = 0;
@@ -1130,9 +1140,9 @@ void J1772EVSEController::Update()
     if (prevevsestate == EVSE_STATE_NO_GROUND) {
       // check to see if EV disconnected
       if (phigh == 0xffff) {
-	ReadPilot(&plow,&phigh);
+	ReadPilot();
       }
-      if (phigh >= m_ThreshData.m_ThreshAB) {
+      if (!EvConnected()) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
 	return;
@@ -1187,8 +1197,8 @@ void J1772EVSEController::Update()
     }
     else { // was already in GFI fault
       // check to see if EV disconnected
-      ReadPilot(&plow,&phigh);
-      if (phigh >= m_ThreshData.m_ThreshAB) {
+      ReadPilot();  // update EV connect state
+      if (!EvConnected()) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
 	m_Gfi.Reset();
@@ -1366,6 +1376,7 @@ if (TempChkEnabled()) {
     if (locked != (m_bVFlags & ECVF_AUTH_LOCKED)) {
       AuthLock(locked);
       g_OBD.Update(OBD_UPD_FORCE);
+      forcetransition = 1;
     }
   }
 #endif // AUTH_LOCK_REG
@@ -1393,7 +1404,7 @@ if (TempChkEnabled()) {
 
   
   // state transition
-  if (m_EvseState != prevevsestate) {
+  if (forcetransition || (m_EvseState != prevevsestate)) {
 #ifdef MENNEKES_LOCK
     if (m_EvseState == MENNEKES_LOCK_STATE) {
       m_MennekesLock.Lock();
@@ -1420,7 +1431,17 @@ if (TempChkEnabled()) {
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
+#ifdef AUTH_LOCK
+      // if locked, don't turn on PWM
+      if (AuthLockIsOn()) {
+	m_Pilot.SetState(PILOT_STATE_P12);
+      }
+      else {
+	m_Pilot.SetPWM(m_CurrentCapacity);
+      }
+#else
       m_Pilot.SetPWM(m_CurrentCapacity);
+#endif // AUTH_LOCK
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);

@@ -152,6 +152,10 @@ SV 0|1 - disable/enable vent required
  $SV 0*1D
  $SV 1*1E
 
+G0 - get EV connect state
+ response: $OK connectstate
+ connectstate: 0=not connected, 1=connected, 2=unknown
+ -> connectstate is unknown when EVSE pilot is -12VDC
 G3 - get time limit
  response: $OK cnt
  cnt*15 = minutes

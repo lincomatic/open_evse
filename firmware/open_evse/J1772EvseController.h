@@ -95,6 +95,12 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_DEFAULT            0x00
 #endif
 
+// J1772EVSEController volatile m_bVFlags2 bits - not saved to EEPROM
+#define ECVF2_EV_CONNECTED      0x01 // EV connected - valid only when pilot not N12
+
+#define ECVF2_DEFAULT           0x00
+
+
 class J1772EVSEController {
   J1772Pilot m_Pilot;
 #ifdef GFI
@@ -141,6 +147,7 @@ class J1772EVSEController {
 #endif // ADVPWR
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
+  uint8_t m_bVFlags2; // ECVF2_xxx
   THRESH_DATA m_ThreshData;
   uint8_t m_EvseState;
   uint8_t m_PrevEvseState;
@@ -188,6 +195,18 @@ class J1772EVSEController {
   void clrFlags(uint16_t flags) { 
     m_wFlags &= ~flags; 
   }
+  void setVFlags(uint8_t flags) { 
+    m_bVFlags |= flags; 
+  }
+  void clrVFlags(uint8_t flags) { 
+    m_bVFlags &= ~flags; 
+  }
+  void setVFlags2(uint8_t flags) { 
+    m_bVFlags2 |= flags; 
+  }
+  void clrVFlags2(uint8_t flags) { 
+    m_bVFlags2 &= ~flags; 
+  }
 
 #ifdef TIME_LIMIT
   uint8_t m_timeLimit; // minutes * 15
@@ -221,6 +240,7 @@ public:
 
   uint16_t GetFlags() { return m_wFlags; }
   uint8_t GetVFlags() { return m_bVFlags; }
+  uint8_t GetVFlags2() { return m_bVFlags2; }
   uint8_t GetState() { 
     return m_EvseState; 
   }
@@ -393,7 +413,7 @@ public:
   void SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
   uint8_t GetTimeLimit() { return m_timeLimit; }
 #endif // TIME_LIMIT
-  void ReadPilot(uint16_t *plow,uint16_t *phigh);
+  void ReadPilot(uint16_t *plow=NULL,uint16_t *phigh=NULL);
   void Reboot();
 #ifdef SHOW_DISABLED_TESTS
   void DisabledTest_P(PGM_P message);
@@ -419,9 +439,14 @@ public:
   }
   uint8_t RelayIsClosed() { return m_bVFlags & ECVF_CHARGING_ON; }
 #ifdef AUTH_LOCK
-  void AuthLock(int8_t tf);
-  int8_t AuthLockIsOn() { return (int8_t)((m_bVFlags & ECVF_AUTH_LOCKED)?1:0); }
+  void AuthLock(uint8_t tf);
+  uint8_t AuthLockIsOn() { return m_bVFlags & ECVF_AUTH_LOCKED; }
 #endif // AUTH_LOCK
+
+  void SetEvConnected() { setVFlags2(ECVF2_EV_CONNECTED); }
+  void ClrEvConnected() { clrVFlags2(ECVF2_EV_CONNECTED); }
+  // EvConnected value valid when pilot state not N12
+  uint8_t EvConnected() { return m_bVFlags2 & ECVF2_EV_CONNECTED; }
 };
 
 #ifdef FT_ENDURANCE
