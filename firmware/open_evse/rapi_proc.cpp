@@ -237,8 +237,10 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
 #ifdef LCD16X2
     case 'B': // LCD backlight
-      g_OBD.LcdSetBacklightColor(dtou32(tokens[1]));
-      rc = 0;
+      if (tokenCnt == 2) {
+	g_OBD.LcdSetBacklightColor(dtou32(tokens[1]));
+	rc = 0;
+      }
       break;
 #endif // LCD16X2      
     case 'D': // disable EVSE
@@ -251,7 +253,7 @@ int EvseRapiProcessor::processCmd()
       break;
 #ifdef LCD16X2
     case 'P': // print to LCD
-      {
+      if (tokenCnt >= 4) {
 	u1.u = dtou32(tokens[1]); // x
 	u2.u = dtou32(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
@@ -259,8 +261,8 @@ int EvseRapiProcessor::processCmd()
 	  *(tokens[u3.i]-1) = ' ';
 	}
 	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
+	rc = 0;
       }
-      rc = 0;
       break;
 #endif // LCD16X2      
     case 'R': // reset EVSE
