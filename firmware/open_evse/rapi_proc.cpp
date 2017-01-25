@@ -235,6 +235,13 @@ int EvseRapiProcessor::processCmd()
   switch(*(s++)) { 
   case 'F': // function
     switch(*s) {
+    case '0': // enable/disable LCD update
+      if (tokenCnt == 2) {
+	g_OBD.DisableUpdate((*tokens[1] == '0') ? 1 : 0);
+	if (*tokens[1] != '0') g_OBD.Update(OBD_UPD_FORCE);
+	rc = 0;
+      }
+      break;
 #ifdef LCD16X2
     case 'B': // LCD backlight
       if (tokenCnt == 2) {

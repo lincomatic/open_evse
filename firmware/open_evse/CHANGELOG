@@ -1,5 +1,9 @@
 Change Log
 
+vD4.7.0 20170119 SCL
+- check for proper tokenCnt $FB & $FP
+- add RAPI $F0 - enable/display LCD update
+	
 vD4.6.0 20170119 SCL
 - get rid of superfluous loopcnt arg in ReadPilot()
 - fix problem with AUTH_LOCK - Tesla didn't like PWM when locked. Turn

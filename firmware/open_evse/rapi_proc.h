@@ -74,6 +74,11 @@ v2.0.1+: 2-hex-digit XOR checksum appended to asynchronous messages
 
 commands
 
+
+F0 {1|0}- enable/disable display updates
+     enables/disables g_OBD.Update()
+ $F0 1^43 - enable display updates and call g_OBD.Update()
+ $F0 0^42 - disable display updates
 FB color - set LCD backlight color
 colors:
  OFF 0
