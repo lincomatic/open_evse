@@ -1,6 +1,6 @@
 Change Log
 
-vD4.7.0 20170119 SCL
+vD4.7.0 20170124 SCL
 - check for proper tokenCnt $FB & $FP
 - add RAPI $F0 - enable/display LCD update
 	
