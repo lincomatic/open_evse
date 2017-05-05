@@ -1,5 +1,8 @@
 Change Log
 
+vD4.7.0 20180504 SCL
+- version number was wrong.. update from D4.6.1 -> D4.7.0
+	
 vD4.7.0 20170124 SCL
 - check for proper tokenCnt $FB & $FP
 - add RAPI $F0 - enable/display LCD update
