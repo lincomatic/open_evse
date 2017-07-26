@@ -1,5 +1,8 @@
 Change Log
 
+vD4.7.2 20170725 SCL
+- when setting charge/time limit via RAPI, display would not update lightning or clock icon
+	
 vD4.7.1 20170725 SCL
 - fix bug in Service Level menu.. + sign would shift when AUTOSVCLEVEL enabled
 	

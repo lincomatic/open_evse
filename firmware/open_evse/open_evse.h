@@ -37,7 +37,7 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-#define VERSION "D4.7.1"
+#define VERSION "D4.7.2"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -836,6 +836,7 @@ public:
     if (on) m_bFlags |= OBDF_UPDATE_DISABLED;
     else m_bFlags &= ~OBDF_UPDATE_DISABLED;
   }
+  int8_t UpdatesDisabled() { return (m_bFlags & OBDF_UPDATE_DISABLED) ? 1 : 0; }
   void Update(int8_t updmode=OBD_UPD_NORMAL); // OBD_UPD_xxx
 };
 
