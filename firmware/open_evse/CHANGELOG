@@ -1,7 +1,13 @@
 Change Log
 
-vD4.7.0 20180504 SCL
+vD4.7.1 20170725 SCL
+- fix bug in Service Level menu.. + sign would shift when AUTOSVCLEVEL enabled
+	
+vD4.7.0 20170504 SCL
 - version number was wrong.. update from D4.6.1 -> D4.7.0
+- doesn't make any difference, but improve readability
+	Adafruit_TMP007::readObjTempC10() was returning NAN instead of 0
+	when sensor not installed. Change to return 0
 	
 vD4.7.0 20170124 SCL
 - check for proper tokenCnt $FB & $FP

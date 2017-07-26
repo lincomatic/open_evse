@@ -1221,9 +1221,16 @@ void SvcLevelMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdSetCursor(0,1);
+#ifdef AUTOSVCLEVEL
+  if ((g_EvseController.AutoSvcLevelEnabled() && !m_CurIdx) ||
+      (!g_EvseController.AutoSvcLevelEnabled() && (g_EvseController.GetCurSvcLevel() == m_CurIdx))) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+#else
   if (g_EvseController.GetCurSvcLevel() == (m_CurIdx+1)) {
     g_OBD.LcdPrint(g_sPlus);
   }
+#endif //AUTOSVCLEVEL
   g_OBD.LcdPrint(g_SvcLevelMenuItems[m_CurIdx]);
 }
 
