@@ -175,6 +175,10 @@ GA - get ammeter settings
 GC - get current capacity range in amps
  response: $OK minamps maxamps
  $GC*AE
+GD - get Delay timer
+ response: $OK starthr startmin endhr endmin
+   all values decimal
+   if timer disabled, starthr=startmin=endhr=endmin=0
 GE - get settings
  response: $OK amps(decimal) flags(hex)
  $GE*B0

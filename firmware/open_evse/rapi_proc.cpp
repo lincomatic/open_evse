@@ -208,7 +208,7 @@ int EvseRapiProcessor::tokenize(char *buf)
 
 int EvseRapiProcessor::processCmd()
 {
-  UNION4B u1,u2,u3;
+  UNION4B u1,u2,u3,u4;
   int rc = -1;
 
 #ifdef RAPI_SENDER
@@ -527,6 +527,26 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+#ifdef DELAYTIMER
+    case 'D': // get delay timer
+      extern DelayTimer g_DelayTimer;
+      if (g_DelayTimer.IsTimerEnabled()) {
+	u1.i = g_DelayTimer.GetStartTimerHour();
+	u2.i = g_DelayTimer.GetStartTimerMin();
+	u3.i = g_DelayTimer.GetStopTimerHour();
+	u4.i = g_DelayTimer.GetStopTimerMin();
+      }
+      else {
+	u1.i = 0;
+	u2.i = 0;
+	u3.i = 0;
+	u4.i = 0;
+      }
+      sprintf(buffer,"%d %d %d %d",u1.i,u2.i,u3.i,u4.i);
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // DELAYTIMER
     case 'E': // get settings
       u1.u = g_EvseController.GetCurrentCapacity();
       u2.u = g_EvseController.GetFlags();
