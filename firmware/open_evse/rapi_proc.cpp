@@ -426,9 +426,17 @@ int EvseRapiProcessor::processCmd()
 #ifdef TEMPERATURE_MONITORING_NY
     case 'O':
       if (tokenCnt == 3) {
-        g_TempMonitor.m_ambient_thresh = dtou32(tokens[1]);
-        g_TempMonitor.m_ir_thresh = dtou32(tokens[2]);
-	g_TempMonitor.SaveThresh();
+	u1.u32 = dtou32(tokens[1]);
+	u2.u32 = dtou32(tokens[2]);
+	if (!u1.u32 && !u2.u32) {
+	  g_EvseController.EnableTempChk(0);
+	}
+	else {
+	  g_EvseController.EnableTempChk(1);
+	  g_TempMonitor.m_ambient_thresh = u1.u32;
+	  g_TempMonitor.m_ir_thresh = u2.u32;
+	  g_TempMonitor.SaveThresh();
+	}
 	rc = 0;
       }
       break;

@@ -148,6 +148,7 @@ SL 1|2|A  - set service level L1/L2/Auto
 SM voltscalefactor voltoffset - set voltMeter settings
 SO ambientthresh irthresh - set Overtemperature thresholds
  thresholds are in 10ths of a degree Celcius
+ to disable temperature monitoring, set ambientthresh=irthresh=0
 SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A

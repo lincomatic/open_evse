@@ -1,5 +1,7 @@
 Change Log
 
+vD4.8.0 20170726 SCL
+- RAPI $SO 0 0 disables temperature checking
 vD4.7.2 20170725 SCL
 - when setting charge/time limit via RAPI, display would not update lightning or clock icon
 	
