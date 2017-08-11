@@ -177,10 +177,16 @@ int EvseRapiProcessor::tokenize(char *buf)
   uint8_t chktype=0; // 0=none,1=additive,2=xor
   while (*s) {
     if (*s == ' ') {
-      achkSum += *s;
-      xchkSum ^= *s;
-      *s = '\0';
-      tokens[tokenCnt++] = ++s;
+      if (tokenCnt >= ESRAPI_MAX_ARGS) {
+	chktype = 255;
+	break;
+      }
+      else {
+	achkSum += *s;
+	xchkSum ^= *s;
+	*s = '\0';
+	tokens[tokenCnt++] = ++s;
+      }
     }
     else if ((*s == '*') ||// additive checksum
 	     (*s == '^')) { // XOR checksum

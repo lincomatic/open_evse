@@ -1,5 +1,9 @@
 Change Log
 
+vD4.8.1 20170810 SCL
+- fix buffer overflow bug in EvseRapiProcessor::tokenize() - limit tokenCnt to
+	ESRAPI_MAX_ARGS
+	
 vD4.8.0 20170726 SCL
 - RAPI $SO 0 0 disables temperature checking
 - added RAPI $GD - get delay timer
