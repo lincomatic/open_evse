@@ -1,5 +1,12 @@
 Change Log
 
+vD4.9.1 20170811 SCL
+- added RAPI_FF - adds RAPI $FF command and deprecates all other enable/disable
+	commands, i.e. SD/SE/SF/SG/SR/SV
+	-> RAPIVER = 4.0.0
+- $FF T 0|1 enable/disable temperature monitoring
+- get rid of $S0 entirely, since it was half-baked and part of TEMPERATURE_MONITORING_NY
+	
 vD4.8.1 20170810 SCL
 - fix buffer overflow bug in EvseRapiProcessor::tokenize() - limit tokenCnt to
 	ESRAPI_MAX_ARGS

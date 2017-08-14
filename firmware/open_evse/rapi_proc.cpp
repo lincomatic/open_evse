@@ -264,6 +264,41 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Enable();
       rc = 0;
       break;
+#ifdef RAPI_FF
+    case 'F': // enable/disable feature
+      if (tokenCnt == 3) {
+	u1.u8 = (uint8_t)(*tokens[2] - '0');
+	if (u1.u8 <= 1) {
+	  rc = 0;
+	  switch(*tokens[1]) {
+	  case 'D': // diode check
+	    g_EvseController.EnableDiodeCheck(u1.u8);
+	    break;
+	  case 'E': // command echo
+	    echo = ((u1.u8 == '0') ? 0 : 1);	      
+	    break;
+	  case 'F': // GFI self test
+	    g_EvseController.EnableGfiSelfTest(u1.u8);
+	    break;
+	  case 'G': // ground check
+	    g_EvseController.EnableGndChk(u1.u8);
+	    break;
+	  case 'R': // stuck relay check
+	    g_EvseController.EnableStuckRelayChk(u1.u8);
+	    break;
+	  case 'T': // temperature monitoring
+	    g_EvseController.EnableTempChk(u1.u8);
+	    break;
+	  case 'V': // vent required check
+	    g_EvseController.EnableVentReq(u1.u8);
+	    break;
+	  default: // unknown
+	    rc = -1;
+	  }
+	}
+      }
+      break;
+#endif // RAPI_FF
 #ifdef LCD16X2
     case 'P': // print to LCD
       if (tokenCnt >= 4) {
@@ -357,6 +392,7 @@ int EvseRapiProcessor::processCmd()
 	bufCnt = 1; // flag response text output
       }
       break;
+#ifndef RAPI_FF
     case 'D': // diode check
       if (tokenCnt == 2) {
 	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
@@ -385,6 +421,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR
+#endif // !RAPI_FF
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
@@ -429,32 +466,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // VOLTMETER
-#ifdef TEMPERATURE_MONITORING_NY
-    case 'O':
-      if (tokenCnt == 3) {
-	u1.u32 = dtou32(tokens[1]);
-	u2.u32 = dtou32(tokens[2]);
-	if (!u1.u32 && !u2.u32) {
-	  g_EvseController.EnableTempChk(0);
-	}
-	else {
-	  g_EvseController.EnableTempChk(1);
-	  g_TempMonitor.m_ambient_thresh = u1.u32;
-	  g_TempMonitor.m_ir_thresh = u2.u32;
-	  g_TempMonitor.SaveThresh();
-	}
-	rc = 0;
-      }
-      break;
-#endif // TEMPERATURE_MONITORING
-#ifdef ADVPWR      
+#if defined(ADVPWR) && !defined(RAPI_FF)
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
 	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
-#endif // ADVPWR      
+#endif // ADVPWR && !RAPI_FF
 #ifdef DELAYTIMER     
     case 'T': // timer
       if (tokenCnt == 5) {
@@ -471,12 +490,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // DELAYTIMER      
+#ifndef RAPI_FF
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
+#endif // !RAPI_FF
     }
     break;
 

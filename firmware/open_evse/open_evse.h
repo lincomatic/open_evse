@@ -37,7 +37,7 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-#define VERSION "D4.8.1"
+#define VERSION "D4.9.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -64,14 +64,20 @@
 // serial remote api
 #define RAPI
 
+// RAPI over serial
+#define RAPI_SERIAL
+
+// RAPI $FF command
+#define RAPI_FF
+
+#ifdef RAPI_FF
+// force on RAPI_SEQUENCE_ID and RAPI_RESPONSE_CHK when RAPI_FF on
 // optional sequence id can be inserted as last parameter to commands/responses
 #define RAPI_SEQUENCE_ID
 
 // add checksum to RAPI responses RAPI v2.0.0+
 #define RAPI_RESPONSE_CHK
-
-// RAPI over serial
-#define RAPI_SERIAL
+#endif // RAPI_FF
 
 // RAPI over I2C
 //#define RAPI_I2C
