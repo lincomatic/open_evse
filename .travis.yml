@@ -9,10 +9,7 @@ cache:
         - "~/.platformio"
 
 install:
-    - pip install -U platformio
-    
-    - mkdir -p ~/.platformio/boards
-    - cp $TRAVIS_BUILD_DIR/arduino/openevse.json ~/.platformio/boards
+    - pip install -U platformio    
 
 script:
     - platformio run
