@@ -23,37 +23,21 @@ The latest firmware source code is located in GIThub: https://github.com/lincoma
 
 ### Platform IO
 
-<div class="alert alert-success">
-Note: Dev branch only
-</div>
+#### 1. Install Platform IO
 
-#### 1a. Install PlatformIO command line
+Either install the command line only [PlatformIO Core](http://docs.platformio.org/en/latest/installation.html) or the download the [PlatfomIO IDE](http://platformio.org/platformio-ide).
 
-The easiest way if running Linux is to install use the install script, this installed pio via python pip and installs pip if not present. See [PlatformIO installation docs](http://docs.platformio.org/en/latest/installation.html#installer-script). Or PlatformIO IDE can be used :
+If you already have Atom or VS Code installed you can just install the [Atom package](https://atom.io/packages/platformio-ide) or [VSCode extension](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide) respectively.
 
-`$ sudo python -c "$(curl -fsSL https://raw.githubusercontent.com/platformio/platformio/master/scripts/get-platformio.py)"`
+#### 2. Compile
 
-#### 1b. And / Or use PlatformIO IDE
-
-Standalone built on GitHub Atom IDE, or use PlatformIO Atom IDE plug-in if you already have Atom installed. The IDE is nice, easy and self-explanitory.
-
-[Download PlatfomIO IDE](http://platformio.org/platformio-ide)
-
-#### 2. Hardware support file
-
-Copy `arduino/openevse.json` to `~/.platformio/boards`
-
-#### 3. Compile
-
-`
-$ pio run
-`
+`$ pio run`
 
 The first time platformIO is ran the AVR arduino tool chain and all the required libs will be installed if required.
 
-#### 4. Upload
+#### 3. Upload
 
-`$ pio run -t upload`
+`$ pio run -t program`
 
 ### Arduino IDE
 
@@ -97,130 +81,20 @@ If you are burning virgin chips, you must set the fuse bits prior to programming
 
 See also: https://code.google.com/p/open-evse/wiki/AVRDUDE for how to accomplish this.
 
-### Loading Libraries
+## Enabling features
 
-To finish setting up your Arduino IDE you will need to insure any required libraries, indicated by #include, are copied to the libraries folder of your Arduino installation.
+To enable a feature delete the `//` in front of the #define tag. To disable a feature add `//`...
 
-OpenEVSE has two types of libraries those that will always be required by the core source code and those that are only required if you enable a certain feature.
-
-The libraries below are not included in the basic Arduino installation.
-
-The Time library is required by the core OpenEVSE firmware:
-
-More info on the Time library can be found here: http://arduino.cc/playground/Code/Time
+Example to enable the Advanced Power Supply features (`ADVPWR`) Change the line:
 
 ```
-
-include
-
-include
-
-include
-
-include
-
-include
-
-include
-
-include // Required for RTC and Delay Timer
-
-include
-
-if defined(ARDUINO) && (ARDUINO >= 100)
-
-include "Arduino.h"
-
-else
-
-include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
-
-endif // ARDUINO
-
-```
-
-Some features if enabled will also require a library, a good example are the RTC and LCDs options.
-
-LCDs require LiquidTWI2 library: https://github.com/lincomatic/LiquidTWI2/downloads
-
-RTC Requires RTClib and FlexiTimer2: https://github.com/adafruit/RTClib https://github.com/wimleers/flexitimer2
-
-```
-
-ifdef RGBLCD //Adafruit RGB LCD
-
-include
-
-include
-
-define RED 0x1
-
-define YELLOW 0x3
-
-define GREEN 0x2
-
-define BLUE 0x6
-
-endif //Adafruit RGB LCD
-
-ifdef I2CLCD
-
-include
-
-define LCD_I2C_ADDR 0 // for adafruit LCD backpack
-
-endif // I2CLCD
-
-```
-
-The Adafruit RGB or i2c backpack LCD library LiquidTWI2.h can be found here:
-
-https://github.com/lincomatic/LiquidTWI2/downloads
-
-Enabling features
-
-To enable a feature delete the "//" in front of the #define tag. To disable a feature add "//"...
-
-Example to enable the Advanced Power Supply features (ADVPWR) Change the line:
-
 //#define ADVPWR
+```
 
 to
 
+```
 define ADVPWR
+```
 
 Note: Use Extreme caution with WATCHDOG, if delays were added that exceed the timer the EVSE board will reset in an endless loop. It may be very difficult or impossible to recover.
-
-```
-//-- begin features
-
-// enable watchdog timer //#define WATCHDOG
-
-// GFI support
-
-define GFI
-
-// for stability testing - shorter timeout/higher retry count //#define GFI_TESTING
-
-// serial port command line
-
-define SERIALCLI
-
-//Adafruit RGBLCD
-
-define RGBLCD
-
-// Adafruit LCD backpack in I2C mode //#define I2CLCD
-
-// Advanced Powersupply... Ground check, stuck relay, L1/L2 detection. //#define ADVPWR
-
-// single button menus (needs LCD enabled) 
-// connect an SPST button between BTN_PIN and GND via a 2K resistor 
-// How to use 1-button menu
-// When not in menus, short press instantly stops the EVSE - another short press resumes. Long press activates menus
-// When within menus, short press cycles menu items, long press selects and exits current submenu
-//#define BTN_MENU
-
-//-- end features 
-
-```
