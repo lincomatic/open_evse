@@ -97,6 +97,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 
 // J1772EVSEController volatile m_bVFlags2 bits - not saved to EEPROM
 #define ECVF2_EV_CONNECTED      0x01 // EV connected - valid only when pilot not N12
+#define ECVF2_EV_CONNECTED_PREV 0x02 // prev EV connected flag
 
 #define ECVF2_DEFAULT           0x00
 
@@ -445,8 +446,15 @@ public:
 
   void SetEvConnected() { setVFlags2(ECVF2_EV_CONNECTED); }
   void ClrEvConnected() { clrVFlags2(ECVF2_EV_CONNECTED); }
+  void SetEvConnectedPrev() { setVFlags2(ECVF2_EV_CONNECTED_PREV); }
+  void ClrEvConnectedPrev() { clrVFlags2(ECVF2_EV_CONNECTED_PREV); }
   // EvConnected value valid when pilot state not N12
   uint8_t EvConnected() { return m_bVFlags2 & ECVF2_EV_CONNECTED; }
+  uint8_t EvConnectedTransition() {
+    if (((m_bVFlags2 & (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV)) == 0) ||
+	((m_bVFlags2 & (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV)) == (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV))) return 0;
+    else return 1;
+  }
 };
 
 #ifdef FT_ENDURANCE

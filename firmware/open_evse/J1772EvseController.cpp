@@ -1026,6 +1026,10 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
   }
 
   if (m_Pilot.GetState() != PILOT_STATE_N12) {
+    // update prev state
+    if (EvConnected()) SetEvConnectedPrev();
+    else ClrEvConnectedPrev();
+
     // can determine connected state only if not -12VDC
     if (ph >= m_ThreshData.m_ThreshAB) ClrEvConnected();
     else SetEvConnected();
