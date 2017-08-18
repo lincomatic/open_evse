@@ -221,7 +221,7 @@ GP - get temPerature (v1.0.3+)
  mcp9808temp - temperature from MCP9808
  tmp007temp - temperature from TMP007
  all temperatures are in 10th's of a degree Celcius
- if any temperature sensor is not installed, its return value will be 0
+ if any temperature sensor is not installed, its return value is -2560
 GS - get state
  response: $OK evsestate elapsed
  evsestate(dec): EVSE_STATE_xxx

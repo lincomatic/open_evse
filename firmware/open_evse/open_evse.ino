@@ -270,9 +270,9 @@ void TempMonitor::SaveThresh()
 void TempMonitor::Init()
 {
   m_Flags = 0;
-  m_MCP9808_temperature = 230;  // 230 means 23.0C  Using an integer to save on floating point library use
-  m_DS3231_temperature = 230;   // the DS3231 RTC has a built in temperature sensor
-  m_TMP007_temperature = 230;
+  m_MCP9808_temperature = TEMPERATURE_NOT_INSTALLED;  // 230 means 23.0C  Using an integer to save on floating point library use
+  m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;   // the DS3231 RTC has a built in temperature sensor
+  m_TMP007_temperature = TEMPERATURE_NOT_INSTALLED;
 
 #ifdef TEMPERATURE_MONITORING_NY
   LoadThresh();
@@ -301,7 +301,7 @@ void TempMonitor::Read()
        
 #ifdef RTC
 #ifdef OPENEVSE_2
-    m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0, OpenEVSE II does not use the DS3231
+    m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;  // OpenEVSE II does not use the DS3231
 #else // !OPENEVSE_2
     // This code chunk below reads the DS3231 RTC's internal temperature sensor            
     Wire.beginTransmission(DS1307_ADDRESS);
@@ -317,7 +317,7 @@ void TempMonitor::Read()
     m_DS3231_temperature = (((int16_t)wirerecv()) << 2) | (wirerecv() >> 6);
     if (m_DS3231_temperature == 0x3FF) {
       // assume chip not present
-      m_DS3231_temperature = 0;  // If the DS3231 is not present then return 0
+      m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;
     }
     else {
       if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00; // sign extend negative number
@@ -814,21 +814,21 @@ void OnboardDisplay::Update(int8_t updmode)
 	g_OBD.LcdClearLine(1);
 	const char *tempfmt = "%2d.%1dC";
 #ifdef MCP9808_IS_ON_I2C
-	if ( g_TempMonitor.m_MCP9808_temperature != 0 ) {   // it returns 0 if it is not present
+	if ( g_TempMonitor.m_MCP9808_temperature != TEMPERATURE_NOT_INSTALLED) {   
 	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_MCP9808_temperature/10, abs(g_TempMonitor.m_MCP9808_temperature % 10));  //  Ambient sensor near or on the LCD
 	  LcdPrint(0,1,g_sTmp);
 	}
 #endif
 
 #ifdef RTC	
-	if ( g_TempMonitor.m_DS3231_temperature != 0) {   // it returns 0 if it is not present
+	if ( g_TempMonitor.m_DS3231_temperature != TEMPERATURE_NOT_INSTALLED) {
 	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_DS3231_temperature/10, abs(g_TempMonitor.m_DS3231_temperature % 10));      //  sensor built into the DS3231 RTC Chip
 	  LcdPrint(5,1,g_sTmp);
 	}
 #endif
 	
 #ifdef TMP007_IS_ON_I2C
-	if ( g_TempMonitor.m_TMP007_temperature != 0 ) {    // it returns 0 if it is not present
+	if ( g_TempMonitor.m_TMP007_temperature != TEMPERATURE_NOT_INSTALLED ) {
 	  sprintf(g_sTmp,tempfmt,g_TempMonitor.m_TMP007_temperature/10, abs(g_TempMonitor.m_TMP007_temperature % 10));  //  Infrared sensor probably looking at 30A fuses
 	  LcdPrint(11,1,g_sTmp);
 	}

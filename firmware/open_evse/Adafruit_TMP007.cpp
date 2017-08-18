@@ -14,7 +14,7 @@
   BSD license, all text above must be included in any redistribution
  ****************************************************/
 
-#include "Adafruit_TMP007.h"
+#include "open_evse.h"
 #include <util/delay.h>
 
 //#define TESTDIE 0x0C78
@@ -57,7 +57,7 @@ int16_t Adafruit_TMP007::readDieTempC(void) {
 int16_t Adafruit_TMP007::readObjTempC10(void) {
   int16_t raw = read16(TMP007_TOBJ);
 
-  if (raw & 0x1) return (int16_t)0;
+  if (raw & 0x1) return (int16_t)TEMPERATURE_NOT_INSTALLED;
 
   uint32_t temp = ((int32_t)raw) * 78125;
   return (int16_t) (temp / 1000000);

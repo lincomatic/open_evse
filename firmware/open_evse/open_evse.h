@@ -854,6 +854,8 @@ public:
 #include "./MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
+
+#define TEMPERATURE_NOT_INSTALLED -2560 // fake temp to return when hardware not installed
 #define TEMPMONITOR_UPDATE_INTERVAL 1000ul
 // TempMonitor.m_Flags
 #define TMF_OVERTEMPERATURE          0x01
