@@ -1,5 +1,13 @@
 Change Log
 
+vD4.10.0 20170817 SCL
+- change TMP007 temperature was showing up as 230 when not installed.
+- also, temperature for other devices was 0 when not installed, but 0 is a
+	valid temperature
+	-> change all default temps to TEMPERATURE_NOT_INSTALLED (currently
+	-2560)
+	-> bump up RAPI version to 4.0.1
+- when sleeping, and EV connected, set LCD backlight to white instead of violet
 vD4.9.1 20170811 SCL
 - added RAPI_FF - adds RAPI $FF command and deprecates all other enable/disable
 	commands, i.e. SD/SE/SF/SG/SR/SV
