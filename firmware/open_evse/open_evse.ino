@@ -706,7 +706,7 @@ void OnboardDisplay::Update(int8_t updmode)
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2
-      LcdSetBacklightColor(VIOLET);
+      LcdSetBacklightColor(g_EvseController.EvConnected() ? WHITE : VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
       LcdPrint_P(g_psSleeping);

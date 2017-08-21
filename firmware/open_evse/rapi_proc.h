@@ -250,7 +250,7 @@ T0 amps - set fake charging current
 #ifdef RAPI
 
 #ifdef RAPI_FF
-#define RAPIVER "4.0.0"
+#define RAPIVER "4.0.1"
 #elif defined(RAPI_SEQUENCE_ID)
 #define RAPIVER "3.0.1"
 #elif defined(RAPI_RESPONSE_CHK)

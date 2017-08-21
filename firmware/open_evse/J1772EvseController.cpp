@@ -1084,18 +1084,24 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #endif
       }
     }
+    else { // not charging
 #if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
-    else if (LimitSleepIsSet()) {
-      ReadPilot(); // update EV connect state
-      if (!EvConnected()) {
-	// if we went into sleep due to time/charge limit met, then
-	// automatically cancel the sleep when the car is unplugged
-	cancelTransition = 0;
-	SetLimitSleep(0);
-	m_EvseState = EVSE_STATE_UNKNOWN;
+      if (LimitSleepIsSet()) {
+	if (!EvConnected()) {
+	  // if we went into sleep due to time/charge limit met, then
+	  // automatically cancel the sleep when the car is unplugged
+	  cancelTransition = 0;
+	  SetLimitSleep(0);
+	  m_EvseState = EVSE_STATE_UNKNOWN;
+	}
+      }
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+
+      if (EvConnectedTransition()) {
+	g_OBD.Update(OBD_UPD_FORCE);
       }
     }
-#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+
     if (cancelTransition) {
       m_PrevEvseState = m_EvseState; // cancel state transition
       return;
@@ -1670,6 +1676,8 @@ if (TempChkEnabled()) {
     }
 #endif
   }
+
+  return;
 }
 
 #ifdef CALIBRATE
