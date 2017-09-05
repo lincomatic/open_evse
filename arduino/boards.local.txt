@@ -1,0 +1,10 @@
+openevse.name=[Programmer]OpenEVSE
+openevse.upload.tool=avrdude
+openevse.upload.maximum_size=32768
+openevse.upload.maximum_data_size=2048
+openevse.build.mcu=atmega328p
+openevse.build.f_cpu=16000000L
+openevse.build.board=AVR_DUEMILANOVE
+openevse.build.core=arduino
+openevse.build.variant=standard
+openevse.menu.cpu.atmega328=ATmega328

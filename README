@@ -1,5 +1,4 @@
-Remote API (RAPI) Version
-This is the current stable version
+This is the development branch - use for testing only
 
 
 Firmware for Open EVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
@@ -7,13 +6,9 @@ See http://code.google.com/p/open-evse/ for project details.
 
 Compilation help: http://code.google.com/p/open-evse/wiki/LoadingFirmware
 
-Required libraries:
-https://github.com/lincomatic/LiquidTWI2
-https://github.com/adafruit/RTClib
-https://github.com/wimleers/flexitimer2
-http://playground.arduino.cc/code/time
-
-NOTE: Working versions of the required libraries are included in the libraries/ folder
+NOTES:
+- Working versions of the required libraries are included in the libraries/ folder
+- Arduino 1.6.x is STRONGLY RECOMMENDED for compiling OpenEVSE. Older versions of Arduino will build sketches which are too big to fit into OpenEVSE, unless features are disabled.
 ------------
 
 Open EVSE is free software; you can redistribute it and/or modify
