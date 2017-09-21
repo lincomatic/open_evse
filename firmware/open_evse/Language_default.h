@@ -57,6 +57,8 @@
 #define STR_NO_GROUND				    "NO GROUND"
 #define STR_STUCK_RELAY				  "STUCK RELAY"
 #define STR_DISABLED				   "Disabled"
+#define STR_RESETTING                              "Resetting..."
+
 #define STR_WAITING					   "Waiting"
 #define STR_SLEEPING				   "Sleeping"
 #define STR_CONNECTED			     "Connected"

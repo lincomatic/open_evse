@@ -1,5 +1,8 @@
 Change Log
 
+vD4.10.1 20170921 SCL
+- move inline string "Resetting" to strings.h/cpp
+	
 vD4.10.0 20170817 SCL
 - change TMP007 temperature was showing up as 230 when not installed.
 - also, temperature for other devices was 0 when not installed, but 0 is a
