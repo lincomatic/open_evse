@@ -57,7 +57,7 @@
 #define STR_NO_GROUND				    "NO GROUND"
 #define STR_STUCK_RELAY				  "STUCK RELAY"
 #define STR_DISABLED				   "Disabled"
-#define STR_RESETTING                              "Resetting..."
+#define STR_RESETTING                              "Restarting..."
 
 #define STR_WAITING					   "Waiting"
 #define STR_SLEEPING				   "Sleeping"
@@ -69,7 +69,6 @@
 #define STRF_MAX_CURRENT			 "%s Max Current"
 #define STR_SET_DATE_TIME			 "Set Date/Time?"
 #define STR_YESNO_SETSTART_SETSTOP	{"Yes/No","Set Start","Set Stop"}
-#define STR_RESETTING				   "Resetting..." 
 #define STRF_WH						     "%5luWh"  
 #define STRF_KWH					     "%6lukWh" 
 #define STRF_VOLT              " %3luV"

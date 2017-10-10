@@ -1,5 +1,8 @@
 Change Log
 
+20170922 SCL
+- change "Resetting..." to "Restarting..."
+	
 vD4.10.1 20170921 SCL
 - move inline string "Resetting" to strings.h/cpp
 	
