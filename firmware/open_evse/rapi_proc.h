@@ -96,7 +96,7 @@ FD - disable EVSE
 FE - enable EVSE
  $FE*AF
 FP x y text - print text on lcd display
-FR - reset EVSE
+FR - restart EVSE
  $FR*BC
 FS - sleep EVSE
  $FS*BD
