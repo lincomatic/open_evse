@@ -131,13 +131,13 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    when auth lock is on, will not transition to State C and a lock icon is
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
-SC amps [N]- set current capacity
+SC amps [V]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK amps
    if amps > maximum current capacity, will set to maximum and return $NK amps
    otherwise return $OK amps
    default action is to save new current capacity to EEPROM.
-   if N is specified, then new current capacity is volatile, and will be
+   if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot
 (DEPRECATED) SD 0|1 - disable/enable diode check
  $SD 0*0B

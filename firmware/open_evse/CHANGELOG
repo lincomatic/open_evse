@@ -1,5 +1,12 @@
 Change Log
 
+20171010 SCL	
+- $SC remove bad code (*tokens[2] = 'N') ( should have been ==, not =)..
+	was working properly, anyway, but didn't care what character was
+	specified. just remove the clause altogether, and allow any 3rd
+	arg to make current capacity volatile
+- change $SC doc to [V] (volatile) instead of [N] for not saving to EEPROM 
+
 20170922 SCL
 - change "Resetting..." to "Restarting..."
 	

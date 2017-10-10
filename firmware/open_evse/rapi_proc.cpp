@@ -383,7 +383,8 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER
     case 'C': // current capacity
       if ((tokenCnt == 2) || (tokenCnt == 3)) {
-	if ((tokenCnt == 3) && (*tokens[2] = 'N')) {
+	if (tokenCnt == 3) {
+	  // just make volatile no matter what character specified
 	  u1.u8 = 1; // nosave = 1
 	}
 	else {
