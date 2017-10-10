@@ -286,9 +286,11 @@ int EvseRapiProcessor::processCmd()
 	  case 'R': // stuck relay check
 	    g_EvseController.EnableStuckRelayChk(u1.u8);
 	    break;
+#ifdef TEMPERATURE_MONITORING
 	  case 'T': // temperature monitoring
 	    g_EvseController.EnableTempChk(u1.u8);
 	    break;
+#endif // TEMPERATURE_MONITORING
 	  case 'V': // vent required check
 	    g_EvseController.EnableVentReq(u1.u8);
 	    break;
