@@ -545,12 +545,11 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // AMMETER
     case 'C': // get current capacity range
+      u1.i = MIN_CURRENT_CAPACITY_J1772;
       if (g_EvseController.GetCurSvcLevel() == 2) {
-	u1.i = MIN_CURRENT_CAPACITY_L2;
 	u2.i = MAX_CURRENT_CAPACITY_L2;
       }
       else {
-	u1.i = MIN_CURRENT_CAPACITY_L1;
 	u2.i = MAX_CURRENT_CAPACITY_L1;
       }
       sprintf(buffer,"%d %d",u1.i,u2.i);

@@ -1266,12 +1266,11 @@ MaxCurrentMenu::MaxCurrentMenu()
 void MaxCurrentMenu::Init()
 {
   uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
+  m_MinCurrent = MIN_CURRENT_CAPACITY_J1772;
   if (cursvclvl == 1) {
-    m_MinCurrent = MIN_CURRENT_CAPACITY_L1;
     m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
   }
   else {
-    m_MinCurrent = MIN_CURRENT_CAPACITY_L2;
     m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
   }
   

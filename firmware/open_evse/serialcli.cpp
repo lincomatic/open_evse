@@ -80,7 +80,7 @@ void CLI::getInput()
         print_P(PSTR("Current capacity (Amps): "));
         Serial.println((int)g_EvseController.GetCurrentCapacity()); 
         print_P(PSTR("Min Current Capacity: "));
-        Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MIN_CURRENT_CAPACITY_L2 : MIN_CURRENT_CAPACITY_L1);
+        Serial.println(MIN_CURRENT_CAPACITY_J1772);
         print_P(PSTR("Max Current Capacity: "));
         Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
 	print_P(PSTR("Vent Required: "));

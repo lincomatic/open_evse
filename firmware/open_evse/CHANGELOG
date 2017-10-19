@@ -1,5 +1,9 @@
 Change Log
 
+20171018 SCL
+- get rid of MIN_CURRENT_L2/L1 -> use MIN_CURRENT_J1772
+	
+	
 20171010 SCL	
 - $SC remove bad code (*tokens[2] = 'N') ( should have been ==, not =)..
 	was working properly, anyway, but didn't care what character was
@@ -21,6 +25,10 @@ vD4.10.0 20170817 SCL
 	-2560)
 	-> bump up RAPI version to 4.0.1
 - when sleeping, and EV connected, set LCD backlight to white instead of violet
+- platformio compatibility - all code in open_evse.ino moved to open_evse.cpp to avoid bug in platformio's .ino munger that causes phantom compiler warnings (SVC_LVL_MNU_CNT redefined)
+	-> I wonder if this really works to avoid bugs.. doesn't pio still 
+	munge the CPP files, as well?
+
 vD4.9.1 20170811 SCL
 - added RAPI_FF - adds RAPI $FF command and deprecates all other enable/disable
 	commands, i.e. SD/SE/SF/SG/SR/SV
