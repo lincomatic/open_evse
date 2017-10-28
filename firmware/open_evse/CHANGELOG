@@ -1,5 +1,8 @@
 Change Log
 
+D4.10.2 20171027 SCL
+- don't write to EEPROM when calling SetCurrentCapacity() in SetSvcLevel()
+
 20171018 SCL
 - get rid of MIN_CURRENT_L2/L1 -> use MIN_CURRENT_J1772
 	

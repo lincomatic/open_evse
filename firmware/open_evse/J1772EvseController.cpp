@@ -544,7 +544,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
   LoadThresholds();
 
-  SetCurrentCapacity(ampacity);
+  SetCurrentCapacity(ampacity,0,1);
 
   if (updatelcd) {
     g_OBD.Update(OBD_UPD_FORCE);
