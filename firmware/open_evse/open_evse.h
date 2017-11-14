@@ -43,7 +43,6 @@
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
 // UK/EU specific settings (by OpenEnergyMonitor):
-// - Enable MENNEKES_LOCK
 // - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
 // - Charging level default to L2
 // - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
@@ -121,7 +120,7 @@
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-#define MENNEKES_LOCK
+// #define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
