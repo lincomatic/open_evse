@@ -177,10 +177,16 @@ int EvseRapiProcessor::tokenize(char *buf)
   uint8_t chktype=0; // 0=none,1=additive,2=xor
   while (*s) {
     if (*s == ' ') {
-      achkSum += *s;
-      xchkSum ^= *s;
-      *s = '\0';
-      tokens[tokenCnt++] = ++s;
+      if (tokenCnt >= ESRAPI_MAX_ARGS) {
+	chktype = 255;
+	break;
+      }
+      else {
+	achkSum += *s;
+	xchkSum ^= *s;
+	*s = '\0';
+	tokens[tokenCnt++] = ++s;
+      }
     }
     else if ((*s == '*') ||// additive checksum
 	     (*s == '^')) { // XOR checksum
@@ -258,6 +264,43 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Enable();
       rc = 0;
       break;
+#ifdef RAPI_FF
+    case 'F': // enable/disable feature
+      if (tokenCnt == 3) {
+	u1.u8 = (uint8_t)(*tokens[2] - '0');
+	if (u1.u8 <= 1) {
+	  rc = 0;
+	  switch(*tokens[1]) {
+	  case 'D': // diode check
+	    g_EvseController.EnableDiodeCheck(u1.u8);
+	    break;
+	  case 'E': // command echo
+	    echo = ((u1.u8 == '0') ? 0 : 1);	      
+	    break;
+	  case 'F': // GFI self test
+	    g_EvseController.EnableGfiSelfTest(u1.u8);
+	    break;
+	  case 'G': // ground check
+	    g_EvseController.EnableGndChk(u1.u8);
+	    break;
+	  case 'R': // stuck relay check
+	    g_EvseController.EnableStuckRelayChk(u1.u8);
+	    break;
+#ifdef TEMPERATURE_MONITORING
+	  case 'T': // temperature monitoring
+	    g_EvseController.EnableTempChk(u1.u8);
+	    break;
+#endif // TEMPERATURE_MONITORING
+	  case 'V': // vent required check
+	    g_EvseController.EnableVentReq(u1.u8);
+	    break;
+	  default: // unknown
+	    rc = -1;
+	  }
+	}
+      }
+      break;
+#endif // RAPI_FF
 #ifdef LCD16X2
     case 'P': // print to LCD
       if (tokenCnt >= 4) {
@@ -340,7 +383,8 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER
     case 'C': // current capacity
       if ((tokenCnt == 2) || (tokenCnt == 3)) {
-	if ((tokenCnt == 3) && (*tokens[2] = 'N')) {
+	if (tokenCnt == 3) {
+	  // just make volatile no matter what character specified
 	  u1.u8 = 1; // nosave = 1
 	}
 	else {
@@ -351,6 +395,7 @@ int EvseRapiProcessor::processCmd()
 	bufCnt = 1; // flag response text output
       }
       break;
+#ifndef RAPI_FF
     case 'D': // diode check
       if (tokenCnt == 2) {
 	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
@@ -379,6 +424,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR
+#endif // !RAPI_FF
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
@@ -423,32 +469,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // VOLTMETER
-#ifdef TEMPERATURE_MONITORING_NY
-    case 'O':
-      if (tokenCnt == 3) {
-	u1.u32 = dtou32(tokens[1]);
-	u2.u32 = dtou32(tokens[2]);
-	if (!u1.u32 && !u2.u32) {
-	  g_EvseController.EnableTempChk(0);
-	}
-	else {
-	  g_EvseController.EnableTempChk(1);
-	  g_TempMonitor.m_ambient_thresh = u1.u32;
-	  g_TempMonitor.m_ir_thresh = u2.u32;
-	  g_TempMonitor.SaveThresh();
-	}
-	rc = 0;
-      }
-      break;
-#endif // TEMPERATURE_MONITORING
-#ifdef ADVPWR      
+#if defined(ADVPWR) && !defined(RAPI_FF)
     case 'R': // stuck relay check
       if (tokenCnt == 2) {
 	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
-#endif // ADVPWR      
+#endif // ADVPWR && !RAPI_FF
 #ifdef DELAYTIMER     
     case 'T': // timer
       if (tokenCnt == 5) {
@@ -465,12 +493,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // DELAYTIMER      
+#ifndef RAPI_FF
     case 'V': // vent required
       if (tokenCnt == 2) {
 	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);
 	rc = 0;
       }
       break;
+#endif // !RAPI_FF
     }
     break;
 
@@ -515,12 +545,11 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // AMMETER
     case 'C': // get current capacity range
+      u1.i = MIN_CURRENT_CAPACITY_J1772;
       if (g_EvseController.GetCurSvcLevel() == 2) {
-	u1.i = MIN_CURRENT_CAPACITY_L2;
 	u2.i = MAX_CURRENT_CAPACITY_L2;
       }
       else {
-	u1.i = MIN_CURRENT_CAPACITY_L1;
 	u2.i = MAX_CURRENT_CAPACITY_L1;
       }
       sprintf(buffer,"%d %d",u1.i,u2.i);

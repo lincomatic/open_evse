@@ -71,7 +71,7 @@ int16_t MCP9808::readAmbient()
     return (temp * 10) / 16;
   }
   else {
-    return 0;
+    return TEMPERATURE_NOT_INSTALLED;
   }
 }
 #endif // MCP9808_IS_ON_I2C

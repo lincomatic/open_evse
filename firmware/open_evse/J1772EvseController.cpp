@@ -186,7 +186,7 @@ void J1772EVSEController::Reboot()
   m_Pilot.SetState(PILOT_STATE_P12);
 
 #ifdef LCD16X2
-  g_OBD.LcdPrint_P(1,PSTR(STR_RESETTING));
+  g_OBD.LcdPrint_P(1,g_psResetting);
 #endif
 
   if (chargingIsOn()) {
@@ -544,7 +544,7 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
   LoadThresholds();
 
-  SetCurrentCapacity(ampacity);
+  SetCurrentCapacity(ampacity,0,1);
 
   if (updatelcd) {
     g_OBD.Update(OBD_UPD_FORCE);
@@ -1026,6 +1026,10 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
   }
 
   if (m_Pilot.GetState() != PILOT_STATE_N12) {
+    // update prev state
+    if (EvConnected()) SetEvConnectedPrev();
+    else ClrEvConnectedPrev();
+
     // can determine connected state only if not -12VDC
     if (ph >= m_ThreshData.m_ThreshAB) ClrEvConnected();
     else SetEvConnected();
@@ -1080,18 +1084,24 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #endif
       }
     }
+    else { // not charging
 #if defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
-    else if (LimitSleepIsSet()) {
-      ReadPilot(); // update EV connect state
-      if (!EvConnected()) {
-	// if we went into sleep due to time/charge limit met, then
-	// automatically cancel the sleep when the car is unplugged
-	cancelTransition = 0;
-	SetLimitSleep(0);
-	m_EvseState = EVSE_STATE_UNKNOWN;
+      if (LimitSleepIsSet()) {
+	if (!EvConnected()) {
+	  // if we went into sleep due to time/charge limit met, then
+	  // automatically cancel the sleep when the car is unplugged
+	  cancelTransition = 0;
+	  SetLimitSleep(0);
+	  m_EvseState = EVSE_STATE_UNKNOWN;
+	}
+      }
+#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+
+      if (EvConnectedTransition()) {
+	g_OBD.Update(OBD_UPD_FORCE);
       }
     }
-#endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
+
     if (cancelTransition) {
       m_PrevEvseState = m_EvseState; // cancel state transition
       return;
@@ -1666,6 +1676,8 @@ if (TempChkEnabled()) {
     }
 #endif
   }
+
+  return;
 }
 
 #ifdef CALIBRATE

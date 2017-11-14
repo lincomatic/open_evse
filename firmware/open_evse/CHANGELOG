@@ -1,5 +1,48 @@
 Change Log
 
+D4.10.2 20171027 SCL
+- don't write to EEPROM when calling SetCurrentCapacity() in SetSvcLevel()
+
+20171018 SCL
+- get rid of MIN_CURRENT_L2/L1 -> use MIN_CURRENT_J1772
+	
+	
+20171010 SCL	
+- $SC remove bad code (*tokens[2] = 'N') ( should have been ==, not =)..
+	was working properly, anyway, but didn't care what character was
+	specified. just remove the clause altogether, and allow any 3rd
+	arg to make current capacity volatile
+- change $SC doc to [V] (volatile) instead of [N] for not saving to EEPROM 
+
+20170922 SCL
+- change "Resetting..." to "Restarting..."
+	
+vD4.10.1 20170921 SCL
+- move inline string "Resetting" to strings.h/cpp
+	
+vD4.10.0 20170817 SCL
+- change TMP007 temperature was showing up as 230 when not installed.
+- also, temperature for other devices was 0 when not installed, but 0 is a
+	valid temperature
+	-> change all default temps to TEMPERATURE_NOT_INSTALLED (currently
+	-2560)
+	-> bump up RAPI version to 4.0.1
+- when sleeping, and EV connected, set LCD backlight to white instead of violet
+- platformio compatibility - all code in open_evse.ino moved to open_evse.cpp to avoid bug in platformio's .ino munger that causes phantom compiler warnings (SVC_LVL_MNU_CNT redefined)
+	-> I wonder if this really works to avoid bugs.. doesn't pio still 
+	munge the CPP files, as well?
+
+vD4.9.1 20170811 SCL
+- added RAPI_FF - adds RAPI $FF command and deprecates all other enable/disable
+	commands, i.e. SD/SE/SF/SG/SR/SV
+	-> RAPIVER = 4.0.0
+- $FF T 0|1 enable/disable temperature monitoring
+- get rid of $S0 entirely, since it was half-baked and part of TEMPERATURE_MONITORING_NY
+	
+vD4.8.1 20170810 SCL
+- fix buffer overflow bug in EvseRapiProcessor::tokenize() - limit tokenCnt to
+	ESRAPI_MAX_ARGS
+	
 vD4.8.0 20170726 SCL
 - RAPI $SO 0 0 disables temperature checking
 - added RAPI $GD - get delay timer

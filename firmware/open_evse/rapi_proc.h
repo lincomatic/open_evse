@@ -96,10 +96,26 @@ FD - disable EVSE
 FE - enable EVSE
  $FE*AF
 FP x y text - print text on lcd display
-FR - reset EVSE
+FR - restart EVSE
  $FR*BC
 FS - sleep EVSE
  $FS*BD
+FF - enable/disable feature
+ $FF feature_id 0|1
+ 0|1 0=disable 1=enable
+ feature_id:
+  D = Diode check
+  E = command Echo
+   use this for interactive terminal sessions with RAPI.
+   RAPI will echo back characters as they are typed, and add a <LF> character
+   after its replies. Valid only over a serial connection, DO NOT USE on I2C
+  F = GFI self test
+  G = Ground check
+  R = stuck Relay check
+  T = temperature monitoring
+  V = Vent required check
+ $FF D 0 - disable diode check
+ $FF G 1 - enable ground check
 
 S0 0|1 - set LCD type
  $S0 0*F7 = monochrome backlight
@@ -115,27 +131,27 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    when auth lock is on, will not transition to State C and a lock icon is
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
-SC amps [N]- set current capacity
+SC amps [V]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK amps
    if amps > maximum current capacity, will set to maximum and return $NK amps
    otherwise return $OK amps
    default action is to save new current capacity to EEPROM.
-   if N is specified, then new current capacity is volatile, and will be
+   if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot
-SD 0|1 - disable/enable diode check
+(DEPRECATED) SD 0|1 - disable/enable diode check
  $SD 0*0B
  $SD 1*0C
-SE 0|1 - disable/enable command echo
+(DEPRECATED) SE 0|1 - disable/enable command echo
  $SE 0*0C
  $SE 1*0D
  use this for interactive terminal sessions with RAPI.
  RAPI will echo back characters as they are typed, and add a <LF> character
  after its replies. Valid only over a serial connection, DO NOT USE on I2C
-SF 0|1 - disable/enable GFI self test
+(DEPRECATED) SF 0|1 - disable/enable GFI self test
  $SF 0*0D
  $SF 1*0E
-SG 0|1 - disable/enable ground check
+(DEPRECATED) SG 0|1 - disable/enable ground check
  $SG 0*0E
  $SG 1*0F
 SH kWh - set cHarge limit to kWh
@@ -146,15 +162,12 @@ SL 1|2|A  - set service level L1/L2/Auto
  $SL 2*15
  $SL A*24
 SM voltscalefactor voltoffset - set voltMeter settings
-SO ambientthresh irthresh - set Overtemperature thresholds
- thresholds are in 10ths of a degree Celcius
- to disable temperature monitoring, set ambientthresh=irthresh=0
-SR 0|1 - disable/enable stuck relay check
+(DEPRECATED) SR 0|1 - disable/enable stuck relay check
  $SR 0*19
  $SR 1*1A
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0*0B - cancel timer
-SV 0|1 - disable/enable vent required
+(DEPRECATED)SV 0|1 - disable/enable vent required
  $SV 0*1D
  $SV 1*1E
 
@@ -208,7 +221,7 @@ GP - get temPerature (v1.0.3+)
  mcp9808temp - temperature from MCP9808
  tmp007temp - temperature from TMP007
  all temperatures are in 10th's of a degree Celcius
- if any temperature sensor is not installed, its return value will be 0
+ if any temperature sensor is not installed, its return value is -2560
 GS - get state
  response: $OK evsestate elapsed
  evsestate(dec): EVSE_STATE_xxx
@@ -236,7 +249,9 @@ T0 amps - set fake charging current
 
 #ifdef RAPI
 
-#ifdef RAPI_SEQUENCE_ID
+#ifdef RAPI_FF
+#define RAPIVER "4.0.1"
+#elif defined(RAPI_SEQUENCE_ID)
 #define RAPIVER "3.0.1"
 #elif defined(RAPI_RESPONSE_CHK)
 #define RAPIVER "2.0.4"

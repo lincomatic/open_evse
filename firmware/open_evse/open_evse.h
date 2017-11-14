@@ -37,9 +37,18 @@
 #else
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
-#define VERSION "D4.8.0"
+
+#define VERSION "D4.10.2.EU"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
+
+// UK/EU specific settings (by OpenEnergyMonitor):
+// - Enable MENNEKES_LOCK
+// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
+// - Charging level default to L2
+// - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
+// - Add '.EU' to version number
+
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
@@ -47,7 +56,7 @@
 //-- begin features
 
 // auto detect L1/L2
-#define AUTOSVCLEVEL
+//#define AUTOSVCLEVEL
 
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
@@ -64,14 +73,20 @@
 // serial remote api
 #define RAPI
 
+// RAPI over serial
+#define RAPI_SERIAL
+
+// RAPI $FF command
+#define RAPI_FF
+
+#ifdef RAPI_FF
+// force on RAPI_SEQUENCE_ID and RAPI_RESPONSE_CHK when RAPI_FF on
 // optional sequence id can be inserted as last parameter to commands/responses
 #define RAPI_SEQUENCE_ID
 
 // add checksum to RAPI responses RAPI v2.0.0+
 #define RAPI_RESPONSE_CHK
-
-// RAPI over serial
-#define RAPI_SERIAL
+#endif // RAPI_FF
 
 // RAPI over I2C
 //#define RAPI_I2C
@@ -80,7 +95,7 @@
 //#define RAPI_SENDER
 
 // serial port command line
-// For the RTC version, only CLI or LCD can be defined at one time. 
+// For the RTC version, only CLI or LCD can be defined at one time.
 // There is a directive to take care of that if you forget.
 //#define SERIALCLI
 
@@ -106,7 +121,7 @@
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-//#define MENNEKES_LOCK
+#define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -136,7 +151,7 @@
 // behavior specified by UL
 // 1) if enabled, POST failure will cause a hard fault until power cycled.
 //    disabled, will retry POST continuously until it passes
-// 2) if enabled, any a fault occurs immediately after charge is initiated, 
+// 2) if enabled, any a fault occurs immediately after charge is initiated,
 //    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
 #define UL_COMPLIANT
 // if enabled, do GFI self test before closing relay
@@ -181,8 +196,8 @@
 // half cycle (for ground check on both legs)
 #define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
-// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the 
-// select button of the Adafruit RGB LCD 
+// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the
+// select button of the Adafruit RGB LCD
 // How to use 1-button menu
 // Long press activates menu
 // When within menus, short press cycles menu items, long press selects and exits current submenu
@@ -341,14 +356,11 @@
 #define DEFAULT_CURRENT_CAPACITY_L2 16
 
 // minimum allowable current in amps
-#define MIN_CURRENT_CAPACITY_J1772 6 // J1772 min = 6
-// values below are just for menu
-#define MIN_CURRENT_CAPACITY_L1 MIN_CURRENT_CAPACITY_J1772
-#define MIN_CURRENT_CAPACITY_L2 10
+#define MIN_CURRENT_CAPACITY_J1772 6
 
 // maximum allowable current in amps
 #define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
-#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
+#define MAX_CURRENT_CAPACITY_L2 32 // J1772 Max for L2 = 80
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
@@ -365,7 +377,7 @@
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
 // Auto L1/L2 is done with the voltmeter.
 #define ACLINE1_REG &PIND // OpenEVSE II has only one AC test pin.
-#define ACLINE1_IDX 3 
+#define ACLINE1_IDX 3
 
 #define CHARGING_REG &PIND // OpenEVSE II has just one relay pin.
 #define CHARGING_IDX 7 // OpenEVSE II has just one relay pin.
@@ -507,7 +519,7 @@
 #define BLUE 0x4
 #define TEAL 0x6
 #define VIOLET 0x5
-#define WHITE 0x7 
+#define WHITE 0x7
 
 #if defined(RGBLCD) || defined(I2CLCD)
 // Using LiquidTWI2 for both types of I2C LCD's
@@ -551,23 +563,23 @@
 #ifdef AMMETER
 // This multiplier is the number of milliamps per A/d converter unit.
 
-// First, you need to select the burden resistor for the CT. You choose the largest value possible such that 
-// the maximum peak-to-peak voltage for the current range is 5 volts. To obtain this value, divide the maximum 
-// outlet current by the Te. That value is the maximum CT current RMS. You must convert that to P-P, so multiply 
-// by 2*sqrt(2). Divide 5 by that value and select the next lower standard resistor value. For the reference 
-// design, Te is 1018 and the outlet maximum is 30. 5/((30/1018)*2*sqrt(2)) = 59.995, so a 56 ohm resistor 
+// First, you need to select the burden resistor for the CT. You choose the largest value possible such that
+// the maximum peak-to-peak voltage for the current range is 5 volts. To obtain this value, divide the maximum
+// outlet current by the Te. That value is the maximum CT current RMS. You must convert that to P-P, so multiply
+// by 2*sqrt(2). Divide 5 by that value and select the next lower standard resistor value. For the reference
+// design, Te is 1018 and the outlet maximum is 30. 5/((30/1018)*2*sqrt(2)) = 59.995, so a 56 ohm resistor
 // is called for. Call this value Rb (burden resistor).
 
-// Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent() 
+// Next, one must use Te and Rb to determine the volts-per-amp value. Note that the readCurrent()
 // method calculates the RMS value before the scaling factor, so RMS need not be taken into account.
 // (1 / Te) * Rb = Rb / Te = Volts per Amp. For the reference design, that's 55.009 mV.
-// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference 
+// Each count of the A/d converter is 4.882 mV (5/1024). V/A divided by V/unit is unit/A. For the reference
 // design, that's 11.26. But we want milliamps per unit, so divide that into 1000 to get 88.7625558. Round near...
 //#define DEFAULT_CURRENT_SCALE_FACTOR 106 // for RB = 47 - recommended for 30A max
-//#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max 
+//#define DEFAULT_CURRENT_SCALE_FACTOR 184 // for RB = 27 - recommended for 50A max
 // Craig K, I arrived at 213 by scaling my previous multiplier of 225 down by the ratio of my panel meter reading of 28 with the OpenEVSE uncalibrated reading of 29.6
 // then upped the scale factor to 220 after fixing the zero offset by subtracing 900ma
-//#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3 
+//#define DEFAULT_CURRENT_SCALE_FACTOR 220 // for RB = 22 - measured by Craig on his new OpenEVSE V3
 // NOTE: setting DEFAULT_CURRENT_SCALE_FACTOR TO 0 will disable the ammeter
 // until it is overridden via RAPI
 //#define DEFAULT_CURRENT_SCALE_FACTOR 220   // Craig K, average of three OpenEVSE controller calibrations
@@ -601,10 +613,10 @@
 
 #ifdef TEMPERATURE_MONITORING
 
-#define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C          
-//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C 
+#define MCP9808_IS_ON_I2C    // Use the MCP9808 connected to I2C
+//#define TMP007_IS_ON_I2C     // Use the TMP007 IR sensor on I2C
 #define TEMPERATURE_DISPLAY_ALWAYS 0     // Set this flag to 1 to always show temperatures on the bottom line of the 16X2 LCD
-                                         // Set to it 0 to only display when temperatures become elevated 
+                                         // Set to it 0 to only display when temperatures become elevated
 // #define TESTING_TEMPERATURE_OPERATION // Set this flag to play with very low sensor thresholds or to evaluate the code.
                                          // Leave it commented out instead to run with normal temperature thresholds.
 
@@ -636,8 +648,8 @@
 #else
 #define TEMPERATURE_AMBIENT_SHUTDOWN 680
 #endif
-                                                  
-//  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+
+//  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
 //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
 //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
 #ifdef OPENEVSE_2
@@ -651,7 +663,7 @@
                                                   // recover to this level we can kick the current back up to the user's original amperage setting.
 #define TEMPERATURE_INFRARED_SHUTDOWN 700         // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
 
-#define TEMPERATURE_INFRARED_PANIC 750            //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+#define TEMPERATURE_INFRARED_PANIC 750            //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
                                                   //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
                                                   //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
 #else  //TESTING_TEMPERATURE_OPERATION
@@ -662,20 +674,20 @@
                                                   // recover to this level we can kick the current back up to the user's original amperage setting.
 #define TEMPERATURE_AMBIENT_SHUTDOWN 310          // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
 
-#define TEMPERATURE_AMBIENT_PANIC 330             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+#define TEMPERATURE_AMBIENT_PANIC 330             //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
                                                   //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
-                                                  //  If temperatures get to this level it is advised to open the enclosure to look for trouble.                              
+                                                  //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
 
 #define TEMPERATURE_INFRARED_THROTTLE_DOWN 330    // This is the temperature seen  by the IR sensor where we tell the car to draw 1/2 amperage.
 #define TEMPERATURE_INFRARED_RESTORE_AMPERAGE 270 // If the OpenEVSE responds nicely to the lower current drawn and temperatures in the enclosure
                                                   // recover to this level we can kick the current back up to the user's original amperage setting.
 #define TEMPERATURE_INFRARED_SHUTDOWN 360         // This is the temperature in the enclosure where we tell the car to draw 1/4 amperage or 6A is minimum.
 
-#define TEMPERATURE_INFRARED_PANIC 400            // At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in 
+#define TEMPERATURE_INFRARED_PANIC 400            // At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
                                                   // an over temperature error state.  The EVSE can be restart from the button or unplugged.
                                                   // If temperatures get to this level it is advised to open the enclosure to look for trouble.
 
-#endif // TESTING_TEMPERATURE_OPERATION 
+#endif // TESTING_TEMPERATURE_OPERATION
 
 #endif // TEMPERATURE_MONITORING
 
@@ -717,7 +729,7 @@ typedef union union4b {
 #define OBD_UPD_NORMAL    0
 #define OBD_UPD_FORCE     1 // update even if no state transition
 #define OBD_UPD_HARDFAULT 2 // update w/ hard fault
-class OnboardDisplay 
+class OnboardDisplay
 {
 #ifdef RED_LED_REG
   DigitalPin pinRedLed;
@@ -727,7 +739,7 @@ class OnboardDisplay
 #endif
 #if defined(RGBLCD) || defined(I2CLCD)
 #ifdef I2CLCD_PCF8574
-  LiquidCrystal_I2C m_Lcd;  
+  LiquidCrystal_I2C m_Lcd;
 #else
   LiquidTWI2 m_Lcd;
 #endif // I2CLCD_PCF8574
@@ -755,32 +767,32 @@ public:
 #endif
   }
 #ifdef LCD16X2
-  void LcdBegin(int x,int y) { 
+  void LcdBegin(int x,int y) {
 #ifdef I2CLCD
 #ifndef I2CLCD_PCF8574
     m_Lcd.setMCPType(LTI_TYPE_MCP23008);
 #endif
-    m_Lcd.begin(x,y); 
+    m_Lcd.begin(x,y);
     m_Lcd.setBacklight(HIGH);
 #elif defined(RGBLCD)
     m_Lcd.setMCPType(LTI_TYPE_MCP23017);
-    m_Lcd.begin(x,y,2); 
+    m_Lcd.begin(x,y,2);
     m_Lcd.setBacklight(WHITE);
 #endif // I2CLCD
   }
   void LcdPrint(const char *s) {
-    m_Lcd.print(s); 
+    m_Lcd.print(s);
   }
   void LcdPrint_P(PGM_P s);
   void LcdPrint(int y,const char *s);
   void LcdPrint_P(int y,PGM_P s);
   void LcdPrint(int x,int y,const char *s);
   void LcdPrint_P(int x,int y,PGM_P s);
-  void LcdPrint(int i) { 
-    m_Lcd.print(i); 
+  void LcdPrint(int i) {
+    m_Lcd.print(i);
   }
-  void LcdSetCursor(int x,int y) { 
-    m_Lcd.setCursor(x,y); 
+  void LcdSetCursor(int x,int y) {
+    m_Lcd.setCursor(x,y);
   }
   void LcdClearLine(int y) {
     m_Lcd.setCursor(0,y);
@@ -789,10 +801,10 @@ public:
     }
     m_Lcd.setCursor(0,y);
   }
-  void LcdClear() { 
+  void LcdClear() {
     m_Lcd.clear();
   }
-  void LcdWrite(uint8_t data) { 
+  void LcdWrite(uint8_t data) {
     m_Lcd.write(data);
   }
   void LcdMsg(const char *l1,const char *l2);
@@ -848,6 +860,8 @@ public:
 #include "./MCP9808.h"  //  adding the ambient temp sensor to I2C
 #include "./Adafruit_TMP007.h"   //  adding the TMP007 IR I2C sensor
 
+
+#define TEMPERATURE_NOT_INSTALLED -2560 // fake temp to return when hardware not installed
 #define TEMPMONITOR_UPDATE_INTERVAL 1000ul
 // TempMonitor.m_Flags
 #define TMF_OVERTEMPERATURE          0x01
@@ -913,7 +927,7 @@ class Btn {
   uint8_t buttonState;
   unsigned long lastDebounceTime;  // the last time the output pin was toggled
   unsigned long vlongDebounceTime;  // for verylong press
-  
+
 public:
   Btn();
   void init();
@@ -928,7 +942,7 @@ class Menu {
 public:
   PGM_P m_Title;
   uint8_t m_CurIdx;
-  
+
   void init(const char *firstitem);
 
   Menu();
@@ -1200,19 +1214,19 @@ public:
   void Enable();
   void Disable();
   uint8_t IsTimerEnabled(){
-    return m_DelayTimerEnabled; 
+    return m_DelayTimerEnabled;
   };
   uint8_t GetStartTimerHour(){
-    return m_StartTimerHour; 
+    return m_StartTimerHour;
   };
   uint8_t GetStartTimerMin(){
-    return m_StartTimerMin; 
+    return m_StartTimerMin;
   };
   uint8_t GetStopTimerHour(){
-    return m_StopTimerHour; 
+    return m_StopTimerHour;
   };
   uint8_t GetStopTimerMin(){
-    return m_StopTimerMin; 
+    return m_StopTimerMin;
   };
   void SetStartTimer(uint8_t hour, uint8_t min){
     m_StartTimerHour = hour;
@@ -1236,7 +1250,7 @@ public:
          return 1;
        }
      } else {
-       return 0; 
+       return 0;
      }
   };
   void PrintTimerIcon();
