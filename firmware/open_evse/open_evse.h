@@ -38,15 +38,16 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.10.2.OEM"
+#define VERSION "D4.10.2.EU"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
-// OpenEnergyMonitor (OEM) specific settings
+// UK/EU specific settings (by OpenEnergyMonitor):
 // - Enable MENNEKES_LOCK
-// - Disable AUTOSVCLEVEL (default to L2)
-// - Set MAX_CURRENT_CAPACITY_L2 32
-// - Add '.OEM' to version number
+// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
+// - Charging level default to L2
+// - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
+// - Add '.EU' to version number
 
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
