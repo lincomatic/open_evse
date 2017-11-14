@@ -1284,14 +1284,7 @@ void MaxCurrentMenu::Init()
 
 void MaxCurrentMenu::Next()
 {
-  if ((g_EvseController.GetCurSvcLevel() == 1) ||
-      (m_CurIdx >= 78)) { // n.b. some cars can't do 80A, so allow 79A
-    m_CurIdx ++;
-  }
-  else {
-    m_CurIdx += 2;
-  }
-  if (m_CurIdx > m_MaxCurrent) {
+  if (++m_CurIdx > m_MaxCurrent) {
     m_CurIdx = m_MinCurrent;
   }
   g_OBD.LcdClearLine(1);
