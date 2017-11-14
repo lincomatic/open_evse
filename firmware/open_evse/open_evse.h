@@ -42,10 +42,11 @@
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
-// OEM changes Nov 2017
+// OpenEnergyMonitor (OEM) specific settings
 // - Enable MENNEKES_LOCK
-// Disable AUTOSVCLEVEL
-// Set MAX_CURRENT_CAPACITY_L2 40
+// - Disable AUTOSVCLEVEL (default to L2)
+// - Set MAX_CURRENT_CAPACITY_L2 32
+// - Add '.OEM' to version number
 
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
@@ -358,7 +359,7 @@
 
 // maximum allowable current in amps
 #define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
-#define MAX_CURRENT_CAPACITY_L2 40 // J1772 Max for L2 = 80
+#define MAX_CURRENT_CAPACITY_L2 32 // J1772 Max for L2 = 80
 
 //J1772EVSEController
 #define CURRENT_PIN 0 // analog current reading pin ADCx
