@@ -187,11 +187,6 @@ uint8_t sec = 0;
 TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
-#ifdef KWH_RECORDING
-unsigned long g_WattHours_accumulated;
-unsigned long g_WattSeconds;
-#endif // KWH_RECORDING
-
 #ifdef PP_AUTO_AMPACITY
 AutoCurrentCapacityController g_ACCController;
 #endif
@@ -536,10 +531,10 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
       
 #ifdef KWH_RECORDING 
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRF_WH,(g_EnergyMeter.GetSessionWs() / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_EnergyMeter.GetTotkWh() / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -581,10 +576,10 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
       
 #ifdef KWH_RECORDING
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRF_WH,(g_EnergyMeter.GetSessionWs() / 3600) );
       LcdPrint(0,1,g_sTmp);
       
-      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // Display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_EnergyMeter.GetTotkWh() / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // KWH_RECORDING
       
@@ -786,25 +781,14 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
    
 #ifdef KWH_RECORDING
-      uint32_t current = g_EvseController.GetChargingCurrent();
-#ifdef VOLTMETER
-      g_WattSeconds = g_WattSeconds + (g_EvseController.GetVoltage() / 1000 * current / 1000);
-#else
-      if (g_EvseController.GetCurSvcLevel() == 2) {                        //  first verify L2 or L1
-	g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L2 * current / 1000);  // accumulate Watt Seconds for Level2 charging
-      }
-      else {
-	g_WattSeconds =  g_WattSeconds + (VOLTS_FOR_L1 * current / 1000);  // accumulate Watt Seconds for Level1 charging
-      }
-#endif // VOLTMETER
-      sprintf(g_sTmp,STRF_WH,(g_WattSeconds / 3600) );
+      sprintf(g_sTmp,STRF_WH,(g_EnergyMeter.GetSessionWs() / 3600) );
       LcdPrint(0,1,g_sTmp);
 
 #ifdef VOLTMETER
       sprintf(g_sTmp,STRF_VOLT,(g_EvseController.GetVoltage() / 1000));  // Display voltage from OpenEVSE II
       LcdPrint(11,1,g_sTmp);
 #else
-      sprintf(g_sTmp,STRF_KWH,(g_WattHours_accumulated / 1000));  // display accumulated kWh
+      sprintf(g_sTmp,STRF_KWH,(g_EnergyMeter.GetTotkWh() / 1000));  // display accumulated kWh
       LcdPrint(7,1,g_sTmp);
 #endif // VOLTMETER
 #endif // KWH_RECORDING
@@ -2368,14 +2352,6 @@ void setup()
 #endif
 
   WDT_ENABLE();
-
-#ifdef KWH_RECORDING
-      if (eeprom_read_dword((uint32_t*)EOFS_KWH_ACCUMULATED) == 0xffffffff) { // Check for unitialized eeprom condition so it can begin at 0kWh
-        eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,0); //  Set the four bytes to zero just once in the case of unitialized eeprom
-      }
-
-      g_WattHours_accumulated = eeprom_read_dword((uint32_t*)EOFS_KWH_ACCUMULATED);        // get the stored value for the kWh from eeprom
-#endif // KWH_RECORDING
 }  // setup()
 
 
@@ -2384,6 +2360,10 @@ void loop()
   WDT_RESET();
 
   g_EvseController.Update();
+
+#ifdef KWH_RECORDING
+  g_EnergyMeter.Update();
+#endif // KWH_RECORDING
 
   g_OBD.Update();
 
