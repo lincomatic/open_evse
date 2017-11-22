@@ -39,7 +39,6 @@
 #endif // ARDUINO
 
 #define VERSION "D4.10.4.EU"
-=======
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
