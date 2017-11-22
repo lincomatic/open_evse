@@ -491,14 +491,6 @@ void J1772EVSEController::Disable()
 
 void J1772EVSEController::Sleep()
 {
-  /*
-#ifdef KWH_RECORDING   // Reset the Wh when exiting State A for any reason
-  if (m_EvseState == EVSE_STATE_A) {
-    g_WattSeconds = 0;
-  }
-#endif
-  */
-
   if (m_EvseState != EVSE_STATE_SLEEPING) {
     m_Pilot.SetState(PILOT_STATE_P12);
     m_EvseState = EVSE_STATE_SLEEPING;
@@ -1428,10 +1420,6 @@ if (TempChkEnabled()) {
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
-      #ifdef KWH_RECORDING
-        g_WattHours_accumulated = g_WattHours_accumulated + (g_WattSeconds / 3600);
-        eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
-      #endif // KWH_RECORDING
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0);
 #endif // CHARGE_LIMIT
@@ -1553,11 +1541,6 @@ if (TempChkEnabled()) {
       Serial.println(phigh);
     }
 #endif //#ifdef SERDBG
-      #ifdef KWH_RECORDING          // Reset the Wh when exiting State A for any reason
-        if (prevevsestate == EVSE_STATE_A) {
-          g_WattSeconds = 0;
-        }
-      #endif
   } // state transition
 
 #ifdef AUTH_LOCK
@@ -1652,7 +1635,7 @@ if (TempChkEnabled()) {
   }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
-    if (m_chargeLimit && (g_WattSeconds >= 3600000 * (uint32_t)m_chargeLimit)) {
+    if (m_chargeLimit && (g_EnergyMeter.GetSessionWs() >= 3600000 * (uint32_t)m_chargeLimit)) {
       SetChargeLimit(0); // clear charge limit
 #ifdef TIME_LIMIT
       SetTimeLimit(0); // clear time limit

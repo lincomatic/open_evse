@@ -38,7 +38,10 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.10.2.EU"
+#define VERSION "D4.10.4.EU"
+=======
+#define setBits(flags,bits) (flags |= (bits))
+#define clrBits(flags,bits) (flags &= ~(bits))
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -170,7 +173,15 @@
 #ifdef KWH_RECORDING
 // stop charging after a certain kWh reached
 #define CHARGE_LIMIT
+
+// update interval in ms - code assumes that current/voltage are constant
+// during this interval
+#define KWH_CALC_INTERVAL_MS (250UL)
+
+#include "EnergyMeter.h"
 #endif // KWH_RECORDING
+
+
 #endif //AMMETER
 
 //Adafruit RGBLCD (MCP23017) - can have RGB or monochrome backlight
@@ -1256,7 +1267,6 @@ public:
 };
 
 #endif //ifdef DELAYTIMER
-
 
 // -- end class definitions
 

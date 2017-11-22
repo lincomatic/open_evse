@@ -436,8 +436,8 @@ int EvseRapiProcessor::processCmd()
 #endif // CHARGE_LIMIT
 #ifdef KWH_RECORDING
     case 'K': // set accumulated kwh
-      g_WattHours_accumulated = dtou32(tokens[1]);
-      eeprom_write_dword((uint32_t*)EOFS_KWH_ACCUMULATED,g_WattHours_accumulated); 
+      g_EnergyMeter.SetTotkWh(dtou32(tokens[1]));
+      g_EnergyMeter.SaveTotkWh();
       rc = 0;
       break;
 #endif //KWH_RECORDING
@@ -660,7 +660,7 @@ int EvseRapiProcessor::processCmd()
 #endif // RTC
 #ifdef KWH_RECORDING
     case 'U':
-      sprintf(buffer,"%lu %lu",g_WattSeconds,g_WattHours_accumulated);
+      sprintf(buffer,"%lu %lu",g_EnergyMeter.GetSessionWs(),g_EnergyMeter.GetTotkWh());
       bufCnt = 1;
       rc = 0;
       break;

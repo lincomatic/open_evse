@@ -1,5 +1,14 @@
 Change Log
 
+D4.10.4 20171121 SCL
+- rewrite KWH_RECORDING code - class EnergyMeter
+	-> fix usage counting bug.. was erroneously assuming 1sec intervals
+	
+D4.10.3 20171114 SCL
+- fix bug: couldn't set Max Current to odd maximum.
+	-> change Max Current menu to increment by 1A instead of 2A per button press
+	
+	
 D4.10.2 20171027 SCL
 - don't write to EEPROM when calling SetCurrentCapacity() in SetSvcLevel()
 
