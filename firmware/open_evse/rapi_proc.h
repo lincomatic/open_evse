@@ -225,7 +225,7 @@ GP - get temPerature (v1.0.3+)
 GS - get state
  response: $OK evsestate elapsed
  evsestate(dec): EVSE_STATE_xxx
- elapsed(dec): elapsed charge time in seconds (valid only when in state C)
+ elapsed(dec): elapsed charge time in seconds of current or last charging session
  $GS*BE
 GT - get time (RTC)
  response: $OK yr mo day hr min sec       yr=2-digit year

@@ -98,8 +98,9 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 // J1772EVSEController volatile m_bVFlags2 bits - not saved to EEPROM
 #define ECVF2_EV_CONNECTED      0x01 // EV connected - valid only when pilot not N12
 #define ECVF2_EV_CONNECTED_PREV 0x02 // prev EV connected flag
+#define ECVF2_SESSION_ENDED     0x04 // used for charging session time calc
 
-#define ECVF2_DEFAULT           0x00
+#define ECVF2_DEFAULT           ECVF2_SESSION_ENDED
 
 
 class J1772EVSEController {
@@ -164,6 +165,7 @@ class J1772EVSEController {
   time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
+  time_t m_AccumulatedChargeTime;
 #ifdef STATE_TRANSITION_REQ_FUNC
   EvseStateTransitionReqFunc m_StateTransitionReqFunc;
 #endif // STATE_TRANSITION_REQ_FUNC
@@ -272,7 +274,7 @@ public:
   int SetCurrentCapacity(uint8_t amps,uint8_t updatelcd=0,uint8_t nosave=0);
 
   time_t GetElapsedChargeTime() { 
-    return m_ElapsedChargeTime; 
+    return m_ElapsedChargeTime+m_AccumulatedChargeTime; 
   }
   time_t GetElapsedChargeTimePrev() { 
     return m_ElapsedChargeTimePrev; 
@@ -445,7 +447,10 @@ public:
 #endif // AUTH_LOCK
 
   void SetEvConnected() { setVFlags2(ECVF2_EV_CONNECTED); }
-  void ClrEvConnected() { clrVFlags2(ECVF2_EV_CONNECTED); }
+  void ClrEvConnected() {
+    clrVFlags2(ECVF2_EV_CONNECTED);
+    setVFlags2(ECVF2_SESSION_ENDED);
+ }
   void SetEvConnectedPrev() { setVFlags2(ECVF2_EV_CONNECTED_PREV); }
   void ClrEvConnectedPrev() { clrVFlags2(ECVF2_EV_CONNECTED_PREV); }
   // EvConnected value valid when pilot state not N12
