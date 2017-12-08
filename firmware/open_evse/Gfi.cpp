@@ -58,6 +58,15 @@ void Gfi::Reset()
 
 uint8_t Gfi::SelfTest()
 {
+  int i;
+  // wait for GFI pin to clear
+  for (i=0;i < 20;i++) {
+    WDT_RESET();
+    if (!pin.read()) break;
+    delay(50);
+  }
+  if (i == 20) return 2;
+
   testInProgress = 1;
   testSuccess = 0;
   for(int i=0; !testSuccess && (i < GFI_TEST_CYCLES); i++) {
@@ -68,11 +77,12 @@ uint8_t Gfi::SelfTest()
   }
 
   // wait for GFI pin to clear
-  do {
-    delay(50);
+  for (i=0;i < 40;i++) {
     WDT_RESET();
+    if (!pin.read()) break;
+    delay(50);
   }
-  while(pin.read());
+  if (i == 40) return 3;
 
 #ifndef OPENEVSE_2
   // sometimes getting spurious GFI faults when testing just before closing
