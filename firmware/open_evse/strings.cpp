@@ -99,7 +99,6 @@ const char g_psTemperatureFault[] PROGMEM = STR_OVER_TEMPERATURE;
 const char g_psNoGround[] PROGMEM = STR_NO_GROUND;
 const char g_psStuckRelay[] PROGMEM = STR_STUCK_RELAY;
 const char g_psDisabled[] PROGMEM =  STR_DISABLED;
-//const char g_psWaiting[] PROGMEM =  STR_WAITING;
 const char g_psSleeping[] PROGMEM = STR_SLEEPING;
 const char g_psEvConnected[] PROGMEM = STR_CONNECTED;
 const char g_psResetting[] PROGMEM = STR_RESETTING;
