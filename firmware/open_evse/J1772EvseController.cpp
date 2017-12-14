@@ -269,6 +269,14 @@ void J1772EVSEController::chargingOn()
 #endif
   m_bVFlags |= ECVF_CHARGING_ON;
   
+  if (m_bVFlags2 & ECVF2_SESSION_ENDED) {
+    m_AccumulatedChargeTime = 0;
+    m_bVFlags2 &= ~ECVF2_SESSION_ENDED;
+  }
+  else {
+    m_AccumulatedChargeTime += m_ElapsedChargeTime;
+  }
+
   m_ChargeOnTime = now();
   m_ChargeOnTimeMS = millis();
 }

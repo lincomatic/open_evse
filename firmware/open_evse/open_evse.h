@@ -38,9 +38,10 @@
 #include "WProgram.h" // shouldn't need this but arduino sometimes messes up and puts inside an #ifdef
 #endif // ARDUINO
 
-#define VERSION "D4.10.4.EU"
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
+
+#define VERSION "D4.11.0.EU"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
