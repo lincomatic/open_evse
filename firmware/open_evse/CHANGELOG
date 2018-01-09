@@ -1,5 +1,9 @@
 Change Log
 
+D4.11.1 20180108 SCL
+- add wdt_delay() .. use instead of delay() when delay is > watchdog timer
+	-> actually, OK to use everywhere
+	
 D4.11.0 20171207 SCL
 - rewrite Gfi::SelfTest() so that it doesn't hang when the test pin has hardware failure
 - clear elapsed charging time only when EV is disconnected and then reconnected (previously would reset every time charging stopped)

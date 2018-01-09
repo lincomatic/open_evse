@@ -90,7 +90,7 @@ uint8_t Gfi::SelfTest()
   // wait a little more for everything to settle down
   // this delay is needed only if 10uF cap is in the circuit, which makes the circuit
   // temporarily overly sensitive to trips until it discharges
-  delay(1000);
+  wdt_delay(1000);
 #endif // OPENEVSE_2
 
   m_GfiFault = 0;

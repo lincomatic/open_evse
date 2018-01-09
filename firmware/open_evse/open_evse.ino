@@ -193,6 +193,23 @@ AutoCurrentCapacityController g_ACCController;
 
 //-- end global variables
 
+// watchdog-safe delay - use this when delay is longer than watchdog
+// *do not* call this before WDT_ENABLE() is called
+void wdt_delay(uint32_t ms)
+{
+  do {
+    WDT_RESET();
+    if (ms > WATCHDOG_TIMEOUT/2) {
+      delay(WATCHDOG_TIMEOUT/2);
+      ms -= WATCHDOG_TIMEOUT/2;
+    }
+    else {
+      delay(ms);
+      ms = 0;
+    }
+  } while(ms);
+}
+
 static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
   Wire.write((uint8_t)x);
@@ -418,7 +435,7 @@ void OnboardDisplay::Init()
 #endif
   LcdPrint_P(0,1,PSTR("Ver. "));
   LcdPrint_P(VERSTR);
-  delay(1500);
+  wdt_delay(1500);
   WDT_RESET();
 #endif //#ifdef LCD16X2
 }

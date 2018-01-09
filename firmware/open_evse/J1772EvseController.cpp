@@ -191,7 +191,7 @@ void J1772EVSEController::Reboot()
 
   if (chargingIsOn()) {
    // give the EV some time to open its contactor in response to P12
-    delay(3000);
+    wdt_delay(3000);
   }
 
   // hardware reset by forcing watchdog to timeout
@@ -208,7 +208,7 @@ void J1772EVSEController::DisabledTest_P(PGM_P message)
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
 #endif
 #ifndef NOCHECKS
-  delay(SHOW_DISABLED_DELAY);
+  wdt_delay(SHOW_DISABLED_DELAY);
 #endif
 }
 
@@ -1080,7 +1080,7 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #ifdef FT_SLEEP_DELAY
 	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
 	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
-	delay(2000);
+	wdt_delay(2000);
 #endif
       }
     }

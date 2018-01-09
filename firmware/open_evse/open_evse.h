@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D4.11.0"
+#define VERSION "D4.11.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -1296,5 +1296,9 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
+void wdt_delay(uint32_t ms);
+
+
 #include "strings.h"
 #include "rapi_proc.h"
+
