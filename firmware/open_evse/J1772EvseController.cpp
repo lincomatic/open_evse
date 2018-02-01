@@ -1648,7 +1648,13 @@ if (TempChkEnabled()) {
 #ifdef TIME_LIMIT
       SetTimeLimit(0); // clear time limit
 #endif // TIME_LIMIT
+#ifdef DELAY_TIMER
+      if (!g_DelayTimer.IsTimerEnabled()) {
+	SetLimitSleep(1);
+      }
+#else // !DELAY_TIMER
       SetLimitSleep(1);
+#endif // DELAY_TIMER
       Sleep();
     }
 #endif
@@ -1661,11 +1667,17 @@ if (TempChkEnabled()) {
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0); // clear charge limit
 #endif // CHARGE_LIMIT
+#ifdef DELAY_TIMER
+	if (!g_DelayTimer.IsTimerEnabled()) {
+	  SetLimitSleep(1);
+	}
+#else // !DELAY_TIMER
 	SetLimitSleep(1);
+#endif // DELAY_TIMER
 	Sleep();
       }
     }
-#endif
+#endif // TIME_LIMIT
   }
 
   return;
