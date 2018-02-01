@@ -1024,7 +1024,7 @@ SettingsMenu::SettingsMenu()
 void SettingsMenu::CheckSkipLimits()
 {
   // only allow Charge Limit menu item if car connected and no error
-  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
+  m_skipLimits = !g_EvseController.LimitsAllowed();
 }
 #endif // CHARGE_LIMIT
 

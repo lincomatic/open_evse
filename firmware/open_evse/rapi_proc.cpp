@@ -358,9 +358,11 @@ int EvseRapiProcessor::processCmd()
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
-	g_EvseController.SetTimeLimit(dtou32(tokens[1]));
-	if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
-	rc = 0;
+	if (g_EvseController.LimitsAllowed()) {
+	  g_EvseController.SetTimeLimit(dtou32(tokens[1]));
+	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
+	  rc = 0;
+	}
       }
       break;
 #endif // TIME_LIMIT
@@ -428,9 +430,11 @@ int EvseRapiProcessor::processCmd()
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
-	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
-	if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
-	rc = 0;
+	if (g_EvseController.LimitsAllowed()) {
+	  g_EvseController.SetChargeLimit(dtou32(tokens[1]));
+	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
+	  rc = 0;
+	}
       }
       break;
 #endif // CHARGE_LIMIT

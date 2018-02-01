@@ -404,7 +404,9 @@ public:
     readAmmeter();
     return m_AmmeterReading / 1000;
   }
-
+  uint8_t LimitsAllowed() {
+    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
+  }
 #ifdef CHARGE_LIMIT
   void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
   uint8_t GetChargeLimit() { return m_chargeLimit; }
