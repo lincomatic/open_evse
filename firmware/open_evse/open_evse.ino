@@ -2251,14 +2251,14 @@ void DelayTimer::CheckTime()
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.SaveSettings();
+  //  g_EvseController.SaveSettings();
   CheckTime();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.SaveSettings();
+  //  g_EvseController.SaveSettings();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
