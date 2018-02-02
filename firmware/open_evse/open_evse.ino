@@ -359,7 +359,7 @@ OnboardDisplay::OnboardDisplay()
 }
 
 
-#if defined(DELAYTIMER)||defined(TIME_LIMIT)
+#if defined(DELAYTIMER)
 const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0}; // clock
 #endif
 #ifdef DELAYTIMER
@@ -381,6 +381,18 @@ const char CustomChar_4[8] PROGMEM = { // padlock
 	0b00000
 };
 #endif // AUTH_LOCK
+#ifdef TIME_LIMIT
+const char CustomChar_5[8] PROGMEM = { // time limit clock
+	0b00000,
+	0b01110,
+	0b10001,
+	0b11101,
+	0b10101,
+	0b01110,
+	0b00000,
+	0b00000
+};
+#endif // TIME_LIMIT
 
 #ifdef LCD16X2
 void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
@@ -413,7 +425,7 @@ void OnboardDisplay::Init()
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
   LcdSetBacklightColor(WHITE);
 
-#if defined(DELAYTIMER)||defined(TIME_LIMIT)
+#if defined(DELAYTIMER)
   MakeChar(0,CustomChar_0);
 #endif
 #ifdef DELAYTIMER
@@ -426,6 +438,9 @@ void OnboardDisplay::Init()
 #ifdef AUTH_LOCK
   MakeChar(4,CustomChar_4);
 #endif
+#ifdef TIME_LIMIT
+  MakeChar(5,CustomChar_5);
+#endif // TIME_LIMIT
   m_Lcd.clear();
 
 #ifdef OPENEVSE_2
@@ -582,7 +597,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
 #ifdef TIME_LIMIT
       if (g_EvseController.GetTimeLimit()) {
-	LcdWrite(0); // clock
+	LcdWrite(5); // time limit clock
       }
 #endif
       // Display Timer and Stop Icon - GoldServe
@@ -618,7 +633,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
 #ifdef TIME_LIMIT
       if (g_EvseController.GetTimeLimit()) {
-	LcdWrite(0); // clock
+	LcdWrite(5); // clock
       }
 #endif
 #ifdef DELAYTIMER
@@ -887,13 +902,13 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(0,1,g_sTmp);
       if (g_DelayTimer.IsTimerEnabled()){
 	LcdSetCursor(9,0);
-	LcdWrite(0x2);
-	LcdWrite(0x0);
+	LcdWrite(2);
+	LcdWrite(0);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
 	LcdPrint(11,0,g_sTmp);
 	LcdSetCursor(9,1);
-	LcdWrite(0x1);
-	LcdWrite(0x0);
+	LcdWrite(1);
+	LcdWrite(0);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
 	LcdPrint(11,1,g_sTmp);
       } else {
