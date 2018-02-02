@@ -1236,14 +1236,14 @@ public:
     m_StartTimerMin = min;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
     eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
-    g_EvseController.SaveSettings();
+    //    g_EvseController.SaveSettings();
   };
   void SetStopTimer(uint8_t hour, uint8_t min){
     m_StopTimerHour = hour;
     m_StopTimerMin = min;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
-    g_EvseController.SaveSettings();
+    //    g_EvseController.SaveSettings();
   };
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
