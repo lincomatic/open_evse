@@ -1999,6 +1999,9 @@ Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetChargeLimit(m_CurIdx);
+#ifdef DELAYTIMER
+  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2063,6 +2066,9 @@ Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetTimeLimit(m_CurIdx);
+#ifdef DELAYTIMER
+  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2106,6 +2112,19 @@ void BtnHandler::ChkBtn()
 	else {
 	  g_EvseController.Sleep();
 	}
+
+#ifdef DELAYTIMER
+	if (g_DelayTimer.IsTimerEnabled()) {
+	  uint8_t intimeinterval = g_DelayTimer.IsInTimeInterval();
+	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
+	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
+	    g_DelayTimer.SetManualOverride();
+          }
+	  else {
+	    g_DelayTimer.ClrManualOverride();
+   	  }
+	}
+#endif // DELAYTIMER
       }
     }
   }
@@ -2133,13 +2152,7 @@ void BtnHandler::ChkBtn()
 	  g_EvseController.Reboot();
 	}
 	else {
-#if defined(DELAYTIMER)
-	  if (!g_DelayTimer.IsTimerEnabled()){
-	    g_EvseController.Enable();
-	  }
-#else  
 	  g_EvseController.Enable();
-#endif        
 	  g_OBD.DisableUpdate(0);
 	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
 	  g_OBD.Update(OBD_UPD_FORCE);
@@ -2210,6 +2223,38 @@ void DelayTimer::Init() {
   else {
     m_StopTimerMin = rtmp;
   }
+
+  ClrManualOverride();
+}
+
+uint8_t DelayTimer::IsInTimeInterval()
+{
+  uint8_t inTimeInterval = false;
+
+  if (IsTimerEnabled() && IsTimerValid()) {
+    g_CurrTime = g_RTC.now();
+    m_CurrHour = g_CurrTime.hour();
+    m_CurrMin = g_CurrTime.minute();
+    
+    uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
+    uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
+    uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
+
+    if (stopTimerMinutes < startTimerMinutes) { //End time is for next day 
+      
+      if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
+	   ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
+	inTimeInterval = true;
+      }
+    }
+    else { // not crossing midnite
+      if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
+	inTimeInterval = true;
+      }
+    }
+  }
+
+  return inTimeInterval;
 }
 
 void DelayTimer::CheckTime()
@@ -2219,46 +2264,40 @@ void DelayTimer::CheckTime()
       IsTimerValid()) {
     unsigned long curms = millis();
     if ((curms - m_LastCheck) > 1000ul) {
-      g_CurrTime = g_RTC.now();
-      m_CurrHour = g_CurrTime.hour();
-      m_CurrMin = g_CurrTime.minute();
-      
-      uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
-      uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
-      uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
-      
-      if (stopTimerMinutes < startTimerMinutes) {
-	//End time is for next day 
-	if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
-             ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
-	  // Within time interval
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
+      uint8_t inTimeInterval = IsInTimeInterval();
+      uint8_t evseState = g_EvseController.GetState();
+
+      if (inTimeInterval) { // charge now
+	if (!ManualOverrideIsSet()) {
+	  if (evseState == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
-	  }           
+	  }
 	}
 	else {
-	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
-	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
-	    // Not in time interval
-	    g_EvseController.Sleep();         
+	  if (evseState != EVSE_STATE_SLEEPING) {
+	    // we got here because manual override was set by
+	    // waking EVSE shortpress while it was sleeping
+	    ClrManualOverride();
 	  }
 	}
       }
-      else { // not crossing midnite
-	if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
-	  // Within time interval
-	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
-	    g_EvseController.Enable();
-	  }          
+      else { // sleep now
+	if (!ManualOverrideIsSet()) {
+	  if ((evseState != EVSE_STATE_SLEEPING) &&
+	      (evseState != EVSE_STATE_C) // don't interrupt active charging
+	      ) {
+	    g_EvseController.Sleep();
+	  }
 	}
-	else {
-	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
-	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
-	    // Not in time interval
-	    g_EvseController.Sleep();          
+	else { // manual override is set
+	  if (evseState == EVSE_STATE_SLEEPING) {
+	    // we got here because manual override was set by
+	    // putting EVSE to sleep via shortpress while it was charging
+	    ClrManualOverride();
 	  }
 	}
       }
+
       m_LastCheck = curms;
     }
   }
@@ -2266,6 +2305,7 @@ void DelayTimer::CheckTime()
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  ClrManualOverride();
   //  g_EvseController.SaveSettings();
   //  CheckTime();
   g_OBD.Update(OBD_UPD_FORCE);
@@ -2273,18 +2313,20 @@ void DelayTimer::Enable(){
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
+  ClrManualOverride();
   //  g_EvseController.SaveSettings();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
 #ifdef LCD16X2
-  if (IsTimerEnabled() && IsTimerValid()){
-    g_OBD.LcdWrite(0x0);
+  if (!ManualOverrideIsSet() && IsTimerEnabled() && IsTimerValid()){
+    g_OBD.LcdWrite(0);
   }
 #endif // LCD16X2
 }
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER
+
 
 void ProcessInputs()
 {

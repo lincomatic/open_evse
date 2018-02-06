@@ -1208,6 +1208,7 @@ class DelayTimer {
   uint8_t m_CurrHour;
   uint8_t m_CurrMin;
   unsigned long m_LastCheck;
+  uint8_t m_ManualOverride;
 public:
   DelayTimer(){
     m_LastCheck = - (60ul * 1000ul);
@@ -1216,6 +1217,15 @@ public:
   void CheckTime();
   void Enable();
   void Disable();
+
+  void SetManualOverride() {
+    if (IsTimerEnabled()) {
+      m_ManualOverride = 1;
+    }
+  }
+  void ClrManualOverride() { m_ManualOverride = 0; }
+  uint8_t ManualOverrideIsSet() { return m_ManualOverride; }
+  
   uint8_t IsTimerEnabled(){
     return m_DelayTimerEnabled; 
   };
@@ -1245,6 +1255,7 @@ public:
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     //    g_EvseController.SaveSettings();
   };
+  uint8_t IsInTimeInterval();
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
@@ -1256,6 +1267,8 @@ public:
        return 0; 
      }
   };
+  uint8_t IsTimerOn();
+
   void PrintTimerIcon();
 };
 

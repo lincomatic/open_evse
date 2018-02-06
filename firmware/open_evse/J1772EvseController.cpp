@@ -1098,6 +1098,11 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
 
       if (EvConnectedTransition()) {
+#ifdef DELAYTIMER
+	if (!EvConnected()) {
+	  g_DelayTimer.ClrManualOverride();
+      }
+#endif // DELAYTIMER
 	g_OBD.Update(OBD_UPD_FORCE);
       }
     }
@@ -1434,6 +1439,9 @@ if (TempChkEnabled()) {
 #ifdef TIME_LIMIT
 	SetTimeLimit(0);
 #endif // TIME_LIMIT
+#ifdef DELAYTIMER
+	g_DelayTimer.ClrManualOverride();
+#endif // DELAYTIMER
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
@@ -1648,13 +1656,7 @@ if (TempChkEnabled()) {
 #ifdef TIME_LIMIT
       SetTimeLimit(0); // clear time limit
 #endif // TIME_LIMIT
-#ifdef DELAY_TIMER
-      if (!g_DelayTimer.IsTimerEnabled()) {
-	SetLimitSleep(1);
-      }
-#else // !DELAY_TIMER
       SetLimitSleep(1);
-#endif // DELAY_TIMER
       Sleep();
     }
 #endif
@@ -1667,13 +1669,7 @@ if (TempChkEnabled()) {
 #ifdef CHARGE_LIMIT
 	SetChargeLimit(0); // clear charge limit
 #endif // CHARGE_LIMIT
-#ifdef DELAY_TIMER
-	if (!g_DelayTimer.IsTimerEnabled()) {
-	  SetLimitSleep(1);
-	}
-#else // !DELAY_TIMER
 	SetLimitSleep(1);
-#endif // DELAY_TIMER
 	Sleep();
       }
     }

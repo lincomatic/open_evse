@@ -125,7 +125,9 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
  $S2 0*F9
  $S2 1*FA
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
- NOTE: allowed only when EV connected in State B or C
+ NOTES:
+  - allowed only when EV connected in State B or C
+  - temporarily disables delay timer until EV disconnected or limit reached
  response:
   $OK - accepted
   $NK - invalid EVSE state
@@ -159,7 +161,9 @@ SC amps [V]- set current capacity
  $SG 0*0E
  $SG 1*0F
 SH kWh - set cHarge limit to kWh
- NOTE: allowed only when EV connected in State B or C
+ NOTES:
+  - allowed only when EV connected in State B or C
+  - temporarily disables delay timer until EV disconnected or limit reached
  response:
   $OK - accepted
   $NK - invalid EVSE state
