@@ -1699,20 +1699,22 @@ Menu *RTCMenuDay::Select()
 RTCMenuYear::RTCMenuYear()
 {
 }
+#define YEAR_MIN 18
+#define YEAR_MAX 28
 void RTCMenuYear::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Year);
   m_CurIdx = g_year;
-  if (m_CurIdx < 15 || m_CurIdx > 25){
-    m_CurIdx = 15;
-    g_year = 15;
+  if (m_CurIdx < YEAR_MIN || m_CurIdx > YEAR_MAX){
+    m_CurIdx = YEAR_MIN;
+    g_year = YEAR_MIN;
   }
   DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
 }
 void RTCMenuYear::Next()
 {
-  if (++m_CurIdx > 25) {
-    m_CurIdx = 15;
+  if (++m_CurIdx > YEAR_MAX) {
+    m_CurIdx = YEAR_MIN;
   }
   DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
 }
