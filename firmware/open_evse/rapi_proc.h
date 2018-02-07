@@ -128,6 +128,8 @@ S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
  NOTES:
   - allowed only when EV connected in State B or C
   - temporarily disables delay timer until EV disconnected or limit reached
+  - actually *extends* the current charging session. So if current session
+    has already charged for 2hrs, then $S3 2 ends charging after total 2:30
  response:
   $OK - accepted
   $NK - invalid EVSE state

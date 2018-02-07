@@ -1437,7 +1437,7 @@ if (TempChkEnabled()) {
 	ClrChargeLimit();
 #endif // CHARGE_LIMIT
 #ifdef TIME_LIMIT
-	SetTimeLimit(0);
+	ClrTimeLimit();
 #endif // TIME_LIMIT
 #ifdef DELAYTIMER
 	g_DelayTimer.ClrManualOverride();
@@ -1654,18 +1654,18 @@ if (TempChkEnabled()) {
     if (m_chargeLimitTotWs && (g_EnergyMeter.GetSessionWs() >= m_chargeLimitTotWs)) {
       ClrChargeLimit(); // clear charge limit
 #ifdef TIME_LIMIT
-      SetTimeLimit(0); // clear time limit
+      ClrTimeLimit(); // clear time limit
 #endif // TIME_LIMIT
       SetLimitSleep(1);
       Sleep();
     }
 #endif
 #ifdef TIME_LIMIT
-    if (m_timeLimit) {
+    if (m_timeLimitTotMs) {
       // must call millis() below because curms is sampled before transition to
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
-      if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
-	SetTimeLimit(0); // clear time limit
+      if ((millis() - m_ChargeOnTimeMS) >= m_timeLimitTotMs) {
+	ClrTimeLimit(); // clear time limit
 #ifdef CHARGE_LIMIT
 	ClrChargeLimit(); // clear charge limit
 #endif // CHARGE_LIMIT
@@ -1803,5 +1803,13 @@ void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
 }
 #endif // CHARGE_LIMIT
 
+#ifdef TIME_LIMIT
+void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
+{
+  m_timeLimit15 = mind15;
+  // extend session by mind15 15 min increments
+  m_timeLimitTotMs = (millis() - m_ChargeOnTimeMS) + (15lu*60000lu * (unsigned long)mind15);
+}
+#endif // TIME_LIMIT
 
 //-- end J1772EVSEController

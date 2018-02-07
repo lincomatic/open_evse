@@ -359,7 +359,7 @@ int EvseRapiProcessor::processCmd()
     case '3': // set time limit
       if (tokenCnt == 2) {
 	if (g_EvseController.LimitsAllowed()) {
-	  g_EvseController.SetTimeLimit(dtou32(tokens[1]));
+	  g_EvseController.SetTimeLimit15(dtou32(tokens[1]));
 #ifdef DELAYTIMER
 	  g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
@@ -533,7 +533,7 @@ int EvseRapiProcessor::processCmd()
       break;
 #ifdef TIME_LIMIT
     case '3': // get time limit
-      sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit());
+      sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit15());
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

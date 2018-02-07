@@ -596,7 +596,7 @@ void OnboardDisplay::Update(int8_t updmode)
       }
 #endif
 #ifdef TIME_LIMIT
-      if (g_EvseController.GetTimeLimit()) {
+      if (g_EvseController.GetTimeLimit15()) {
 	LcdWrite(5); // time limit clock
       }
 #endif
@@ -632,7 +632,7 @@ void OnboardDisplay::Update(int8_t updmode)
       }
 #endif
 #ifdef TIME_LIMIT
-      if (g_EvseController.GetTimeLimit()) {
+      if (g_EvseController.GetTimeLimit15()) {
 	LcdWrite(5); // clock
       }
 #endif
@@ -2047,7 +2047,7 @@ void TimeLimitMenu::showCurSel(uint8_t plus)
 
 void TimeLimitMenu::Init()
 {
-  m_CurIdx = g_EvseController.GetTimeLimit();
+  m_CurIdx = g_EvseController.GetTimeLimit15();
 
   g_OBD.LcdPrint_P(0,g_psTimeLimit);
   showCurSel(1);
@@ -2061,13 +2061,13 @@ void TimeLimitMenu::Next()
   if (m_CurIdx > MAX_TIME_LIMIT_D15) {
     m_CurIdx = 0;
   }
-  showCurSel((g_EvseController.GetTimeLimit() == m_CurIdx) ? 1 : 0);
+  showCurSel((g_EvseController.GetTimeLimit15() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
-  g_EvseController.SetTimeLimit(m_CurIdx);
+  g_EvseController.SetTimeLimit15(m_CurIdx);
 #ifdef DELAYTIMER
   g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
