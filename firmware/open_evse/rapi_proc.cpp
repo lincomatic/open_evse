@@ -434,7 +434,7 @@ int EvseRapiProcessor::processCmd()
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
 	if (g_EvseController.LimitsAllowed()) {
-	  g_EvseController.SetChargeLimit(dtou32(tokens[1]));
+	  g_EvseController.SetChargeLimitkWh(dtou32(tokens[1]));
 #ifdef DELAYTIMER
 	  g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
@@ -616,7 +616,7 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER || VOLTMETER
 #ifdef CHARGE_LIMIT
     case 'H': // get cHarge limit
-      sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimit());
+      sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimitkWh());
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

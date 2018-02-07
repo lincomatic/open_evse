@@ -591,7 +591,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(YELLOW);
 #endif // AUTH_LOCK
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimit()) {
+      if (g_EvseController.GetChargeLimitWs()) {
 	LcdWrite(3); // lightning
       }
 #endif
@@ -627,7 +627,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimit()) {
+      if (g_EvseController.GetChargeLimitWs()) {
 	LcdWrite(3); // lightning
       }
 #endif
@@ -1981,7 +1981,7 @@ void ChargeLimitMenu::showCurSel(uint8_t plus)
 
 void ChargeLimitMenu::Init()
 {
-  m_CurIdx = g_EvseController.GetChargeLimit();
+  m_CurIdx = g_EvseController.GetChargeLimitkWh();
 
   g_OBD.LcdPrint_P(0,g_psChargeLimit);
   showCurSel(1);
@@ -1994,13 +1994,13 @@ void ChargeLimitMenu::Next()
   if (m_CurIdx > MAX_CHARGE_LIMIT) {
     m_CurIdx = 0;
   }
-  showCurSel((g_EvseController.GetChargeLimit() == m_CurIdx) ? 1 : 0);
+  showCurSel((g_EvseController.GetChargeLimitkWh() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
-  g_EvseController.SetChargeLimit(m_CurIdx);
+  g_EvseController.SetChargeLimitkWh(m_CurIdx);
 #ifdef DELAYTIMER
   g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER

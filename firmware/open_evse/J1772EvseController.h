@@ -221,7 +221,7 @@ class J1772EVSEController {
   int16_t m_AmmeterCurrentOffset;
   int16_t m_CurrentScaleFactor;
 #ifdef CHARGE_LIMIT
-  uint8_t m_chargeLimit; // kWh
+  uint32_t m_chargeLimitWs; // Ws
 #endif
 
   void readAmmeter();
@@ -408,8 +408,10 @@ public:
     return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
   }
 #ifdef CHARGE_LIMIT
-  void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
-  uint8_t GetChargeLimit() { return m_chargeLimit; }
+  void ClrChargeLimit() { m_chargeLimitWs = 0; }
+  void SetChargeLimitkWh(uint8_t kwh);
+  uint32_t GetChargeLimitWs() { return m_chargeLimitWs; }
+  uint8_t GetChargeLimitkWh() { return (uint8_t) (m_chargeLimitWs / 3600000ul); }
 #endif // CHARGE_LIMIT
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }

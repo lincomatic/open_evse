@@ -164,6 +164,8 @@ SH kWh - set cHarge limit to kWh
  NOTES:
   - allowed only when EV connected in State B or C
   - temporarily disables delay timer until EV disconnected or limit reached
+  - actually *extends* the charge to the limit. So say, current session has
+    already charged 10kWh, $SH 5 will charge until 15kWh
  response:
   $OK - accepted
   $NK - invalid EVSE state
