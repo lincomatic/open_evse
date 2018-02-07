@@ -591,7 +591,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(YELLOW);
 #endif // AUTH_LOCK
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimitWs()) {
+      if (g_EvseController.GetChargeLimitkWh()) {
 	LcdWrite(3); // lightning
       }
 #endif
@@ -627,7 +627,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimitWs()) {
+      if (g_EvseController.GetChargeLimitTotWs()) {
 	LcdWrite(3); // lightning
       }
 #endif

@@ -1651,7 +1651,7 @@ if (TempChkEnabled()) {
   }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
-    if (m_chargeLimitWs && (g_EnergyMeter.GetSessionWs() >= m_chargeLimitWs)) {
+    if (m_chargeLimitTotWs && (g_EnergyMeter.GetSessionWs() >= m_chargeLimitTotWs)) {
       ClrChargeLimit(); // clear charge limit
 #ifdef TIME_LIMIT
       SetTimeLimit(0); // clear time limit
@@ -1797,7 +1797,9 @@ uint32_t J1772EVSEController::ReadVoltmeter()
 #ifdef CHARGE_LIMIT
 void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
 {
-  m_chargeLimitWs = g_EnergyMeter.GetSessionWs() + (3600000ul * (uint32_t)kwh);
+  m_chargeLimitkWh = kwh;
+  // extend session by kwh
+  m_chargeLimitTotWs = g_EnergyMeter.GetSessionWs() + (3600000ul * (uint32_t)kwh);
 }
 #endif // CHARGE_LIMIT
 
