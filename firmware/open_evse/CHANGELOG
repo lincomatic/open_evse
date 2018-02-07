@@ -1,6 +1,12 @@
 Change Log
 
-D4.12.0 20180201 SCL
+D4.12.1 20180206 SCL
+- time limit - used to be total length of charge session
+	-> now, setting *extends* total charge session time
+- charge limit - used to be total kWh of charge session
+	-> now, setting *extends* total charge session kWh
+	
+D4.12.0 20180206 SCL
 - restructure skip limits code
 - don't allow RAPI to set charge/time limits when not allowed ($SH/$S3)
 	-> return $NK if not allowed
