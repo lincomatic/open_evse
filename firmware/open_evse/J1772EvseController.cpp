@@ -1661,10 +1661,10 @@ if (TempChkEnabled()) {
     }
 #endif
 #ifdef TIME_LIMIT
-    if (m_timeLimitTotMs) {
+    if (m_timeLimitEnd) {
       // must call millis() below because curms is sampled before transition to
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
-      if ((millis() - m_ChargeOnTimeMS) >= m_timeLimitTotMs) {
+      if (GetElapsedChargeTime() >= m_timeLimitEnd) {
 	ClrTimeLimit(); // clear time limit
 #ifdef CHARGE_LIMIT
 	ClrChargeLimit(); // clear charge limit
@@ -1808,7 +1808,7 @@ void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
 {
   m_timeLimit15 = mind15;
   // extend session by mind15 15 min increments
-  m_timeLimitTotMs = (millis() - m_ChargeOnTimeMS) + (15lu*60000lu * (unsigned long)mind15);
+  m_timeLimitEnd = GetElapsedChargeTime() + (time_t)(15lu*60lu * (unsigned long)mind15);
 }
 #endif // TIME_LIMIT
 
