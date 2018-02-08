@@ -73,8 +73,8 @@
 #define STRF_KWH					     "%6lukWh" 
 #define STRF_VOLT              " %3luV"
 #define STR_AUTO					     "Auto" 
-#define STR_LEVEL_1					   "Level 1" 
-#define STR_LEVEL_2					   "Level 2"  
+#define STR_LEVEL_1					   "Level 1 (120V)" 
+#define STR_LEVEL_2					   "Level 2 (240V)"  
 #define STR_L1						     "L1"  
 #define STR_L2						     "L2"  
 //#endif
