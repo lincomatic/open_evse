@@ -745,6 +745,16 @@ void OnboardDisplay::Update(int8_t updmode)
       SetRedLed(1);
       // n.b. blue LED is off
     }
+#ifdef TEMPERATURE_MONITORING
+    if ((g_TempMonitor.OverTemperature() || g_TempMonitor.OverTemperatureLogged()) && !g_EvseController.InHardFault()) {
+#ifdef LCD16X2
+      LcdSetBacklightColor(RED);
+#endif
+      SetGreenLed(0);
+      SetRedLed(1);
+      LcdPrint_P(0,g_psHighTemp);
+    }
+#endif // TEMPERATURE_MONITORING
   }
 
   //
@@ -2100,6 +2110,9 @@ void BtnHandler::ChkBtn()
 
   m_Btn.read();
   if (m_Btn.shortPress()) {
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
     if (m_CurMenu) {
       m_CurMenu->Next();
     }
@@ -2131,6 +2144,9 @@ void BtnHandler::ChkBtn()
     }
   }
   else if (m_Btn.longPress()) {
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
   longpress:
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();

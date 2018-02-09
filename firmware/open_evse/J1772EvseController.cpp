@@ -1442,6 +1442,9 @@ if (TempChkEnabled()) {
 #ifdef DELAYTIMER
 	g_DelayTimer.ClrManualOverride();
 #endif // DELAYTIMER
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
@@ -1609,7 +1612,7 @@ if (TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
       uint8_t currcap = GetMaxCurrentCapacity();
       uint8_t setit = 0;
- //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
+
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
@@ -1638,11 +1641,13 @@ if (TempChkEnabled()) {
 	setit = 3;
       }    
       if (setit) {
-        if (setit <= 2) 
+        if (setit <= 2) {
           g_TempMonitor.SetOverTemperature(setit-1);
-        else
-        	g_TempMonitor.SetOverTemperatureShutdown(setit-3);
-      SetCurrentCapacity(currcap,0,1);
+	}
+        else {
+	  g_TempMonitor.SetOverTemperatureShutdown(setit-3);
+	}
+	SetCurrentCapacity(currcap,0,1);
     	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
     	  m_Pilot.SetPWM(m_CurrentCapacity);
 	      }

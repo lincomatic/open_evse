@@ -1,5 +1,8 @@
 Change Log
 
+D4.12.3 20180209 SCL
+- display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault 
+	
 D4.12.2 20180206 SCL
 - revamp time limit code to base on seconds instead of millis(). time limit
 	fix in D4.12.1 was completely wrong. in existing code time limit was

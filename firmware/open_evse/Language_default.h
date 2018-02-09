@@ -22,6 +22,7 @@
 #define STR_STUCK_RELAY_CHK			"Stuck Relay Chk"
 #define STR_GFI_SELF_TEST			  "GFI Self Test"
 #define STR_TEMPERATURE_CHK			"Temperature Chk"
+#define STR_HIGH_TEMP			"HIGH TEMP"
 #define STR_YES_NO					    {"Yes", "No"}
 #define STR_RESTART_NOW         "Restart Now?"
 #define STR_RESTART					    "Restart"

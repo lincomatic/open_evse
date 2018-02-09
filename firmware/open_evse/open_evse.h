@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D4.12.2"
+#define VERSION "D4.12.3"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -870,6 +870,7 @@ public:
 #define TMF_OVERTEMPERATURE          0x01
 #define TMF_OVERTEMPERATURE_SHUTDOWN 0x02
 #define TMF_BLINK_ALARM              0x04
+#define TMF_OVERTEMPERATURE_LOGGED   0x08
 class TempMonitor {
   uint8_t m_Flags;
   unsigned long m_LastUpdate;
@@ -900,15 +901,17 @@ public:
   }
   int8_t BlinkAlarm() { return (m_Flags & TMF_BLINK_ALARM) ? 1 : 0; }
   void SetOverTemperature(int8_t tf) {
-    if (tf) m_Flags |= TMF_OVERTEMPERATURE;
+    if (tf) m_Flags |= (TMF_OVERTEMPERATURE|TMF_OVERTEMPERATURE_LOGGED);
     else m_Flags &= ~TMF_OVERTEMPERATURE;
   }
   int8_t OverTemperature() { return (m_Flags & TMF_OVERTEMPERATURE) ? 1 : 0; }
   void SetOverTemperatureShutdown(int8_t tf) {
-    if (tf) m_Flags |= TMF_OVERTEMPERATURE_SHUTDOWN;
+    if (tf) m_Flags |= (TMF_OVERTEMPERATURE_SHUTDOWN|TMF_OVERTEMPERATURE_LOGGED);
     else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
   }
   int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+  uint8_t OverTemperatureLogged() { return (m_Flags & TMF_OVERTEMPERATURE_LOGGED) ? 1 : 0; }
+  void ClrOverTemperatureLogged() { m_Flags &= ~TMF_OVERTEMPERATURE_LOGGED; }
 #ifdef TEMPERATURE_MONITORING_NY
   void LoadThresh();
   void SaveThresh();

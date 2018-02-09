@@ -45,6 +45,7 @@ extern const char g_psGfiTest[] PROGMEM;
 #endif
 #ifdef TEMPERATURE_MONITORING
 extern const char g_psTempChk[] PROGMEM;
+extern const char g_psHighTemp[] PROGMEM;
 #endif // TEMPERATURE_MONITORING
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 

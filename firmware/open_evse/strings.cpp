@@ -43,6 +43,7 @@ const char g_psGfiTest[] PROGMEM = STR_GFI_SELF_TEST;
 #endif
 #ifdef TEMPERATURE_MONITORING
 const char g_psTempChk[] PROGMEM = STR_TEMPERATURE_CHK;
+const char g_psHighTemp[] PROGMEM = STR_HIGH_TEMP;
 #endif
 #endif // BTN_MENU || SHOW_DISABLED_TEST
 
