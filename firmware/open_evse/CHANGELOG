@@ -1,5 +1,48 @@
 Change Log
 
+D4.12.3 20180209 SCL
+- display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault 
+	
+D4.12.2 20180206 SCL
+- revamp time limit code to base on seconds instead of millis(). time limit
+	fix in D4.12.1 was completely wrong. in existing code time limit was
+	getting reset every time entering sleep state
+	
+D4.12.1 20180206 SCL
+BUGGY DO NOT USE
+- time limit - used to be total length of charge session
+	-> now, setting *extends* total charge session time
+- charge limit - used to be total kWh of charge session
+	-> now, setting *extends* total charge session kWh
+	
+D4.12.0 20180206 SCL
+- restructure skip limits code
+- don't allow RAPI to set charge/time limits when not allowed ($SH/$S3)
+	-> return $NK if not allowed
+- add new clock icon for time limit
+- delaytimer changes/fixes:
+ fixes problems when delay timer enabled:
+   a) press sleep button during timer charging session -> would not stay sleeping.. wakes up again instantly
+   -> fixed: stays sleeping w/ timer temporarily disabled until end of timer awake interval or EV disconnected.. then timer re-enabled automatically
+   b) wake up EVSE between timer sessions, set time or charge limit -> EVSE goes into READY state after EV disconnected
+   -> fixed.. stays sleeping with timer enabled after EV disconnected
+   c) timer is near end of charging session window.. plug in car, set time or charge limit which requires EV to charge beyond timer's charging session -> timer can kick in and stop charging even though charge/time limit not met
+   -> fixed.. EVSE wont' stop charging until charge/time limit met. timer temporarily disabled until limit met or EV is unplugged
+ code changes:
+	1) don't save EVSE settings when enable/disable (why were we doing that???) - to save life of EEPROM
+	2) don't save EVSE settings when setting start/end time (why were we doing that???) - to save life of EEPROM
+	3) when timer enabled and manualoverride, don't wake from sleep after time/charge limit reched and EV disconnected
+	4) don't CheckTime() in Enable() - superfluous
+	5) if wake from sleep via short press, temporarily disable timer (ManualOverride) until EV disconnected or if short press back to sleep, enable timer again. while timer temporarily disabled, timer icon no longer shown on LCD
+	-> lets charge start before normal timer start, and run until EV fully charged, even if timer stop time reached
+	-> if already charging, short press sleep/wake allows charge to proceed past normal timer stop time. timer re-enabled at end of charging or EV disconnect
+	6) if charge/time limit set or cancelled while timer enabled, timer temporarily disabled until limit reached or EV disconnected or short press sleep
+	7) don't need skip SetLimitSleep() @ end of charge/time limit if timer turned on ... new code will automatically make it sleep again after wake when EV disconnected
+	
+D4.11.1 20180108 SCL
+- add wdt_delay() .. use instead of delay() when delay is > watchdog timer
+	-> actually, OK to use everywhere
+	
 D4.11.0 20171207 SCL
 - rewrite Gfi::SelfTest() so that it doesn't hang when the test pin has hardware failure
 - clear elapsed charging time only when EV is disconnected and then reconnected (previously would reset every time charging stopped)

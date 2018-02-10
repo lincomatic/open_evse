@@ -41,7 +41,8 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D4.11.0.EU"
+#define VERSION "D4.12.3.EU"
+
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -608,8 +609,8 @@
 
 #ifdef KWH_RECORDING
 #define VOLTS_FOR_L1 120       // conventional for North America
+#define VOLTS_FOR_L2 240       // conventional for North America and Commonwealth countries
 //  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#define VOLTS_FOR_L2 240       // conventional for North America
 #endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
@@ -877,6 +878,7 @@ public:
 #define TMF_OVERTEMPERATURE          0x01
 #define TMF_OVERTEMPERATURE_SHUTDOWN 0x02
 #define TMF_BLINK_ALARM              0x04
+#define TMF_OVERTEMPERATURE_LOGGED   0x08
 class TempMonitor {
   uint8_t m_Flags;
   unsigned long m_LastUpdate;
@@ -907,15 +909,17 @@ public:
   }
   int8_t BlinkAlarm() { return (m_Flags & TMF_BLINK_ALARM) ? 1 : 0; }
   void SetOverTemperature(int8_t tf) {
-    if (tf) m_Flags |= TMF_OVERTEMPERATURE;
+    if (tf) m_Flags |= (TMF_OVERTEMPERATURE|TMF_OVERTEMPERATURE_LOGGED);
     else m_Flags &= ~TMF_OVERTEMPERATURE;
   }
   int8_t OverTemperature() { return (m_Flags & TMF_OVERTEMPERATURE) ? 1 : 0; }
   void SetOverTemperatureShutdown(int8_t tf) {
-    if (tf) m_Flags |= TMF_OVERTEMPERATURE_SHUTDOWN;
+    if (tf) m_Flags |= (TMF_OVERTEMPERATURE_SHUTDOWN|TMF_OVERTEMPERATURE_LOGGED);
     else m_Flags &= ~TMF_OVERTEMPERATURE_SHUTDOWN;
   }
   int8_t OverTemperatureShutdown() { return (m_Flags & TMF_OVERTEMPERATURE_SHUTDOWN) ? 1 : 0; }
+  uint8_t OverTemperatureLogged() { return (m_Flags & TMF_OVERTEMPERATURE_LOGGED) ? 1 : 0; }
+  void ClrOverTemperatureLogged() { m_Flags &= ~TMF_OVERTEMPERATURE_LOGGED; }
 #ifdef TEMPERATURE_MONITORING_NY
   void LoadThresh();
   void SaveThresh();
@@ -1215,6 +1219,7 @@ class DelayTimer {
   uint8_t m_CurrHour;
   uint8_t m_CurrMin;
   unsigned long m_LastCheck;
+  uint8_t m_ManualOverride;
 public:
   DelayTimer(){
     m_LastCheck = - (60ul * 1000ul);
@@ -1223,6 +1228,15 @@ public:
   void CheckTime();
   void Enable();
   void Disable();
+
+  void SetManualOverride() {
+    if (IsTimerEnabled()) {
+      m_ManualOverride = 1;
+    }
+  }
+  void ClrManualOverride() { m_ManualOverride = 0; }
+  uint8_t ManualOverrideIsSet() { return m_ManualOverride; }
+  
   uint8_t IsTimerEnabled(){
     return m_DelayTimerEnabled;
   };
@@ -1243,15 +1257,16 @@ public:
     m_StartTimerMin = min;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_START_HOUR, m_StartTimerHour);
     eeprom_write_byte((uint8_t*)EOFS_TIMER_START_MIN, m_StartTimerMin);
-    g_EvseController.SaveSettings();
+    //    g_EvseController.SaveSettings();
   };
   void SetStopTimer(uint8_t hour, uint8_t min){
     m_StopTimerHour = hour;
     m_StopTimerMin = min;
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_HOUR, m_StopTimerHour);
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
-    g_EvseController.SaveSettings();
+    //    g_EvseController.SaveSettings();
   };
+  uint8_t IsInTimeInterval();
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
@@ -1263,6 +1278,8 @@ public:
        return 0;
      }
   };
+  uint8_t IsTimerOn();
+
   void PrintTimerIcon();
 };
 
@@ -1303,5 +1320,9 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
+void wdt_delay(uint32_t ms);
+
+
 #include "strings.h"
 #include "rapi_proc.h"
+

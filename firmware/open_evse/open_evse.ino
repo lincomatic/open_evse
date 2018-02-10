@@ -193,6 +193,23 @@ AutoCurrentCapacityController g_ACCController;
 
 //-- end global variables
 
+// watchdog-safe delay - use this when delay is longer than watchdog
+// *do not* call this before WDT_ENABLE() is called
+void wdt_delay(uint32_t ms)
+{
+  do {
+    WDT_RESET();
+    if (ms > WATCHDOG_TIMEOUT/2) {
+      delay(WATCHDOG_TIMEOUT/2);
+      ms -= WATCHDOG_TIMEOUT/2;
+    }
+    else {
+      delay(ms);
+      ms = 0;
+    }
+  } while(ms);
+}
+
 static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
   Wire.write((uint8_t)x);
@@ -342,7 +359,7 @@ OnboardDisplay::OnboardDisplay()
 }
 
 
-#if defined(DELAYTIMER)||defined(TIME_LIMIT)
+#if defined(DELAYTIMER)
 const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0}; // clock
 #endif
 #ifdef DELAYTIMER
@@ -364,6 +381,18 @@ const char CustomChar_4[8] PROGMEM = { // padlock
 	0b00000
 };
 #endif // AUTH_LOCK
+#ifdef TIME_LIMIT
+const char CustomChar_5[8] PROGMEM = { // time limit clock
+	0b00000,
+	0b01110,
+	0b10001,
+	0b11101,
+	0b10101,
+	0b01110,
+	0b00000,
+	0b00000
+};
+#endif // TIME_LIMIT
 
 #ifdef LCD16X2
 void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
@@ -396,7 +425,7 @@ void OnboardDisplay::Init()
   LcdBegin(LCD_MAX_CHARS_PER_LINE, 2);
   LcdSetBacklightColor(WHITE);
 
-#if defined(DELAYTIMER)||defined(TIME_LIMIT)
+#if defined(DELAYTIMER)
   MakeChar(0,CustomChar_0);
 #endif
 #ifdef DELAYTIMER
@@ -409,6 +438,9 @@ void OnboardDisplay::Init()
 #ifdef AUTH_LOCK
   MakeChar(4,CustomChar_4);
 #endif
+#ifdef TIME_LIMIT
+  MakeChar(5,CustomChar_5);
+#endif // TIME_LIMIT
   m_Lcd.clear();
 
 #ifdef OPENEVSE_2
@@ -418,7 +450,7 @@ void OnboardDisplay::Init()
 #endif
   LcdPrint_P(0,1,PSTR("Ver. "));
   LcdPrint_P(VERSTR);
-  delay(1500);
+  wdt_delay(1500);
   WDT_RESET();
 #endif //#ifdef LCD16X2
 }
@@ -559,13 +591,13 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(YELLOW);
 #endif // AUTH_LOCK
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimit()) {
+      if (g_EvseController.GetChargeLimitkWh()) {
 	LcdWrite(3); // lightning
       }
 #endif
 #ifdef TIME_LIMIT
-      if (g_EvseController.GetTimeLimit()) {
-	LcdWrite(0); // clock
+      if (g_EvseController.GetTimeLimit15()) {
+	LcdWrite(5); // time limit clock
       }
 #endif
       // Display Timer and Stop Icon - GoldServe
@@ -595,13 +627,13 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetCursor(0,0);
       // Display Timer and Stop Icon - GoldServe
 #ifdef CHARGE_LIMIT
-      if (g_EvseController.GetChargeLimit()) {
+      if (g_EvseController.GetChargeLimitTotWs()) {
 	LcdWrite(3); // lightning
       }
 #endif
 #ifdef TIME_LIMIT
-      if (g_EvseController.GetTimeLimit()) {
-	LcdWrite(0); // clock
+      if (g_EvseController.GetTimeLimit15()) {
+	LcdWrite(5); // clock
       }
 #endif
 #ifdef DELAYTIMER
@@ -713,6 +745,16 @@ void OnboardDisplay::Update(int8_t updmode)
       SetRedLed(1);
       // n.b. blue LED is off
     }
+#ifdef TEMPERATURE_MONITORING
+    if ((g_TempMonitor.OverTemperature() || g_TempMonitor.OverTemperatureLogged()) && !g_EvseController.InHardFault()) {
+#ifdef LCD16X2
+      LcdSetBacklightColor(RED);
+#endif
+      SetGreenLed(0);
+      SetRedLed(1);
+      LcdPrint_P(0,g_psHighTemp);
+    }
+#endif // TEMPERATURE_MONITORING
   }
 
   //
@@ -870,13 +912,13 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(0,1,g_sTmp);
       if (g_DelayTimer.IsTimerEnabled()){
 	LcdSetCursor(9,0);
-	LcdWrite(0x2);
-	LcdWrite(0x0);
+	LcdWrite(2);
+	LcdWrite(0);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
 	LcdPrint(11,0,g_sTmp);
 	LcdSetCursor(9,1);
-	LcdWrite(0x1);
-	LcdWrite(0x0);
+	LcdWrite(1);
+	LcdWrite(0);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
 	LcdPrint(11,1,g_sTmp);
       } else {
@@ -1007,7 +1049,7 @@ SettingsMenu::SettingsMenu()
 void SettingsMenu::CheckSkipLimits()
 {
   // only allow Charge Limit menu item if car connected and no error
-  m_skipLimits = ((g_EvseController.GetState() == EVSE_STATE_B) || (g_EvseController.GetState() == EVSE_STATE_C)) ? 0 : 1;
+  m_skipLimits = !g_EvseController.LimitsAllowed();
 }
 #endif // CHARGE_LIMIT
 
@@ -1667,20 +1709,22 @@ Menu *RTCMenuDay::Select()
 RTCMenuYear::RTCMenuYear()
 {
 }
+#define YEAR_MIN 18
+#define YEAR_MAX 28
 void RTCMenuYear::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Year);
   m_CurIdx = g_year;
-  if (m_CurIdx < 15 || m_CurIdx > 25){
-    m_CurIdx = 15;
-    g_year = 15;
+  if (m_CurIdx < YEAR_MIN || m_CurIdx > YEAR_MAX){
+    m_CurIdx = YEAR_MIN;
+    g_year = YEAR_MIN;
   }
   DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
 }
 void RTCMenuYear::Next()
 {
-  if (++m_CurIdx > 25) {
-    m_CurIdx = 15;
+  if (++m_CurIdx > YEAR_MAX) {
+    m_CurIdx = YEAR_MIN;
   }
   DtsStrPrint1(m_CurIdx,g_month,g_day,g_hour,g_min,2);
 }
@@ -1947,7 +1991,7 @@ void ChargeLimitMenu::showCurSel(uint8_t plus)
 
 void ChargeLimitMenu::Init()
 {
-  m_CurIdx = g_EvseController.GetChargeLimit();
+  m_CurIdx = g_EvseController.GetChargeLimitkWh();
 
   g_OBD.LcdPrint_P(0,g_psChargeLimit);
   showCurSel(1);
@@ -1960,13 +2004,16 @@ void ChargeLimitMenu::Next()
   if (m_CurIdx > MAX_CHARGE_LIMIT) {
     m_CurIdx = 0;
   }
-  showCurSel((g_EvseController.GetChargeLimit() == m_CurIdx) ? 1 : 0);
+  showCurSel((g_EvseController.GetChargeLimitkWh() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
-  g_EvseController.SetChargeLimit(m_CurIdx);
+  g_EvseController.SetChargeLimitkWh(m_CurIdx);
+#ifdef DELAYTIMER
+  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2010,7 +2057,7 @@ void TimeLimitMenu::showCurSel(uint8_t plus)
 
 void TimeLimitMenu::Init()
 {
-  m_CurIdx = g_EvseController.GetTimeLimit();
+  m_CurIdx = g_EvseController.GetTimeLimit15();
 
   g_OBD.LcdPrint_P(0,g_psTimeLimit);
   showCurSel(1);
@@ -2024,13 +2071,16 @@ void TimeLimitMenu::Next()
   if (m_CurIdx > MAX_TIME_LIMIT_D15) {
     m_CurIdx = 0;
   }
-  showCurSel((g_EvseController.GetTimeLimit() == m_CurIdx) ? 1 : 0);
+  showCurSel((g_EvseController.GetTimeLimit15() == m_CurIdx) ? 1 : 0);
 }
 
 Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
-  g_EvseController.SetTimeLimit(m_CurIdx);
+  g_EvseController.SetTimeLimit15(m_CurIdx);
+#ifdef DELAYTIMER
+  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2060,6 +2110,9 @@ void BtnHandler::ChkBtn()
 
   m_Btn.read();
   if (m_Btn.shortPress()) {
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
     if (m_CurMenu) {
       m_CurMenu->Next();
     }
@@ -2074,10 +2127,26 @@ void BtnHandler::ChkBtn()
 	else {
 	  g_EvseController.Sleep();
 	}
+
+#ifdef DELAYTIMER
+	if (g_DelayTimer.IsTimerEnabled()) {
+	  uint8_t intimeinterval = g_DelayTimer.IsInTimeInterval();
+	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
+	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
+	    g_DelayTimer.SetManualOverride();
+          }
+	  else {
+	    g_DelayTimer.ClrManualOverride();
+   	  }
+	}
+#endif // DELAYTIMER
       }
     }
   }
   else if (m_Btn.longPress()) {
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
   longpress:
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();
@@ -2101,13 +2170,7 @@ void BtnHandler::ChkBtn()
 	  g_EvseController.Reboot();
 	}
 	else {
-#if defined(DELAYTIMER)
-	  if (!g_DelayTimer.IsTimerEnabled()){
-	    g_EvseController.Enable();
-	  }
-#else  
 	  g_EvseController.Enable();
-#endif        
 	  g_OBD.DisableUpdate(0);
 	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
 	  g_OBD.Update(OBD_UPD_FORCE);
@@ -2178,6 +2241,38 @@ void DelayTimer::Init() {
   else {
     m_StopTimerMin = rtmp;
   }
+
+  ClrManualOverride();
+}
+
+uint8_t DelayTimer::IsInTimeInterval()
+{
+  uint8_t inTimeInterval = false;
+
+  if (IsTimerEnabled() && IsTimerValid()) {
+    g_CurrTime = g_RTC.now();
+    m_CurrHour = g_CurrTime.hour();
+    m_CurrMin = g_CurrTime.minute();
+    
+    uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
+    uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
+    uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
+
+    if (stopTimerMinutes < startTimerMinutes) { //End time is for next day 
+      
+      if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
+	   ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
+	inTimeInterval = true;
+      }
+    }
+    else { // not crossing midnite
+      if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
+	inTimeInterval = true;
+      }
+    }
+  }
+
+  return inTimeInterval;
 }
 
 void DelayTimer::CheckTime()
@@ -2187,46 +2282,40 @@ void DelayTimer::CheckTime()
       IsTimerValid()) {
     unsigned long curms = millis();
     if ((curms - m_LastCheck) > 1000ul) {
-      g_CurrTime = g_RTC.now();
-      m_CurrHour = g_CurrTime.hour();
-      m_CurrMin = g_CurrTime.minute();
-      
-      uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
-      uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
-      uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
-      
-      if (stopTimerMinutes < startTimerMinutes) {
-	//End time is for next day 
-	if ( ( (currTimeMinutes >= startTimerMinutes) && (currTimeMinutes > stopTimerMinutes) ) || 
-             ( (currTimeMinutes <= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes) ) ){
-	  // Within time interval
-          if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
+      uint8_t inTimeInterval = IsInTimeInterval();
+      uint8_t evseState = g_EvseController.GetState();
+
+      if (inTimeInterval) { // charge now
+	if (!ManualOverrideIsSet()) {
+	  if (evseState == EVSE_STATE_SLEEPING) {
 	    g_EvseController.Enable();
-	  }           
+	  }
 	}
 	else {
-	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
-	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
-	    // Not in time interval
-	    g_EvseController.Sleep();         
+	  if (evseState != EVSE_STATE_SLEEPING) {
+	    // we got here because manual override was set by
+	    // waking EVSE shortpress while it was sleeping
+	    ClrManualOverride();
 	  }
 	}
       }
-      else { // not crossing midnite
-	if ((currTimeMinutes >= startTimerMinutes) && (currTimeMinutes < stopTimerMinutes)) { 
-	  // Within time interval
-	  if (g_EvseController.GetState() == EVSE_STATE_SLEEPING) {
-	    g_EvseController.Enable();
-	  }          
+      else { // sleep now
+	if (!ManualOverrideIsSet()) {
+	  if ((evseState != EVSE_STATE_SLEEPING) &&
+	      (evseState != EVSE_STATE_C) // don't interrupt active charging
+	      ) {
+	    g_EvseController.Sleep();
+	  }
 	}
-	else {
-	  // S.Low 3/12/14 Added check at T+1 minute in case interrupt is late
-	  if ((currTimeMinutes >= stopTimerMinutes)&&(currTimeMinutes <= stopTimerMinutes+1)) { 
-	    // Not in time interval
-	    g_EvseController.Sleep();          
+	else { // manual override is set
+	  if (evseState == EVSE_STATE_SLEEPING) {
+	    // we got here because manual override was set by
+	    // putting EVSE to sleep via shortpress while it was charging
+	    ClrManualOverride();
 	  }
 	}
       }
+
       m_LastCheck = curms;
     }
   }
@@ -2234,25 +2323,28 @@ void DelayTimer::CheckTime()
 void DelayTimer::Enable(){
   m_DelayTimerEnabled = 0x01;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.SaveSettings();
-  CheckTime();
+  ClrManualOverride();
+  //  g_EvseController.SaveSettings();
+  //  CheckTime();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::Disable(){
   m_DelayTimerEnabled = 0x00;
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
-  g_EvseController.SaveSettings();
+  ClrManualOverride();
+  //  g_EvseController.SaveSettings();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){
 #ifdef LCD16X2
-  if (IsTimerEnabled() && IsTimerValid()){
-    g_OBD.LcdWrite(0x0);
+  if (!ManualOverrideIsSet() && IsTimerEnabled() && IsTimerValid()){
+    g_OBD.LcdWrite(0);
   }
 #endif // LCD16X2
 }
 // End Delay Timer Functions - GoldServe
 #endif //#ifdef DELAYTIMER
+
 
 void ProcessInputs()
 {

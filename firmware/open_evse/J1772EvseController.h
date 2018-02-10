@@ -212,7 +212,8 @@ class J1772EVSEController {
   }
 
 #ifdef TIME_LIMIT
-  uint8_t m_timeLimit; // minutes * 15
+  uint8_t m_timeLimit15; // increments of 15min to extend charge time
+  time_t m_timeLimitEnd; // end time
 #endif
 
 #ifdef AMMETER
@@ -221,7 +222,8 @@ class J1772EVSEController {
   int16_t m_AmmeterCurrentOffset;
   int16_t m_CurrentScaleFactor;
 #ifdef CHARGE_LIMIT
-  uint8_t m_chargeLimit; // kWh
+  uint8_t m_chargeLimitkWh; // kWh to extend session
+  uint32_t m_chargeLimitTotWs; // total Ws limit
 #endif
 
   void readAmmeter();
@@ -404,17 +406,24 @@ public:
     readAmmeter();
     return m_AmmeterReading / 1000;
   }
-
+  uint8_t LimitsAllowed() {
+    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
+  }
 #ifdef CHARGE_LIMIT
-  void SetChargeLimit(uint8_t kwh) { m_chargeLimit = kwh; }
-  uint8_t GetChargeLimit() { return m_chargeLimit; }
+  void ClrChargeLimit() { m_chargeLimitTotWs = 0; m_chargeLimitkWh = 0; }
+  void SetChargeLimitkWh(uint8_t kwh);
+  uint32_t GetChargeLimitTotWs() { return m_chargeLimitTotWs; }
+  uint8_t GetChargeLimitkWh() { return m_chargeLimitkWh; }
 #endif // CHARGE_LIMIT
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif // AMMETER
 #ifdef TIME_LIMIT
-  void SetTimeLimit(uint8_t mind15) { m_timeLimit = mind15; }
-  uint8_t GetTimeLimit() { return m_timeLimit; }
+  void ClrTimeLimit() { m_timeLimitEnd = 0; m_timeLimit15 = 0; }
+  void SetTimeLimitEnd(time_t limit) { m_timeLimitEnd = limit; }
+  void SetTimeLimit15(uint8_t mind15);
+  uint8_t GetTimeLimit15() { return m_timeLimit15; }
+  time_t GetTimeLimitEnd() { return m_timeLimitEnd; }
 #endif // TIME_LIMIT
   void ReadPilot(uint16_t *plow=NULL,uint16_t *phigh=NULL);
   void Reboot();

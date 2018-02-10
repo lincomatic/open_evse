@@ -358,9 +358,14 @@ int EvseRapiProcessor::processCmd()
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
-	g_EvseController.SetTimeLimit(dtou32(tokens[1]));
-	if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
-	rc = 0;
+	if (g_EvseController.LimitsAllowed()) {
+	  g_EvseController.SetTimeLimit15(dtou32(tokens[1]));
+#ifdef DELAYTIMER
+	  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
+	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
+	  rc = 0;
+	}
       }
       break;
 #endif // TIME_LIMIT
@@ -428,9 +433,14 @@ int EvseRapiProcessor::processCmd()
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
-	g_EvseController.SetChargeLimit(dtou32(tokens[1]));
-	if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
-	rc = 0;
+	if (g_EvseController.LimitsAllowed()) {
+	  g_EvseController.SetChargeLimitkWh(dtou32(tokens[1]));
+#ifdef DELAYTIMER
+	  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
+	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
+	  rc = 0;
+	}
       }
       break;
 #endif // CHARGE_LIMIT
@@ -523,7 +533,7 @@ int EvseRapiProcessor::processCmd()
       break;
 #ifdef TIME_LIMIT
     case '3': // get time limit
-      sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit());
+      sprintf(buffer,"%d",(int)g_EvseController.GetTimeLimit15());
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
@@ -606,7 +616,7 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER || VOLTMETER
 #ifdef CHARGE_LIMIT
     case 'H': // get cHarge limit
-      sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimit());
+      sprintf(buffer,"%d",(int)g_EvseController.GetChargeLimitkWh());
       bufCnt = 1; // flag response text output
       rc = 0;
       break;

@@ -191,7 +191,7 @@ void J1772EVSEController::Reboot()
 
   if (chargingIsOn()) {
    // give the EV some time to open its contactor in response to P12
-    delay(3000);
+    wdt_delay(3000);
   }
 
   // hardware reset by forcing watchdog to timeout
@@ -208,7 +208,7 @@ void J1772EVSEController::DisabledTest_P(PGM_P message)
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
 #endif
 #ifndef NOCHECKS
-  delay(SHOW_DISABLED_DELAY);
+  wdt_delay(SHOW_DISABLED_DELAY);
 #endif
 }
 
@@ -1080,7 +1080,7 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #ifdef FT_SLEEP_DELAY
 	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
 	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
-	delay(2000);
+	wdt_delay(2000);
 #endif
       }
     }
@@ -1098,6 +1098,11 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #endif //defined(TIME_LIMIT) || defined(CHARGE_LIMIT)
 
       if (EvConnectedTransition()) {
+#ifdef DELAYTIMER
+	if (!EvConnected()) {
+	  g_DelayTimer.ClrManualOverride();
+      }
+#endif // DELAYTIMER
 	g_OBD.Update(OBD_UPD_FORCE);
       }
     }
@@ -1429,11 +1434,17 @@ if (TempChkEnabled()) {
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
 #ifdef CHARGE_LIMIT
-	SetChargeLimit(0);
+	ClrChargeLimit();
 #endif // CHARGE_LIMIT
 #ifdef TIME_LIMIT
-	SetTimeLimit(0);
+	ClrTimeLimit();
 #endif // TIME_LIMIT
+#ifdef DELAYTIMER
+	g_DelayTimer.ClrManualOverride();
+#endif // DELAYTIMER
+#ifdef TEMPERATURE_MONITORING
+    g_TempMonitor.ClrOverTemperatureLogged();
+#endif
     }
     else if (m_EvseState == EVSE_STATE_B) { // connected 
       chargingOff(); // turn off charging current
@@ -1601,7 +1612,7 @@ if (TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
       uint8_t currcap = GetMaxCurrentCapacity();
       uint8_t setit = 0;
- //   g_TempMonitor.Read();  // moved this to main update loop so it reads temperatures in all EVSE states
+
       if (!g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_THROTTLE_DOWN ) ||  // any sensor reaching threshold trips action
 					       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ) ||
 					       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   // Throttle back the L2 current advice to the EV
@@ -1630,11 +1641,13 @@ if (TempChkEnabled()) {
 	setit = 3;
       }    
       if (setit) {
-        if (setit <= 2) 
+        if (setit <= 2) {
           g_TempMonitor.SetOverTemperature(setit-1);
-        else
-        	g_TempMonitor.SetOverTemperatureShutdown(setit-3);
-      SetCurrentCapacity(currcap,0,1);
+	}
+        else {
+	  g_TempMonitor.SetOverTemperatureShutdown(setit-3);
+	}
+	SetCurrentCapacity(currcap,0,1);
     	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
     	  m_Pilot.SetPWM(m_CurrentCapacity);
 	      }
@@ -1643,29 +1656,29 @@ if (TempChkEnabled()) {
   }
 #endif // TEMPERATURE_MONITORING
 #ifdef CHARGE_LIMIT
-    if (m_chargeLimit && (g_EnergyMeter.GetSessionWs() >= 3600000 * (uint32_t)m_chargeLimit)) {
-      SetChargeLimit(0); // clear charge limit
+    if (m_chargeLimitTotWs && (g_EnergyMeter.GetSessionWs() >= m_chargeLimitTotWs)) {
+      ClrChargeLimit(); // clear charge limit
 #ifdef TIME_LIMIT
-      SetTimeLimit(0); // clear time limit
+      ClrTimeLimit(); // clear time limit
 #endif // TIME_LIMIT
       SetLimitSleep(1);
       Sleep();
     }
 #endif
 #ifdef TIME_LIMIT
-    if (m_timeLimit) {
+    if (m_timeLimitEnd) {
       // must call millis() below because curms is sampled before transition to
       // to State C, so m_ChargeOnTimeMS will be > curms from the start
-      if ((millis() - m_ChargeOnTimeMS) >= (15lu*60000lu * (unsigned long)m_timeLimit)) {
-	SetTimeLimit(0); // clear time limit
+      if (GetElapsedChargeTime() >= m_timeLimitEnd) {
+	ClrTimeLimit(); // clear time limit
 #ifdef CHARGE_LIMIT
-	SetChargeLimit(0); // clear charge limit
+	ClrChargeLimit(); // clear charge limit
 #endif // CHARGE_LIMIT
 	SetLimitSleep(1);
 	Sleep();
       }
     }
-#endif
+#endif // TIME_LIMIT
   }
 
   return;
@@ -1786,5 +1799,22 @@ uint32_t J1772EVSEController::ReadVoltmeter()
 }
 #endif // VOLTMETER
 
+#ifdef CHARGE_LIMIT
+void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
+{
+  m_chargeLimitkWh = kwh;
+  // extend session by kwh
+  m_chargeLimitTotWs = g_EnergyMeter.GetSessionWs() + (3600000ul * (uint32_t)kwh);
+}
+#endif // CHARGE_LIMIT
+
+#ifdef TIME_LIMIT
+void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
+{
+  m_timeLimit15 = mind15;
+  // extend session by mind15 15 min increments
+  m_timeLimitEnd = GetElapsedChargeTime() + (time_t)(15lu*60lu * (unsigned long)mind15);
+}
+#endif // TIME_LIMIT
 
 //-- end J1772EVSEController

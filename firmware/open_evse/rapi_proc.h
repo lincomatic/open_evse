@@ -125,6 +125,14 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
  $S2 0*F9
  $S2 1*FA
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
+ NOTES:
+  - allowed only when EV connected in State B or C
+  - temporarily disables delay timer until EV disconnected or limit reached
+  - actually *extends* the current charging session. So if current session
+    has already charged for 2hrs, then $S3 2 ends charging after total 2:30
+ response:
+  $OK - accepted
+  $NK - invalid EVSE state
 S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    0 = unlocked
    1 = locked - EVSE won't charge until unlocked
@@ -155,6 +163,14 @@ SC amps [V]- set current capacity
  $SG 0*0E
  $SG 1*0F
 SH kWh - set cHarge limit to kWh
+ NOTES:
+  - allowed only when EV connected in State B or C
+  - temporarily disables delay timer until EV disconnected or limit reached
+  - actually *extends* the charge to the limit. So say, current session has
+    already charged 10kWh, $SH 5 will charge until 15kWh
+ response:
+  $OK - accepted
+  $NK - invalid EVSE state
 SK - set accumulated Wh (v1.0.3+)
  $SK 0*12 - set accumulated Wh to 0
 SL 1|2|A  - set service level L1/L2/Auto
