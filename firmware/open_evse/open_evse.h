@@ -364,7 +364,7 @@
 
 // current capacity in amps
 #define DEFAULT_CURRENT_CAPACITY_L1 12
-#define DEFAULT_CURRENT_CAPACITY_L2 16
+#define DEFAULT_CURRENT_CAPACITY_L2 32
 
 // minimum allowable current in amps
 #define MIN_CURRENT_CAPACITY_J1772 6
