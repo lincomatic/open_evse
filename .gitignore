@@ -6,6 +6,7 @@ utils/ma/*
 *.sav
 *.zip
 *.bak
+*.gch
 *~
 \#*
 #################
@@ -178,3 +179,8 @@ pip-log.txt
 .piolibdeps
 .vscode
 .vscode/c_cpp_properties.json
+=======
+#############
+Platformio
+############
+.pioenvs/

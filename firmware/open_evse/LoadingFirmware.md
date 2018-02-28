@@ -1,4 +1,3 @@
-
 # OpenEVSE Firmware Loading
 
 ## Introduction 
@@ -37,12 +36,20 @@ The first time platformIO is ran the AVR arduino tool chain and all the required
 
 #### 3. Upload
 
+If using `USBasp` [OpenEVSE ISP programmer](https://openevse-store.myshopify.com/collections/frontpage/products/openevse-programmer):
+
 `$ pio run -t program`
+
+If using `AVRISP mkII` ISP programmer:
+
+`$ pio run -t program -e openevse-mk2isp`
+
 
 ### Arduino IDE
 
 <div class="alert alert-success">
-Note: These following instrictions have been extracted from Google Code and are not complete/properly edited
+Note: These following instructions have been extracted from Google Code and are not complete/properly edited
+>>>>>>> upload-docs
 </div>
 
 The Arduino IDE includes an code editor, serial monitor, and will compile and upload your code to the OpenEVSE.
