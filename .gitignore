@@ -6,6 +6,7 @@ utils/ma/*
 *.sav
 *.zip
 *.bak
+*.gch
 *~
 \#*
 #################
@@ -172,3 +173,9 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+
+#############
+Platformio
+############
+.pioenvs/
+
