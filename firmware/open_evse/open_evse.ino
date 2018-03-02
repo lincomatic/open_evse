@@ -2421,6 +2421,8 @@ uint8_t StateTransitionReqFunc(uint8_t curPilotState,uint8_t newPilotState,uint8
 }
 #endif //PP_AUTO_AMPACITY
 
+unsigned long lastlcdreset = 0;
+
 void setup()
 {
   wdt_disable();
@@ -2450,7 +2452,9 @@ void setup()
 void loop()
 {
   // Force LCD update (required for CE certification testing) to restore LCD if corrupted.
-  g_OBD.Update(OBD_UPD_FORCE);
+  if ((millis()-lastlcdreset)>60000) {
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
 
   WDT_RESET();
 
