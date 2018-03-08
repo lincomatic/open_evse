@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D4.12.3.EU"
+#define VERSION "4.12.3.EU"
 
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -1236,7 +1236,7 @@ public:
   }
   void ClrManualOverride() { m_ManualOverride = 0; }
   uint8_t ManualOverrideIsSet() { return m_ManualOverride; }
-  
+
   uint8_t IsTimerEnabled(){
     return m_DelayTimerEnabled;
   };
@@ -1325,4 +1325,3 @@ void wdt_delay(uint32_t ms);
 
 #include "strings.h"
 #include "rapi_proc.h"
-
