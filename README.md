@@ -3,15 +3,18 @@ Firmware for OpenEVSE controller used in OpenEnergyMonitor EmonEVSE units solde 
 
 Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
-Custom changes by OpenEnergyMonitor:
+## Changes by OpenEnergyMonitor:
 
 - Disable `AUTOSVCLEVEL` (autodetection is designed for split-phase)
 - Charging level default to `L2`
 - Set `MAX_CURRENT_CAPACITY_L2 32` (limit for single-phase charging in UK/EU)
 - Add '.EU' to version number
 
+## Resources
+
 - [OpenEnergyMonitor OpenEVSE Setup Guide](https://guide.openenergymonitor.org/integrations/openevse)
 - [OpenEnergyMonitor OpenEVSE Shop](https://shop.openenergymonitor.com/ev-charging/)
+
 - [OpenEVSE Controller Datasheet](https://www.openevse.com/files/OpenEVSE_Plus_v4.pdf)
 - [OpenEVSE Controller Hardware Repo](https://github.com/OpenEVSE/OpenEVSE_PLUS)
 - [OpenEVSE Project Homepage](https://openevse.com)
