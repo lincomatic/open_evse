@@ -63,7 +63,7 @@ void EnergyMeter::calcUsage()
       m_wattSeconds += ((g_EvseController.GetVoltage()/1000UL) * (ma/1000UL) * dms) / 1000UL;
 #endif
 #ifdef THREEPHASE //Multiple L1 current by the square root of 3 to get 3-phase energy
-      m_wattSeconds += (((g_EvseController.GetCurSvcLevel() == 2) ? VOLTS_FOR_L2:VOLTS_FOR_L1) * (ma/1000UL) * dms * 1.732) / 1000UL;
+      m_wattSeconds += (((g_EvseController.GetCurSvcLevel() == 2) ? VOLTS_FOR_L2:VOLTS_FOR_L1) * (ma/1000UL) * dms * 3) / 1000UL;
 #else // !VOLTMETER
      m_wattSeconds += (((g_EvseController.GetCurSvcLevel() == 2) ? VOLTS_FOR_L2:VOLTS_FOR_L1) * (ma/1000UL) * dms) / 1000UL;
 #endif // VOLTMETER
