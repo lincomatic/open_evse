@@ -1,5 +1,9 @@
 Change Log
 
+20180313 SCL
+- merge PR#83 THREEPHASE from Glyn Hudson
+- related code cleanup
+	
 D4.12.3 20180209 SCL
 - display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault 
 	

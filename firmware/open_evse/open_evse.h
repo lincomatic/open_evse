@@ -69,7 +69,7 @@
 
 // Enable three-phase energy calculation
 // Note: three-phase energy will always be calculated even if EV is only using singe-phase. Ony enable if always charging 3-phase EV and aware of this limitation.
-// #define THREPHASE
+//#define THREEPHASE
 
 // charging access control - if defined, enables RAPI G4/S4 commands
 //  to enable/disable charging function
