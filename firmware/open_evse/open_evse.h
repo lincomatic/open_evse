@@ -67,6 +67,10 @@
 // current measurement
 #define AMMETER
 
+// Enable three-phase energy calculation
+// Note: three-phase energy will always be calculated even if EV is only using singe-phase. Ony enable if always charging 3-phase EV and aware of this limitation.
+// #define THREPHASE
+
 // charging access control - if defined, enables RAPI G4/S4 commands
 //  to enable/disable charging function
 // if AUTH_LOCK_REG/IDX are also defined (see below), then a hardware pin is
@@ -659,7 +663,11 @@
 #else
 #define TEMPERATURE_AMBIENT_SHUTDOWN 680
 #endif
+<<<<<<< HEAD
 
+=======
+                                                  
+>>>>>>> 3-phase
 //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
 //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
 //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
