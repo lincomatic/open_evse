@@ -663,11 +663,7 @@
 #else
 #define TEMPERATURE_AMBIENT_SHUTDOWN 680
 #endif
-<<<<<<< HEAD
 
-=======
-                                                  
->>>>>>> 3-phase
 //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
 //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
 //  If temperatures get to this level it is advised to open the enclosure to look for trouble.

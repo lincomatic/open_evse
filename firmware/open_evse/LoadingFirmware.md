@@ -1,6 +1,6 @@
 # OpenEVSE Firmware Loading
 
-## Introduction 
+## Introduction
 
 Loading firmware to the OpenEVSE requires an ISP. There are many AVR/Arduino compatible programmers available from Adafruit, Sparkfun and the OpenEVSE Store. This wiki is based on the OpenEVSE AVR ISP found here: https://openevse-store.myshopify.com/collections/frontpage/products/openevse-programmer
 
@@ -49,7 +49,6 @@ If using `AVRISP mkII` ISP programmer:
 
 <div class="alert alert-success">
 Note: These following instructions have been extracted from Google Code and are not complete/properly edited
->>>>>>> upload-docs
 </div>
 
 The Arduino IDE includes an code editor, serial monitor, and will compile and upload your code to the OpenEVSE.
