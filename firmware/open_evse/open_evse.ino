@@ -2454,6 +2454,7 @@ void loop()
   // Force LCD update (required for CE certification testing) to restore LCD if corrupted.
   if ((millis()-lastlcdreset)>120000) {
     g_OBD.Update(OBD_UPD_FORCE);
+    lastlcdreset = millis();
   }
 
   WDT_RESET();
