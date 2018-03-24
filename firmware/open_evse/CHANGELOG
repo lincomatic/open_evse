@@ -1,5 +1,10 @@
 Change Log
 
+20180323 SCL
+- added PERIODIC_LCD_REFRESH_MS code for Glyn Hudson, currently disabled
+  -> redraw of LCD at periodic intervals, in case it gets corrupted
+  -> was needed for him to get past CE EMC testing
+	
 20180313 SCL
 - merge PR#83 THREEPHASE from Glyn Hudson
 - related code cleanup

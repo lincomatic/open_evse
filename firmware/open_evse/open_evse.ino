@@ -2457,7 +2457,20 @@ void loop()
   g_EnergyMeter.Update();
 #endif // KWH_RECORDING
 
+
+#ifdef PERIODIC_LCD_REFRESH_MS
+  // Force LCD update (required for CE certification testing) to restore LCD if corrupted.
+  {
+    static unsigned long lastlcdreset = 0;
+    if ((millis()-lastlcdreset)>PERIODIC_LCD_REFRESH_MS) {
+      g_OBD.Update(OBD_UPD_FORCE);
+      lastlcdreset = millis();
+    }
+    else g_OBD.Update();
+  }
+#else // !PERIODIC_LCD_REFRESH_MS
   g_OBD.Update();
+#endif // PERIODIC_LCD_REFRESH_MS
 
   ProcessInputs();
   

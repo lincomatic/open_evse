@@ -257,6 +257,10 @@
 // when not defined, use fast PWM -> 1/250 resolution
 #define PAFC_PWM
 
+// glynhudson reports that LCD gets corrupted by EMC testing during CE
+// certification.. redraw display periodically when enabled
+//#define PERIODIC_LCD_REFRESH_MS 120000UL
+
 //-- end features
 
 #ifndef DEFAULT_LCD_BKL_TYPE
