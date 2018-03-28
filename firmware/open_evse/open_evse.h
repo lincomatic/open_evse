@@ -50,6 +50,7 @@
 // - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
 // - Charging level default to L2
 // - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
+// - Enable PP_AUTO_AMPACITY
 // - Add '.EU' to version number
 
 
@@ -114,7 +115,7 @@
 #define WATCHDOG
 
 // auto detect ampacity by PP pin resistor
-//#define PP_AUTO_AMPACITY
+#define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
