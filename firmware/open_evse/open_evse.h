@@ -52,6 +52,7 @@
 // - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
 // - Enable PP_AUTO_AMPACITY
 // - Add '.EU' to version number
+// - Enable LCD Redra every couple of min (required for EMC/CE)
 
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
@@ -265,6 +266,10 @@
 // phase and frequency correct PWM 1/8000 resolution
 // when not defined, use fast PWM -> 1/250 resolution
 #define PAFC_PWM
+
+// glynhudson reports that LCD gets corrupted by EMC testing during CE
+// certification.. redraw display periodically when enabled
+#define PERIODIC_LCD_REFRESH_MS 120000UL
 
 //-- end features
 
