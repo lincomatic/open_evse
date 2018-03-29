@@ -41,8 +41,8 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "4.12.3.EU1"
-
+// See platformio.ini
+// #define VERSION "4.12.3.EU1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
