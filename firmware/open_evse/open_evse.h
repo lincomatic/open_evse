@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "4.12.3.EU2"
+#define VERSION "4.12.3.EU1"
 
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -50,7 +50,6 @@
 // - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
 // - Charging level default to L2
 // - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
-// - Enable PP_AUTO_AMPACITY (don't exceed max current capacity of non-tethered cable)
 // - Add '.EU' to version number
 // - Enable LCD Redra every couple of min (required for EMC/CE)
 
@@ -116,7 +115,7 @@
 #define WATCHDOG
 
 // auto detect ampacity by PP pin resistor
-#define PP_AUTO_AMPACITY
+// #define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
