@@ -2124,7 +2124,7 @@ void BtnHandler::ChkBtn()
 
 #ifdef DELAYTIMER
 	if (g_DelayTimer.IsTimerEnabled()) {
-	  uint8_t intimeinterval = g_DelayTimer.IsInTimeInterval();
+	  uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
 	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
 	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
 	    g_DelayTimer.SetManualOverride();
@@ -2239,7 +2239,7 @@ void DelayTimer::Init() {
   ClrManualOverride();
 }
 
-uint8_t DelayTimer::IsInTimeInterval()
+uint8_t DelayTimer::IsInAwakeTimeInterval()
 {
   uint8_t inTimeInterval = false;
 
@@ -2276,7 +2276,7 @@ void DelayTimer::CheckTime()
       IsTimerValid()) {
     unsigned long curms = millis();
     if ((curms - m_LastCheck) > 1000ul) {
-      uint8_t inTimeInterval = IsInTimeInterval();
+      uint8_t inTimeInterval = IsInAwakeTimeInterval();
       uint8_t evseState = g_EvseController.GetState();
 
       if (inTimeInterval) { // charge now

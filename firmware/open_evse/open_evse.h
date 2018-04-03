@@ -1266,7 +1266,7 @@ public:
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     //    g_EvseController.SaveSettings();
   };
-  uint8_t IsInTimeInterval();
+  uint8_t IsInAwakeTimeInterval(); // 
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time
