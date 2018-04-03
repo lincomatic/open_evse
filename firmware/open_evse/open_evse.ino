@@ -2011,9 +2011,6 @@ Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetChargeLimitkWh(m_CurIdx);
-#ifdef DELAYTIMER
-  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2078,9 +2075,6 @@ Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetTimeLimit15(m_CurIdx);
-#ifdef DELAYTIMER
-  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }

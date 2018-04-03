@@ -1802,18 +1802,41 @@ uint32_t J1772EVSEController::ReadVoltmeter()
 #ifdef CHARGE_LIMIT
 void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
 {
-  m_chargeLimitkWh = kwh;
-  // extend session by kwh
-  m_chargeLimitTotWs = g_EnergyMeter.GetSessionWs() + (3600000ul * (uint32_t)kwh);
+  if (kwh) {
+    m_chargeLimitkWh = kwh;
+    // extend session by kwh
+    m_chargeLimitTotWs = g_EnergyMeter.GetSessionWs() + (3600000ul * (uint32_t)kwh);
+#ifdef DELAYTIMER
+  g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
+  }
+  else {
+    ClrChargeLimit();
+#ifdef DELAYTIMER
+    g_DelayTimer.ClrManualOverride();
+#endif // DELAYTIMER
+  }
 }
 #endif // CHARGE_LIMIT
 
 #ifdef TIME_LIMIT
 void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
 {
-  m_timeLimit15 = mind15;
-  // extend session by mind15 15 min increments
-  m_timeLimitEnd = GetElapsedChargeTime() + (time_t)(15lu*60lu * (unsigned long)mind15);
+  if (mind15) {
+    m_timeLimit15 = mind15;
+    // extend session by mind15 15 min increments
+    m_timeLimitEnd = GetElapsedChargeTime() + (time_t)(15lu*60lu * (unsigned long)mind15);
+#ifdef DELAYTIMER
+    g_DelayTimer.SetManualOverride();
+#endif // DELAYTIMER
+  }
+  else {
+    ClrTimeLimit();
+#ifdef DELAYTIMER
+    g_DelayTimer.ClrManualOverride();
+#endif // DELAYTIMER
+  }
+
 }
 #endif // TIME_LIMIT
 

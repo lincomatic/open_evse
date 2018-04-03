@@ -360,9 +360,6 @@ int EvseRapiProcessor::processCmd()
       if (tokenCnt == 2) {
 	if (g_EvseController.LimitsAllowed()) {
 	  g_EvseController.SetTimeLimit15(dtou32(tokens[1]));
-#ifdef DELAYTIMER
-	  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
 	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
 	  rc = 0;
 	}
@@ -435,9 +432,6 @@ int EvseRapiProcessor::processCmd()
       if (tokenCnt == 2) {
 	if (g_EvseController.LimitsAllowed()) {
 	  g_EvseController.SetChargeLimitkWh(dtou32(tokens[1]));
-#ifdef DELAYTIMER
-	  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
 	  if (!g_OBD.UpdatesDisabled()) g_OBD.Update(OBD_UPD_FORCE);
 	  rc = 0;
 	}
