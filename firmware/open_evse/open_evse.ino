@@ -2301,8 +2301,8 @@ void DelayTimer::CheckTime()
       }
       else { // sleep now
 	if (!ManualOverrideIsSet()) {
-	  if ((evseState != EVSE_STATE_SLEEPING) &&
-	      (evseState != EVSE_STATE_C) // don't interrupt active charging
+	  if ((evseState != EVSE_STATE_SLEEPING)
+	      //	       && (evseState != EVSE_STATE_C) // don't interrupt active charging
 	      ) {
 	    g_EvseController.Sleep();
 	  }
