@@ -1,5 +1,10 @@
 Change Log
 
+20180328 SCL
+- fixed bug: $ST command would clear timer instead of setting it if all
+	4 parameters had leading zeros
+	e.g. $ST 01 05 02 01
+	
 20180323 SCL
 - added PERIODIC_LCD_REFRESH_MS code for Glyn Hudson, currently disabled
   -> redraw of LCD at periodic intervals, in case it gets corrupted

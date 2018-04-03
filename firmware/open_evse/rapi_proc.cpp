@@ -485,12 +485,16 @@ int EvseRapiProcessor::processCmd()
     case 'T': // timer
       if (tokenCnt == 5) {
 	extern DelayTimer g_DelayTimer;
-	if ((*tokens[1] == '0') && (*tokens[2] == '0') && (*tokens[3] == '0') && (*tokens[4] == '0')) {
+	u1.u8 = (uint8_t)dtou32(tokens[1]);
+	u2.u8 = (uint8_t)dtou32(tokens[2]);
+	u3.u8 = (uint8_t)dtou32(tokens[3]);
+	u4.u8 = (uint8_t)dtou32(tokens[4]);
+	if ((u1.u8 == 0) && (u2.u8 == 0) && (u3.u8 == 0) && (u4.u8 == 0)) {
 	  g_DelayTimer.Disable();
 	}
 	else {
-	  g_DelayTimer.SetStartTimer(dtou32(tokens[1]),dtou32(tokens[2]));
-	  g_DelayTimer.SetStopTimer(dtou32(tokens[3]),dtou32(tokens[4]));
+	  g_DelayTimer.SetStartTimer(u1.u8,u2.u8);
+	  g_DelayTimer.SetStopTimer(u3.u8,u4.u8);
 	  g_DelayTimer.Enable();
 	}
 	rc = 0;
