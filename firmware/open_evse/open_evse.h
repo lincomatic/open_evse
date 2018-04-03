@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D4.12.3"
+#define VERSION "D4.13.0"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 

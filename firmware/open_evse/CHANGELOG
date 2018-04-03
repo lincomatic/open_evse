@@ -1,5 +1,11 @@
 Change Log
 
+D4.13.0 20180403 SCL
+- revert change from D4.12.0: delay timer would always wait for EV finish charging before ending.
+  -> timer will go to sleep at end of specified time window unless charge or time limit set -> charge or time limit will still override timer end.
+- cleanup of time/charge limit zeroing code
+
+	
 20180328 SCL
 - fixed bug: $ST command would clear timer instead of setting it if all
 	4 parameters had leading zeros
