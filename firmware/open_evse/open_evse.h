@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 // See platformio.ini
-// #define VERSION "4.12.3.EU1"
+//#define VERSION "D4.13.0"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -1275,7 +1275,7 @@ public:
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     //    g_EvseController.SaveSettings();
   };
-  uint8_t IsInTimeInterval();
+  uint8_t IsInAwakeTimeInterval(); //
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time

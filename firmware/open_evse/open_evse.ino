@@ -2011,9 +2011,6 @@ Menu *ChargeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetChargeLimitkWh(m_CurIdx);
-#ifdef DELAYTIMER
-  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2078,9 +2075,6 @@ Menu *TimeLimitMenu::Select()
 {
   showCurSel(1);
   g_EvseController.SetTimeLimit15(m_CurIdx);
-#ifdef DELAYTIMER
-  g_DelayTimer.SetManualOverride();
-#endif // DELAYTIMER
   delay(500);
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
@@ -2130,7 +2124,7 @@ void BtnHandler::ChkBtn()
 
 #ifdef DELAYTIMER
 	if (g_DelayTimer.IsTimerEnabled()) {
-	  uint8_t intimeinterval = g_DelayTimer.IsInTimeInterval();
+	  uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
 	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
 	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
 	    g_DelayTimer.SetManualOverride();
@@ -2245,7 +2239,7 @@ void DelayTimer::Init() {
   ClrManualOverride();
 }
 
-uint8_t DelayTimer::IsInTimeInterval()
+uint8_t DelayTimer::IsInAwakeTimeInterval()
 {
   uint8_t inTimeInterval = false;
 
@@ -2282,7 +2276,7 @@ void DelayTimer::CheckTime()
       IsTimerValid()) {
     unsigned long curms = millis();
     if ((curms - m_LastCheck) > 1000ul) {
-      uint8_t inTimeInterval = IsInTimeInterval();
+      uint8_t inTimeInterval = IsInAwakeTimeInterval();
       uint8_t evseState = g_EvseController.GetState();
 
       if (inTimeInterval) { // charge now
@@ -2301,8 +2295,8 @@ void DelayTimer::CheckTime()
       }
       else { // sleep now
 	if (!ManualOverrideIsSet()) {
-	  if ((evseState != EVSE_STATE_SLEEPING) &&
-	      (evseState != EVSE_STATE_C) // don't interrupt active charging
+	  if ((evseState != EVSE_STATE_SLEEPING)
+	      //	       && (evseState != EVSE_STATE_C) // don't interrupt active charging
 	      ) {
 	    g_EvseController.Sleep();
 	  }
