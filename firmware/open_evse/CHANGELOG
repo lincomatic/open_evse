@@ -2,6 +2,7 @@ Change Log
 
 20180404 SCL
 - get rid of deprecated/superfluous PP_TABLE_TESLA
+- don't let delay timer override EVSE_STATE_DISABLED
 	
 D4.13.0 20180403 SCL
 - revert change from D4.12.0: delay timer would always wait for EV finish charging before ending.

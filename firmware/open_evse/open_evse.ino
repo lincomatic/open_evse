@@ -2272,6 +2272,7 @@ uint8_t DelayTimer::IsInAwakeTimeInterval()
 void DelayTimer::CheckTime()
 {
   if (!g_EvseController.InFaultState() &&
+      !(g_EvseController.GetState() == EVSE_STATE_DISABLED) &&
       IsTimerEnabled() &&
       IsTimerValid()) {
     unsigned long curms = millis();
