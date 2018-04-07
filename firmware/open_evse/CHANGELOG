@@ -1,5 +1,8 @@
 Change Log
 
+20180406 SCL
+- fix compile error when AMMETER not defined
+	
 20180404 SCL
 - get rid of deprecated/superfluous PP_TABLE_TESLA
 - don't let delay timer override EVSE_STATE_DISABLED

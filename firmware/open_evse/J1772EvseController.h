@@ -406,9 +406,6 @@ public:
     readAmmeter();
     return m_AmmeterReading / 1000;
   }
-  uint8_t LimitsAllowed() {
-    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
-  }
 #ifdef CHARGE_LIMIT
   void ClrChargeLimit() { m_chargeLimitTotWs = 0; m_chargeLimitkWh = 0; }
   void SetChargeLimitkWh(uint8_t kwh);
@@ -418,6 +415,9 @@ public:
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif // AMMETER
+  uint8_t LimitsAllowed() {
+    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
+  }
 #ifdef TIME_LIMIT
   void ClrTimeLimit() { m_timeLimitEnd = 0; m_timeLimit15 = 0; }
   void SetTimeLimitEnd(time_t limit) { m_timeLimitEnd = limit; }
