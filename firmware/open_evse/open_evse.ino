@@ -721,6 +721,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
       break;
+#ifdef GFI_SELFTEST
     case EVSE_STATE_GFI_TEST_FAILED:
       SetGreenLed(0);
       SetRedLed(1);
@@ -729,7 +730,8 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdMsg_P(g_psTestFailed,g_psGfci);
 #endif
       break;
-    case EVSE_STATE_SLEEPING:
+#endif // GFI_SELFTEST
+	case EVSE_STATE_SLEEPING:
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2
@@ -764,6 +766,7 @@ void OnboardDisplay::Update(int8_t updmode)
   if (((curms-m_LastUpdateMs) >= 1000) || (updmode == OBD_UPD_FORCE)) {
     m_LastUpdateMs = curms;
     
+#ifdef GFI
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
 #ifdef LCD16X2
@@ -777,6 +780,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // LCD16X2
       return;
     }
+#endif // GFI
 
 #ifdef RTC
     g_CurrTime = g_RTC.now();

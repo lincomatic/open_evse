@@ -318,6 +318,11 @@ public:
     else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+#else
+  uint8_t AutoSvcLevelEnabled() { return 0; }
+  void EnableAutoSvcLevel(uint8_t tf) {}
+  void SetAutoSvcLvlSkipped(uint8_t tf) {}
+  uint8_t AutoSvcLvlSkipped() { return 1; }
 #endif // AUTOSVCLEVEL
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
@@ -344,7 +349,10 @@ public:
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
   }
   void EnableGfiSelfTest(uint8_t tf);
-#endif
+#else // !GFI_SELFTEST
+  uint8_t GfiSelfTestEnabled() { return 0; }
+  void EnableGfiSelfTest(uint8_t tf) {}
+#endif // GFI_SELFTEST
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING  
