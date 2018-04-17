@@ -1768,6 +1768,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   return rc;
 }
 
+#if defined(GFI) || defined(ADVPWR)
 unsigned long J1772EVSEController::GetResetMs()
 {
 #ifdef GFI
@@ -1776,6 +1777,7 @@ unsigned long J1772EVSEController::GetResetMs()
   return GFI_TIMEOUT - (millis() - m_NoGndStart);
 #endif // GFI
 }
+#endif // GFI || ADVPWR
 
 
 #ifdef VOLTMETER
