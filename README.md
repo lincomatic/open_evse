@@ -15,7 +15,7 @@ Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
 ### EmonEVSE
 
--EmonEVSE (non-tethered type-2 EVSE unit)
+EmonEVSE (non-tethered type-2 EVSE unit)
 
 - `PP_AUTO_AMPACITY`enabled to set max current based on non-tethered cable connected 
 - Three-phase option with `THREEPHASE`enabled to calculate three-phase energy
