@@ -9,7 +9,7 @@ Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 - Charging level default to `L2`
 - Set `MAX_CURRENT_CAPACITY_L2 32` (limit for single-phase charging in UK/EU)
 - Add '.EU' to version number
-- Enable LCD Redra every couple of min (required for EMC/CE)
+- Enable LCD Redraw every couple of min (required for EMC/CE)
 
 
 ## Resources
