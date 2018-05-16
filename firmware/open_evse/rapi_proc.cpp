@@ -251,8 +251,6 @@ int EvseRapiProcessor::processCmd()
     case '1': // simulate front panel short press
       g_BtnHandler.DoShortPress(g_EvseController.InFaultState());
       g_OBD.Update(OBD_UPD_FORCE);
-      sprintf(buffer,"%02x",(int)g_EvseController.GetState());
-      bufCnt = 1; // flag response text output
       rc = 0;
       break;
 #ifdef LCD16X2
