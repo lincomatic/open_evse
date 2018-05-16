@@ -32,7 +32,8 @@
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
 #define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
 #define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown
-#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_TEMPERATURE
+#define EVSE_STATE_OVER_CURRENT 0x0B // over current error shutdown
+#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_CURRENT
            
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
@@ -172,6 +173,9 @@ class J1772EVSEController {
 #ifdef MENNEKES_LOCK
   MennekesLock m_MennekesLock;
 #endif // MENNEKES_LOCK
+#ifdef OVERCURRENT_THRESHOLD
+  unsigned long m_OverCurrentStartMs;
+#endif // OVERCURRENT_THRESHOLD
 
 #ifdef ADVPWR
 // power states for doPost() (active low)

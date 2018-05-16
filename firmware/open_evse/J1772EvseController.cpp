@@ -915,6 +915,11 @@ void J1772EVSEController::Init()
   m_AmmeterReading = 0;
   m_ChargingCurrent = 0;
   //  m_LastAmmeterReadMs = 0;
+
+#ifdef OVERCURRENT_THRESHOLD
+  m_OverCurrentStartMs = 0;
+#endif //OVERCURRENT_THRESHOLD
+
 #endif // AMMETER
 
 #ifdef VOLTMETER
@@ -1606,6 +1611,27 @@ if (TempChkEnabled()) {
   if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeOnTime;
+
+#ifdef OVERCURRENT_THRESHOLD
+    //testing    m_ChargingCurrent = (m_CurrentCapacity+OVERCURRENT_THRESHOLD+12)*1000L;
+    if (m_ChargingCurrent >= ((m_CurrentCapacity+OVERCURRENT_THRESHOLD)*1000L)) {
+      if (m_OverCurrentStartMs) { // already in overcurrent state
+	if ((millis()-m_OverCurrentStartMs) >= OVERCURRENT_TIMEOUT) {
+	  //
+	  // overcurrent for too long. stop charging and hard fault
+	  //
+	  // spin until EV is disconnected
+	  m_EvseState = EVSE_STATE_OVER_CURRENT;
+	  HardFault();
+	  
+	  m_OverCurrentStartMs = 0; // clear overcurrent
+	}
+      }
+      else {
+	m_OverCurrentStartMs = millis();
+      }
+    }
+#endif // OVERCURRENT_THRESHOLD    
 
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {

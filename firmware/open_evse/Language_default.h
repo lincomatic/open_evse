@@ -78,4 +78,5 @@
 #define STR_LEVEL_2					   "Level 2 (240V)"  
 #define STR_L1						     "L1"  
 #define STR_L2						     "L2"  
+#define STR_OVER_CURRENT "OVERCURRENT"
 //#endif

@@ -167,6 +167,17 @@ extern AutoCurrentCapacityController g_ACCController;
 // not yet #define TEMPERATURE_MONITORING_NY
 
 #ifdef AMMETER
+
+// if OVERCURRENT_THRESHOLD is defined, then EVSE will hard fault in
+// the event that the EV is pulling more current than it's allowed to
+// declare overcurrent when charging amps > pilot amps + OVERCURRENT_THRESHOLD
+#define OVERCURRENT_THRESHOLD 5 // A
+// go to error state overcurrent by OVERCURRENT_THRESHOLD amps
+// for OVERCURRENT_TIMEOUT ms
+#define OVERCURRENT_TIMEOUT 5000UL // ms
+
+
+
 // kWh Recording feature depends upon #AMMETER support
 // comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define KWH_RECORDING

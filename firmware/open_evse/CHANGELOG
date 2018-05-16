@@ -1,7 +1,12 @@
 Change Log
 
+20180516 SCL
+- implement over current protection. if OVERCURRENT_THRESHOLD is set,
+	then if EV draws >= OVERCURRENT_THRESHOLD amps for >=
+	OVERCURRENT_TIMEOUT ms -> hard fault
+	
 20180515 SCL
-- implement $F5 to simulate front panel short press
+- implement $F1 to simulate front panel short press
 - fix SAFETY BUG: don't let $SC override over temperature throttling
 	-> during over temperature, $SC will not be allowed to increase
 	volatile current capacity

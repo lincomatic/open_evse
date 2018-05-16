@@ -2,28 +2,16 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2015 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2018 Sam C. Lin <lincomatic@gmail.com>
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
  * portions Copyright (c) 2015 William McBrine
-
- Revised  Ver	By		Reason
- 6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
- 6/25/13  20b4	Scott Rubin	fixed LCD display bugs, CLI fixes, when RTC disabled
- 6/30/13  20b5	Scott Rubin	added LcdDetected() function, prevents hang if LCD not installed
- 7/06/13  20b5	Scott Rubin	rewrote power detection in POST function for 1 or 2 relays
- 7/11/13  20b5	Scott Rubin	skips POST if EV is connected, won't charge if open ground or stuck relay
- 8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
- 8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
- 9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
- 10/25/14      Craig K         add smoothing to the Amperage readout
- 3/1/15        Craig K         add TEMPERATURE_MONITORING
- 3/7/15        Craig K         add KWH_RECORDING
-  
+ * portions Copyright (c) 2013 Scott Ruben
+ *
  * This file is part of Open EVSE.
-
+ *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)
@@ -685,7 +673,20 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdMsg_P(g_psSvcReq,g_psTemperatureFault);  //  SERVICE REQUIRED     OVER TEMPERATURE 
 #endif
       break;
-#endif //TEMPERATURE_MONITORING        
+#endif //TEMPERATURE_MONITORING     
+#ifdef OVERCURRENT_THRESHOLD
+    case EVSE_STATE_OVER_CURRENT:
+      SetGreenLed(0);
+      SetRedLed(1);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdPrint_P(0,g_psSvcReq);
+      strcpy_P(g_sTmp,g_psOverCurrent);
+      sprintf(g_sTmp+strlen(g_sTmp)," %dA",(int)(g_EvseController.GetChargingCurrent()/1000-g_EvseController.GetCurrentCapacity()));
+      LcdPrint(1,g_sTmp);
+#endif
+      break;
+#endif // OVERCURRENT_THRESHOLD   
     case EVSE_STATE_NO_GROUND:
       SetGreenLed(0);
       SetRedLed(1);
