@@ -401,7 +401,22 @@ int EvseRapiProcessor::processCmd()
 	else {
 	  u1.u8 = 0; // nosave = 0
 	}
-	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1,u1.u8);
+#ifdef TEMPERATURE_MONITORING
+	u2.u8 = dtou32(tokens[1]);
+	if (u1.u8 && g_TempMonitor.OverTemperature() &&
+	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
+	  // don't allow raising current capacity during
+	  // overtemperature event
+	  rc = 1;
+	}
+	else {
+	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	}
+#else // !TEMPERATURE_MONITORING
+	rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+#endif // TEMPERATURE_MONITORING
+
+
 	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
 	bufCnt = 1; // flag response text output
       }
