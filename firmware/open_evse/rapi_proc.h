@@ -147,7 +147,11 @@ SC amps [V]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK amps
    if amps > maximum current capacity, will set to maximum and return $NK amps
+   if V specified, andcurrently in over temperature status, current capacity
+     will be unchanged, and return $NK amps if current capacity will be
+     increased by amps
    otherwise return $OK amps
+   N.B.: returned amps is the actual current capacity set, not the requested amps
    default action is to save new current capacity to EEPROM.
    if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot
