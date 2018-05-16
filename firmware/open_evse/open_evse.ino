@@ -2100,6 +2100,44 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
+int8_t BtnHandler::DoShortPress(int8_t infaultstate)
+{
+#ifdef TEMPERATURE_MONITORING
+  g_TempMonitor.ClrOverTemperatureLogged();
+#endif
+  if (m_CurMenu) {
+    m_CurMenu->Next();
+  }
+  else {
+    // force into setup menu when in fault
+    if (infaultstate) return 1; // triggers longpress action
+    else {
+      if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
+	  (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
+	g_EvseController.Enable();
+      }
+      else {
+	g_EvseController.Sleep();
+      }
+      
+#ifdef DELAYTIMER
+      if (g_DelayTimer.IsTimerEnabled()) {
+	uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
+	uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
+	if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
+	  g_DelayTimer.SetManualOverride();
+	}
+	else {
+	  g_DelayTimer.ClrManualOverride();
+	}
+      }
+#endif // DELAYTIMER
+    }
+  }
+
+  return 0;
+}
+
 void BtnHandler::ChkBtn()
 {
   WDT_RESET();
@@ -2108,37 +2146,8 @@ void BtnHandler::ChkBtn()
 
   m_Btn.read();
   if (m_Btn.shortPress()) {
-#ifdef TEMPERATURE_MONITORING
-    g_TempMonitor.ClrOverTemperatureLogged();
-#endif
-    if (m_CurMenu) {
-      m_CurMenu->Next();
-    }
-    else {
-      // force into setup menu when in fault
-      if (infaultstate) goto longpress;
-      else {
-	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
-	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
-	  g_EvseController.Enable();
-	}
-	else {
-	  g_EvseController.Sleep();
-	}
-
-#ifdef DELAYTIMER
-	if (g_DelayTimer.IsTimerEnabled()) {
-	  uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
-	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
-	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
-	    g_DelayTimer.SetManualOverride();
-          }
-	  else {
-	    g_DelayTimer.ClrManualOverride();
-   	  }
-	}
-#endif // DELAYTIMER
-      }
+    if (DoShortPress(infaultstate)) {
+      goto longpress;
     }
   }
   else if (m_Btn.longPress()) {

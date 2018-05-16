@@ -79,6 +79,10 @@ F0 {1|0}- enable/disable display updates
      enables/disables g_OBD.Update()
  $F0 1^43 - enable display updates and call g_OBD.Update()
  $F0 0^42 - disable display updates
+F1 - simulate front panel button short press
+ response:
+  $OK evsestate
+  evsestate (hex): EVSE_STATE_XXX
 FB color - set LCD backlight color
 colors:
  OFF 0
