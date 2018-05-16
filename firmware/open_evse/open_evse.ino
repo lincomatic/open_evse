@@ -2395,7 +2395,7 @@ void EvseReset()
   g_EvseController.Init();
 
 #ifdef PP_AUTO_AMPACITY
-  g_ACCController.SetMaxAmps(g_EvseController.GetCurrentCapacity());
+  g_ACCController.SetMaxAmps(g_EvseController.GetMaxCurrentCapacity());
   g_ACCController.AutoSetCurrentCapacity();
 #endif
 }
