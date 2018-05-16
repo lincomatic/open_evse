@@ -1741,6 +1741,15 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   int rc = 0;
   uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
 
+#ifdef PP_AUTO_AMPACITY
+  if ((GetState() >= EVSE_STATE_B) && (GetState() <= EVSE_STATE_C)) {
+    uint8_t mcc = g_ACCController.ReadPPMaxAmps();
+    if (mcc && (mcc < maxcurrentcap)) {
+      maxcurrentcap = mcc;
+    }
+  }
+#endif // PP_AUTO_AMPACITY
+
   if ((amps >= MIN_CURRENT_CAPACITY_J1772) && (amps <= maxcurrentcap)) {
     m_CurrentCapacity = amps;
   }

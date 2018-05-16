@@ -147,6 +147,7 @@ SC amps [V]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK amps
    if amps > maximum current capacity, will set to maximum and return $NK amps
+   if amps > maximum PP current capacity, will set to maximum PP current capacity and return $NK amps
    if V specified, andcurrently in over temperature status, current capacity
      will be unchanged, and return $NK amps if current capacity will be
      increased by amps

@@ -34,7 +34,7 @@ AutoCurrentCapacityController::AutoCurrentCapacityController() :
   maxAmps = 0;
 }
 
-void AutoCurrentCapacityController::AutoSetCurrentCapacity()
+uint8_t AutoCurrentCapacityController::ReadPPMaxAmps()
 {
   // n.b. should probably sample a few times and average it
   uint16_t adcval = adcPP.read();
@@ -46,6 +46,14 @@ void AutoCurrentCapacityController::AutoSetCurrentCapacity()
       break;
     }
   }
+
+  return amps;
+}
+
+
+void AutoCurrentCapacityController::AutoSetCurrentCapacity()
+{
+  uint8_t amps = ReadPPMaxAmps();
 
   if (amps > maxAmps) {
     amps = maxAmps;

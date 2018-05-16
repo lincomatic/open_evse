@@ -22,13 +22,14 @@ typedef struct pp_amps {
 
 class AutoCurrentCapacityController {
   AdcPin adcPP;
-  uint8_t maxAmps;
+  uint8_t maxAmps; // PP can't override this current
   uint8_t curAmps;
 
 public:
   AutoCurrentCapacityController();
   uint8_t GetCurAmps() { return curAmps; }
   void SetMaxAmps(int8_t amps) { maxAmps = amps; }
+  uint8_t ReadPPMaxAmps();
 
   void AutoSetCurrentCapacity();
 };

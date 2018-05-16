@@ -113,6 +113,8 @@
 #define PP_TABLE_IEC
 
 #include "AutoCurrentCapacityController.h"
+
+extern AutoCurrentCapacityController g_ACCController;
 #endif
 
 // charge for a specified amount of time and then stop
