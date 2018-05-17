@@ -4,6 +4,13 @@
 
 Loading firmware to the OpenEVSE requires an ISP. There are many AVR/Arduino compatible programmers available from Adafruit, Sparkfun and the OpenEVSE Store. This wiki is based on the OpenEVSE AVR ISP found here: https://openevse-store.myshopify.com/collections/frontpage/products/openevse-programmer
 
+## Falsh pre-compiled using avrdude:
+
+If compiling firmware is not required the easiest method to load pre-compiled firmware releases is to use avrdude and an ISP programmer:
+
+`$ avrdude -p atmega328p -c usbasp -P usb -e -U flash:w:firmware.hex`
+
+
 ## Window Driver
 
 Platform IO and Arduino IDE need the libusbK driver, not the driver you may have installed as part of the [How to Load OpenEVSE Firmware (WinAVR)](https://openevse.dozuki.com/Guide/How+to+Load+OpenEVSE+Firmware+%28WinAVR%29/7) guide.
