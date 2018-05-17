@@ -17,7 +17,7 @@ Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
 EmonEVSE (non-tethered type-2 EVSE unit)
 
-- `PP_AUTO_AMPACITY`enabled to set max current based on non-tethered cable connected 
+- `PP_AUTO_AMPACITY`enabled to set max current based on non-tethered cable connected
 - Three-phase option with `THREEPHASE`enabled to calculate three-phase energy
 
 
@@ -40,6 +40,12 @@ Firmware compile & upload help: [firmware/open_evse/LoadingFirmware.md](firmware
 NOTES:
 - Working versions of the required libraries are included in the libraries/ folder
 - PlatformIO / Arduino 1.6.x+ is STRONGLY RECOMMENDED for compiling OpenEVSE. Older versions of Arduino will build sketches which are too big to fit into OpenEVSE, unless features are disabled.
+
+## Falsh pre-compiled using avrdude:
+
+`$ avrdude -p atmega328p -c usbasp -P usb -e -U flash:w:firmware.hex`
+
+ISP programmer required
 
 ***
 
