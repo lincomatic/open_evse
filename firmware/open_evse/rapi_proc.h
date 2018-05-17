@@ -79,6 +79,9 @@ F0 {1|0}- enable/disable display updates
      enables/disables g_OBD.Update()
  $F0 1^43 - enable display updates and call g_OBD.Update()
  $F0 0^42 - disable display updates
+F1 - simulate front panel button short press
+ N.B.: it is possible that an asynchronous state change will be sent by the
+  EVSE prior to sending the response to $F1
 FB color - set LCD backlight color
 colors:
  OFF 0
@@ -143,7 +146,12 @@ SC amps [V]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK amps
    if amps > maximum current capacity, will set to maximum and return $NK amps
+   if amps > maximum PP current capacity, will set to maximum PP current capacity and return $NK amps
+   if V specified, andcurrently in over temperature status, current capacity
+     will be unchanged, and return $NK amps if current capacity will be
+     increased by amps
    otherwise return $OK amps
+   N.B.: returned amps is the actual current capacity set, not the requested amps
    default action is to save new current capacity to EEPROM.
    if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot

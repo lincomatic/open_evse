@@ -2,28 +2,16 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2015 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2018 Sam C. Lin <lincomatic@gmail.com>
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
  * portions Copyright (c) 2015 William McBrine
-
- Revised  Ver	By		Reason
- 6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
- 6/25/13  20b4	Scott Rubin	fixed LCD display bugs, CLI fixes, when RTC disabled
- 6/30/13  20b5	Scott Rubin	added LcdDetected() function, prevents hang if LCD not installed
- 7/06/13  20b5	Scott Rubin	rewrote power detection in POST function for 1 or 2 relays
- 7/11/13  20b5	Scott Rubin	skips POST if EV is connected, won't charge if open ground or stuck relay
- 8/12/13  20b5b Scott Rubin    fix GFI error - changed gfi.Reset() to check for constant GFI signal
- 8/26/13  20b6 Scott Rubin     add Stuck Relay State delay, fix Stuck Relay state exit (for Active E)
- 9/20/13  20b7 Chris Howell    updated/tweaked/shortened CLI messages   
- 10/25/14      Craig K         add smoothing to the Amperage readout
- 3/1/15        Craig K         add TEMPERATURE_MONITORING
- 3/7/15        Craig K         add KWH_RECORDING
-  
+ * portions Copyright (c) 2013 Scott Ruben
+ *
  * This file is part of Open EVSE.
-
+ *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)
@@ -685,7 +673,20 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdMsg_P(g_psSvcReq,g_psTemperatureFault);  //  SERVICE REQUIRED     OVER TEMPERATURE 
 #endif
       break;
-#endif //TEMPERATURE_MONITORING        
+#endif //TEMPERATURE_MONITORING     
+#ifdef OVERCURRENT_THRESHOLD
+    case EVSE_STATE_OVER_CURRENT:
+      SetGreenLed(0);
+      SetRedLed(1);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdPrint_P(0,g_psSvcReq);
+      strcpy_P(g_sTmp,g_psOverCurrent);
+      sprintf(g_sTmp+strlen(g_sTmp)," %dA",(int)(g_EvseController.GetChargingCurrent()/1000-g_EvseController.GetCurrentCapacity()));
+      LcdPrint(1,g_sTmp);
+#endif
+      break;
+#endif // OVERCURRENT_THRESHOLD   
     case EVSE_STATE_NO_GROUND:
       SetGreenLed(0);
       SetRedLed(1);
@@ -721,6 +722,7 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
       break;
+#ifdef GFI_SELFTEST
     case EVSE_STATE_GFI_TEST_FAILED:
       SetGreenLed(0);
       SetRedLed(1);
@@ -729,7 +731,8 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdMsg_P(g_psTestFailed,g_psGfci);
 #endif
       break;
-    case EVSE_STATE_SLEEPING:
+#endif // GFI_SELFTEST
+	case EVSE_STATE_SLEEPING:
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2
@@ -764,6 +767,7 @@ void OnboardDisplay::Update(int8_t updmode)
   if (((curms-m_LastUpdateMs) >= 1000) || (updmode == OBD_UPD_FORCE)) {
     m_LastUpdateMs = curms;
     
+#ifdef GFI
     if (!g_EvseController.InHardFault() &&
 	((curstate == EVSE_STATE_GFCI_FAULT) || (curstate == EVSE_STATE_NO_GROUND))) {
 #ifdef LCD16X2
@@ -777,6 +781,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // LCD16X2
       return;
     }
+#endif // GFI
 
 #ifdef RTC
     g_CurrTime = g_RTC.now();
@@ -2096,6 +2101,44 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
+int8_t BtnHandler::DoShortPress(int8_t infaultstate)
+{
+#ifdef TEMPERATURE_MONITORING
+  g_TempMonitor.ClrOverTemperatureLogged();
+#endif
+  if (m_CurMenu) {
+    m_CurMenu->Next();
+  }
+  else {
+    // force into setup menu when in fault
+    if (infaultstate) return 1; // triggers longpress action
+    else {
+      if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
+	  (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
+	g_EvseController.Enable();
+      }
+      else {
+	g_EvseController.Sleep();
+      }
+      
+#ifdef DELAYTIMER
+      if (g_DelayTimer.IsTimerEnabled()) {
+	uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
+	uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
+	if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
+	  g_DelayTimer.SetManualOverride();
+	}
+	else {
+	  g_DelayTimer.ClrManualOverride();
+	}
+      }
+#endif // DELAYTIMER
+    }
+  }
+
+  return 0;
+}
+
 void BtnHandler::ChkBtn()
 {
   WDT_RESET();
@@ -2104,37 +2147,8 @@ void BtnHandler::ChkBtn()
 
   m_Btn.read();
   if (m_Btn.shortPress()) {
-#ifdef TEMPERATURE_MONITORING
-    g_TempMonitor.ClrOverTemperatureLogged();
-#endif
-    if (m_CurMenu) {
-      m_CurMenu->Next();
-    }
-    else {
-      // force into setup menu when in fault
-      if (infaultstate) goto longpress;
-      else {
-	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
-	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
-	  g_EvseController.Enable();
-	}
-	else {
-	  g_EvseController.Sleep();
-	}
-
-#ifdef DELAYTIMER
-	if (g_DelayTimer.IsTimerEnabled()) {
-	  uint8_t intimeinterval = g_DelayTimer.IsInAwakeTimeInterval();
-	  uint8_t sleeping = (g_EvseController.GetState() == EVSE_STATE_SLEEPING) ? 1 : 0;
-	  if ((intimeinterval && sleeping) || (!intimeinterval && !sleeping)) {
-	    g_DelayTimer.SetManualOverride();
-          }
-	  else {
-	    g_DelayTimer.ClrManualOverride();
-   	  }
-	}
-#endif // DELAYTIMER
-      }
+    if (DoShortPress(infaultstate)) {
+      goto longpress;
     }
   }
   else if (m_Btn.longPress()) {
@@ -2272,6 +2286,7 @@ uint8_t DelayTimer::IsInAwakeTimeInterval()
 void DelayTimer::CheckTime()
 {
   if (!g_EvseController.InFaultState() &&
+      !(g_EvseController.GetState() == EVSE_STATE_DISABLED) &&
       IsTimerEnabled() &&
       IsTimerValid()) {
     unsigned long curms = millis();
@@ -2381,7 +2396,7 @@ void EvseReset()
   g_EvseController.Init();
 
 #ifdef PP_AUTO_AMPACITY
-  g_ACCController.SetMaxAmps(g_EvseController.GetCurrentCapacity());
+  g_ACCController.SetMaxAmps(g_EvseController.GetMaxCurrentCapacity());
   g_ACCController.AutoSetCurrentCapacity();
 #endif
 }

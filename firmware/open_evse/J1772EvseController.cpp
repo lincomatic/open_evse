@@ -915,6 +915,11 @@ void J1772EVSEController::Init()
   m_AmmeterReading = 0;
   m_ChargingCurrent = 0;
   //  m_LastAmmeterReadMs = 0;
+
+#ifdef OVERCURRENT_THRESHOLD
+  m_OverCurrentStartMs = 0;
+#endif //OVERCURRENT_THRESHOLD
+
 #endif // AMMETER
 
 #ifdef VOLTMETER
@@ -1607,6 +1612,27 @@ if (TempChkEnabled()) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
     m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
+#ifdef OVERCURRENT_THRESHOLD
+    //testing    m_ChargingCurrent = (m_CurrentCapacity+OVERCURRENT_THRESHOLD+12)*1000L;
+    if (m_ChargingCurrent >= ((m_CurrentCapacity+OVERCURRENT_THRESHOLD)*1000L)) {
+      if (m_OverCurrentStartMs) { // already in overcurrent state
+	if ((millis()-m_OverCurrentStartMs) >= OVERCURRENT_TIMEOUT) {
+	  //
+	  // overcurrent for too long. stop charging and hard fault
+	  //
+	  // spin until EV is disconnected
+	  m_EvseState = EVSE_STATE_OVER_CURRENT;
+	  HardFault();
+	  
+	  m_OverCurrentStartMs = 0; // clear overcurrent
+	}
+      }
+      else {
+	m_OverCurrentStartMs = millis();
+      }
+    }
+#endif // OVERCURRENT_THRESHOLD    
+
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {
     if (m_ElapsedChargeTime != m_ElapsedChargeTimePrev) {
@@ -1741,6 +1767,15 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   int rc = 0;
   uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
 
+#ifdef PP_AUTO_AMPACITY
+  if ((GetState() >= EVSE_STATE_B) && (GetState() <= EVSE_STATE_C)) {
+    uint8_t mcc = g_ACCController.ReadPPMaxAmps();
+    if (mcc && (mcc < maxcurrentcap)) {
+      maxcurrentcap = mcc;
+    }
+  }
+#endif // PP_AUTO_AMPACITY
+
   if ((amps >= MIN_CURRENT_CAPACITY_J1772) && (amps <= maxcurrentcap)) {
     m_CurrentCapacity = amps;
   }
@@ -1768,6 +1803,7 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
   return rc;
 }
 
+#if defined(GFI) || defined(ADVPWR)
 unsigned long J1772EVSEController::GetResetMs()
 {
 #ifdef GFI
@@ -1776,6 +1812,7 @@ unsigned long J1772EVSEController::GetResetMs()
   return GFI_TIMEOUT - (millis() - m_NoGndStart);
 #endif // GFI
 }
+#endif // GFI || ADVPWR
 
 
 #ifdef VOLTMETER

@@ -248,6 +248,11 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
+    case '1': // simulate front panel short press
+      g_BtnHandler.DoShortPress(g_EvseController.InFaultState());
+      g_OBD.Update(OBD_UPD_FORCE);
+      rc = 0;
+      break;
 #ifdef LCD16X2
     case 'B': // LCD backlight
       if (tokenCnt == 2) {
@@ -277,6 +282,7 @@ int EvseRapiProcessor::processCmd()
 	  case 'E': // command echo
 	    echo = ((u1.u8 == '0') ? 0 : 1);	      
 	    break;
+#ifdef ADVPWR
 	  case 'F': // GFI self test
 	    g_EvseController.EnableGfiSelfTest(u1.u8);
 	    break;
@@ -286,6 +292,7 @@ int EvseRapiProcessor::processCmd()
 	  case 'R': // stuck relay check
 	    g_EvseController.EnableStuckRelayChk(u1.u8);
 	    break;
+#endif // ADVPWR
 #ifdef TEMPERATURE_MONITORING
 	  case 'T': // temperature monitoring
 	    g_EvseController.EnableTempChk(u1.u8);
@@ -392,7 +399,22 @@ int EvseRapiProcessor::processCmd()
 	else {
 	  u1.u8 = 0; // nosave = 0
 	}
-	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1,u1.u8);
+#ifdef TEMPERATURE_MONITORING
+	u2.u8 = dtou32(tokens[1]);
+	if (u1.u8 && g_TempMonitor.OverTemperature() &&
+	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
+	  // don't allow raising current capacity during
+	  // overtemperature event
+	  rc = 1;
+	}
+	else {
+	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	}
+#else // !TEMPERATURE_MONITORING
+	rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+#endif // TEMPERATURE_MONITORING
+
+
 	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
 	bufCnt = 1; // flag response text output
       }
@@ -597,8 +619,13 @@ int EvseRapiProcessor::processCmd()
 #else
       u1.u = 0;
 #endif // GFI
+#ifdef ADVPWR
       u2.u = g_EvseController.GetNoGndTripCnt();
       u3.u = g_EvseController.GetStuckRelayTripCnt();
+#else
+	  u2.u = 0;
+	  u3.u = 0;
+#endif // ADVPWR
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
       rc = 0;

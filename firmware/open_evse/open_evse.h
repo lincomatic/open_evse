@@ -122,6 +122,8 @@
 #define PP_TABLE_IEC
 
 #include "AutoCurrentCapacityController.h"
+
+extern AutoCurrentCapacityController g_ACCController;
 #endif
 
 // charge for a specified amount of time and then stop
@@ -161,17 +163,30 @@
 // 2) if enabled, any a fault occurs immediately after charge is initiated,
 //    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
 #define UL_COMPLIANT
+
+#ifdef UL_COMPLIANT
+#define ADVPWR
+#define GFI
 // if enabled, do GFI self test before closing relay
 #define UL_GFI_SELFTEST
-
-#ifdef UL_GFI_SELFTEST
 #define GFI_SELFTEST
-#endif //UL_GFI_SELFTEST
+#endif //UL_COMPLIANT
 
 #define TEMPERATURE_MONITORING  // Temperature monitoring support
 // not yet #define TEMPERATURE_MONITORING_NY
 
 #ifdef AMMETER
+
+// if OVERCURRENT_THRESHOLD is defined, then EVSE will hard fault in
+// the event that the EV is pulling more current than it's allowed to
+// declare overcurrent when charging amps > pilot amps + OVERCURRENT_THRESHOLD
+#define OVERCURRENT_THRESHOLD 5 // A
+// go to error state overcurrent by OVERCURRENT_THRESHOLD amps
+// for OVERCURRENT_TIMEOUT ms
+#define OVERCURRENT_TIMEOUT 5000UL // ms
+
+
+
 // kWh Recording feature depends upon #AMMETER support
 // comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
 #define KWH_RECORDING
@@ -519,7 +534,7 @@
 #define GFI_PULSE_ON_US 8333 // 1/2 of roughly 60 Hz.
 #define GFI_PULSE_OFF_US 8334 // 1/2 of roughly 60 Hz.
 #endif
-
+#endif // GFI
 
 #ifdef GFI_TESTING
 #define GFI_TIMEOUT ((unsigned long)(15*1000))
@@ -529,7 +544,6 @@
 // number of times to retry tests before giving up. 255 = retry indefinitely
 #define GFI_RETRY_COUNT  6
 #endif // GFI_TESTING
-#endif // GFI
 
 // for RGBLCD
 #define RED 0x1
@@ -1212,6 +1226,7 @@ public:
   uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
   uint8_t GetSavedLcdMode() { return m_SavedLcdMode; }
   void SetSavedLcdMode(uint8_t mode ) { m_SavedLcdMode = mode; }
+  int8_t DoShortPress(int8_t infaultstate);
 };
 
 #endif // BTN_MENU

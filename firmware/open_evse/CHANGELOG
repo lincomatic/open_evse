@@ -1,7 +1,27 @@
 Change Log
 
+20180516 SCL
+- implement over current protection. if OVERCURRENT_THRESHOLD is set,
+	then if EV draws >= OVERCURRENT_THRESHOLD amps for >=
+	OVERCURRENT_TIMEOUT ms -> hard fault
+	
+20180515 SCL
+- implement $F1 to simulate front panel short press
+- fix SAFETY BUG: don't let $SC override over temperature throttling
+	-> during over temperature, $SC will not be allowed to increase
+	volatile current capacity
+- fix SAFETY BUG: don't let $SC override PP max ampacity
+	
+20180417 SCL
+- fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
+	GFI_SELFTEST, AUTOSVCLEVEL
+	
+20180406 SCL
+- fix compile error when AMMETER not defined
+	
 20180404 SCL
 - get rid of deprecated/superfluous PP_TABLE_TESLA
+- don't let delay timer override EVSE_STATE_DISABLED
 	
 D4.13.0 20180403 SCL
 - revert change from D4.12.0: delay timer would always wait for EV finish charging before ending.
