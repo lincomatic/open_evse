@@ -1,6 +1,8 @@
 
 Firmware for OpenEVSE controller used in OpenEnergyMonitor EmonEVSE units solde in (UK/EU) via the OpenEnergyMonitor store. In collaboration with OpenEVSE.
 
+https://shop.openenergymonitor.com/ev-charging/
+
 Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
 ## Changes by OpenEnergyMonitor:
@@ -9,7 +11,15 @@ Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 - Charging level default to `L2`
 - Set `MAX_CURRENT_CAPACITY_L2 32` (limit for single-phase charging in UK/EU)
 - Add '.EU' to version number
-- Enable LCD Redra every couple of min (required for EMC/CE)
+- Enable LCD Redraw every couple of min (required for EMC/CE)
+
+### EmonEVSE
+
+EmonEVSE (non-tethered type-2 EVSE unit)
+
+- `PP_AUTO_AMPACITY`enabled to set max current based on non-tethered cable connected 
+- Three-phase option with `THREEPHASE`enabled to calculate three-phase energy
+
 
 
 ## Resources
