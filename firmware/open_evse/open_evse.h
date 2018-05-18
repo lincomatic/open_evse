@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 // See platformio.ini
-//#define VERSION "D4.13.0"
+// #define VERSION "D5.0.0"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 

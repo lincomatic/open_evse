@@ -30,8 +30,6 @@ static PP_AMPS s_ppAmps[] = {
 AutoCurrentCapacityController::AutoCurrentCapacityController() :
   adcPP(PP_PIN)
 {
-  curAmps = 0;
-  maxAmps = 0;
 }
 
 uint8_t AutoCurrentCapacityController::ReadPPMaxAmps()
@@ -47,22 +45,24 @@ uint8_t AutoCurrentCapacityController::ReadPPMaxAmps()
     }
   }
 
+
+  //  Serial.print("pp: ");Serial.print(adcval);Serial.print(" amps: ");Serial.println(amps);
+
   return amps;
 }
 
 
-void AutoCurrentCapacityController::AutoSetCurrentCapacity()
+uint8_t AutoCurrentCapacityController::AutoSetCurrentCapacity()
 {
   uint8_t amps = ReadPPMaxAmps();
 
-  if (amps > maxAmps) {
-    amps = maxAmps;
+  if (amps) {
+    g_EvseController.SetCurrentCapacity(amps,0,1);
+    return 0;
   }
-
-  g_EvseController.SetCurrentCapacity(amps,0,1);
-  curAmps = amps;
-
-  //  Serial.print("pp: ");Serial.print(adcval);Serial.print(" amps: ");Serial.println(amps);
+  else {
+    return 1;
+  }
 }
 
 #endif //PP_AUTO_AMPACITY

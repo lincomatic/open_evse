@@ -238,7 +238,7 @@ int EvseRapiProcessor::processCmd()
   bufCnt = 0;
 
   char *s = tokens[0];
-  switch(*(s++)) { 
+  switch(*(s++)) {
   case 'F': // function
     switch(*s) {
     case '0': // enable/disable LCD update
@@ -260,7 +260,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'D': // disable EVSE
       g_EvseController.Disable();
       rc = 0;
@@ -280,7 +280,7 @@ int EvseRapiProcessor::processCmd()
 	    g_EvseController.EnableDiodeCheck(u1.u8);
 	    break;
 	  case 'E': // command echo
-	    echo = ((u1.u8 == '0') ? 0 : 1);	      
+	    echo = ((u1.u8 == '0') ? 0 : 1);
 	    break;
 #ifdef ADVPWR
 	  case 'F': // GFI self test
@@ -321,7 +321,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'R': // reset EVSE
       g_EvseController.Reboot();
       rc = 0;
@@ -343,8 +343,8 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
-#endif // LCD16X2      
-#ifdef RTC      
+#endif // LCD16X2
+#ifdef RTC
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
@@ -353,7 +353,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // RTC      
+#endif // RTC
 #ifdef AMMETER
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
@@ -401,7 +401,7 @@ int EvseRapiProcessor::processCmd()
 	}
 #ifdef TEMPERATURE_MONITORING
 	u2.u8 = dtou32(tokens[1]);
-	if (u1.u8 && g_TempMonitor.OverTemperature() &&
+	if (g_TempMonitor.OverTemperature() &&
 	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
 	  // don't allow raising current capacity during
 	  // overtemperature event
@@ -503,7 +503,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR && !RAPI_FF
-#ifdef DELAYTIMER     
+#ifdef DELAYTIMER
     case 'T': // timer
       if (tokenCnt == 5) {
 	extern DelayTimer g_DelayTimer;
@@ -522,7 +522,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // DELAYTIMER      
+#endif // DELAYTIMER
 #ifndef RAPI_FF
     case 'V': // vent required
       if (tokenCnt == 2) {

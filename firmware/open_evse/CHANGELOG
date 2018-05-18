@@ -1,16 +1,17 @@
 Change Log
 
-20180516 SCL
+D5.0.0 20180518 SCL
+- implement $F1 RAPI command to simulate front panel short press
+- SAFETY: don't allow $SC to raise current capacity during over temperature event
+- SAFETY: SetCurrentCapacity() -> when nosave set, don't allow current capacity to be
+	raised above EEPROM value
+	-> don't allow $SC with V to raise current capacity above value in EEPROM
+	-> don't allow PP to set current capacity higher than EEPROM
+- PP code cleanup
+- don't allow SetCurrentCapacity() to go above PP value
 - implement over current protection. if OVERCURRENT_THRESHOLD is set,
 	then if EV draws >= OVERCURRENT_THRESHOLD amps for >=
 	OVERCURRENT_TIMEOUT ms -> hard fault
-	
-20180515 SCL
-- implement $F1 to simulate front panel short press
-- fix SAFETY BUG: don't let $SC override over temperature throttling
-	-> during over temperature, $SC will not be allowed to increase
-	volatile current capacity
-- fix SAFETY BUG: don't let $SC override PP max ampacity
 	
 20180417 SCL
 - fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
