@@ -2395,7 +2395,6 @@ void EvseReset()
   g_EvseController.Init();
 
 #ifdef PP_AUTO_AMPACITY
-  g_ACCController.SetMaxAmps(g_EvseController.GetCurrentCapacity());
   g_ACCController.AutoSetCurrentCapacity();
 #endif
 }
@@ -2410,8 +2409,7 @@ uint8_t StateTransitionReqFunc(uint8_t curPilotState,uint8_t newPilotState,uint8
     // already debounces before requesting the state transition, so we can
     // be absolutely sure that the PP pin has firm contact by the time we
     // get here
-    g_ACCController.AutoSetCurrentCapacity();
-    if (!g_ACCController.GetCurAmps()) {
+    if (g_ACCController.AutoSetCurrentCapacity()) {
       // invalid PP so 0 amps - force to stay in State A
       retEvseState = EVSE_STATE_A;
     }
