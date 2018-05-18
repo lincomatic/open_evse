@@ -143,13 +143,15 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [V]- set current capacity
- response:
-   if amps < minimum current capacity, will set to minimum and return $NK amps
-   if amps > maximum current capacity, will set to maximum and return $NK amps
-   otherwise return $OK amps
    default action is to save new current capacity to EEPROM.
    if V is specified, then new current capacity is volatile, and will be
-     reset to previous value at next reboot
+     reset to EEPROM value at next reboot
+ response:
+   if amps < minimum current capacity (6A), will set to minimum and return $NK ampsset
+   if amps > maximum allowed current capacity, will set to maximum and return $NK ampsset
+   if in over temperature status, raising current capacity will fail and return $NK ampsset
+   otherwise return $OK ampsset
+   ampsset: the resultant current capacity, which may be < requested amps
 (DEPRECATED) SD 0|1 - disable/enable diode check
  $SD 0*0B
  $SD 1*0C

@@ -2,6 +2,7 @@ Change Log
 
 20180518
 - implement $F1 RAPI command to simulate front panel short press
+- don't allow $SC to raise current capacity during over temperature event
 
 20180417 SCL
 - fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
