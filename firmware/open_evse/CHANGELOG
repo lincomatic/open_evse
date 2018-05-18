@@ -1,6 +1,6 @@
 Change Log
 
-20180518
+D5.0.0 20180518 SCL
 - implement $F1 RAPI command to simulate front panel short press
 - SAFETY: don't allow $SC to raise current capacity during over temperature event
 - SAFETY: SetCurrentCapacity() -> when nosave set, don't allow current capacity to be
