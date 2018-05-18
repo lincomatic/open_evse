@@ -2,10 +2,11 @@ Change Log
 
 20180518
 - implement $F1 RAPI command to simulate front panel short press
-- don't allow $SC to raise current capacity during over temperature event
-- SetCurrentCapacity() -> when nosave set, don't allow current capacity to be
+- SAFETY: don't allow $SC to raise current capacity during over temperature event
+- SAFETY: SetCurrentCapacity() -> when nosave set, don't allow current capacity to be
 	raised above EEPROM value
 	-> don't allow $SC with V to raise current capacity above value in EEPROM
+	-> don't allow PP to set current capacity higher than EEPROM
 
 20180417 SCL
 - fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
