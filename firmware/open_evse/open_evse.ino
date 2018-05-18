@@ -2100,14 +2100,8 @@ BtnHandler::BtnHandler()
   m_CurMenu = NULL;
 }
 
-void BtnHandler::ChkBtn()
+int8_t BtnHandler::DoShortPress(int8_t infaultstate)
 {
-  WDT_RESET();
-
-  int8_t infaultstate = g_EvseController.InFaultState();
-
-  m_Btn.read();
-  if (m_Btn.shortPress()) {
 #ifdef TEMPERATURE_MONITORING
     g_TempMonitor.ClrOverTemperatureLogged();
 #endif
@@ -2116,7 +2110,7 @@ void BtnHandler::ChkBtn()
     }
     else {
       // force into setup menu when in fault
-      if (infaultstate) goto longpress;
+    if (infaultstate) return 1; // triggers longpress action
       else {
 	if ((g_EvseController.GetState() == EVSE_STATE_DISABLED) ||
 	    (g_EvseController.GetState() == EVSE_STATE_SLEEPING)) {
@@ -2139,6 +2133,21 @@ void BtnHandler::ChkBtn()
 	}
 #endif // DELAYTIMER
       }
+    }
+
+  return 0;
+}
+
+void BtnHandler::ChkBtn()
+{
+  WDT_RESET();
+
+  int8_t infaultstate = g_EvseController.InFaultState();
+
+  m_Btn.read();
+  if (m_Btn.shortPress()) {
+    if (DoShortPress(infaultstate)) {
+      goto longpress;
     }
   }
   else if (m_Btn.longPress()) {
