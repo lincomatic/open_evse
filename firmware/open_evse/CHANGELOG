@@ -8,6 +8,7 @@ Change Log
 	-> don't allow $SC with V to raise current capacity above value in EEPROM
 	-> don't allow PP to set current capacity higher than EEPROM
 - PP code cleanup
+- don't allow SetCurrentCapacity() to go above PP value
 	
 20180417 SCL
 - fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
