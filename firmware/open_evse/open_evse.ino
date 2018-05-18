@@ -686,6 +686,19 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
       break;
 #endif //TEMPERATURE_MONITORING        
+#ifdef OVERCURRENT_THRESHOLD
+    case EVSE_STATE_OVER_CURRENT:
+      SetGreenLed(0);
+      SetRedLed(1);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdPrint_P(0,g_psSvcReq);
+      strcpy_P(g_sTmp,g_psOverCurrent);
+      sprintf(g_sTmp+strlen(g_sTmp)," %dA",(int)(g_EvseController.GetChargingCurrent()/1000-g_EvseController.GetCurrentCapacity()));
+      LcdPrint(1,g_sTmp);
+#endif
+      break;
+#endif // OVERCURRENT_THRESHOLD   
     case EVSE_STATE_NO_GROUND:
       SetGreenLed(0);
       SetRedLed(1);

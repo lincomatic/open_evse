@@ -9,6 +9,9 @@ Change Log
 	-> don't allow PP to set current capacity higher than EEPROM
 - PP code cleanup
 - don't allow SetCurrentCapacity() to go above PP value
+- implement over current protection. if OVERCURRENT_THRESHOLD is set,
+	then if EV draws >= OVERCURRENT_THRESHOLD amps for >=
+	OVERCURRENT_TIMEOUT ms -> hard fault
 	
 20180417 SCL
 - fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
