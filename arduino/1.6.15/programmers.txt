@@ -27,7 +27,7 @@ usbasp.communication=usb
 usbasp.protocol=usbasp
 usbasp.program.protocol=usbasp
 usbasp.program.tool=avrdude
-usbasp.program.extra_params=-Pusb B0.5
+usbasp.program.extra_params=-Pusb -B0.5
 
 parallel.name=Parallel Programmer
 parallel.protocol=dapa
