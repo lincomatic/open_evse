@@ -120,3 +120,7 @@ extern const char *g_sMaxCurrentFmt;
 extern const char g_psSetDateTime[] PROGMEM;
 extern const char *g_DelayMenuItems[];
 #endif // DELAYTIMER_MENU
+
+#ifdef OVERCURRENT_THRESHOLD
+extern const char g_psOverCurrent[] PROGMEM;
+#endif // OVERCURRENT_THRESHOLD

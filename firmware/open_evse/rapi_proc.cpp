@@ -238,7 +238,7 @@ int EvseRapiProcessor::processCmd()
   bufCnt = 0;
 
   char *s = tokens[0];
-  switch(*(s++)) { 
+  switch(*(s++)) {
   case 'F': // function
     switch(*s) {
     case '0': // enable/disable LCD update
@@ -248,6 +248,11 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
+    case '1': // simulate front panel short press
+      g_BtnHandler.DoShortPress(g_EvseController.InFaultState());
+      g_OBD.Update(OBD_UPD_FORCE);
+      rc = 0;
+      break;
 #ifdef LCD16X2
     case 'B': // LCD backlight
       if (tokenCnt == 2) {
@@ -255,7 +260,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'D': // disable EVSE
       g_EvseController.Disable();
       rc = 0;
@@ -275,8 +280,9 @@ int EvseRapiProcessor::processCmd()
 	    g_EvseController.EnableDiodeCheck(u1.u8);
 	    break;
 	  case 'E': // command echo
-	    echo = ((u1.u8 == '0') ? 0 : 1);	      
+	    echo = ((u1.u8 == '0') ? 0 : 1);
 	    break;
+#ifdef ADVPWR
 	  case 'F': // GFI self test
 	    g_EvseController.EnableGfiSelfTest(u1.u8);
 	    break;
@@ -286,6 +292,7 @@ int EvseRapiProcessor::processCmd()
 	  case 'R': // stuck relay check
 	    g_EvseController.EnableStuckRelayChk(u1.u8);
 	    break;
+#endif // ADVPWR
 #ifdef TEMPERATURE_MONITORING
 	  case 'T': // temperature monitoring
 	    g_EvseController.EnableTempChk(u1.u8);
@@ -314,7 +321,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'R': // reset EVSE
       g_EvseController.Reboot();
       rc = 0;
@@ -336,8 +343,8 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
-#endif // LCD16X2      
-#ifdef RTC      
+#endif // LCD16X2
+#ifdef RTC
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
@@ -346,7 +353,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // RTC      
+#endif // RTC
 #ifdef AMMETER
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
@@ -392,7 +399,22 @@ int EvseRapiProcessor::processCmd()
 	else {
 	  u1.u8 = 0; // nosave = 0
 	}
-	rc = g_EvseController.SetCurrentCapacity(dtou32(tokens[1]),1,u1.u8);
+#ifdef TEMPERATURE_MONITORING
+	u2.u8 = dtou32(tokens[1]);
+	if (g_TempMonitor.OverTemperature() &&
+	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
+	  // don't allow raising current capacity during
+	  // overtemperature event
+	  rc = 1;
+	}
+	else {
+	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	}
+#else // !TEMPERATURE_MONITORING
+	rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+#endif // TEMPERATURE_MONITORING
+
+
 	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
 	bufCnt = 1; // flag response text output
       }
@@ -481,7 +503,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // ADVPWR && !RAPI_FF
-#ifdef DELAYTIMER     
+#ifdef DELAYTIMER
     case 'T': // timer
       if (tokenCnt == 5) {
 	extern DelayTimer g_DelayTimer;
@@ -500,7 +522,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // DELAYTIMER      
+#endif // DELAYTIMER
 #ifndef RAPI_FF
     case 'V': // vent required
       if (tokenCnt == 2) {
@@ -597,8 +619,13 @@ int EvseRapiProcessor::processCmd()
 #else
       u1.u = 0;
 #endif // GFI
+#ifdef ADVPWR
       u2.u = g_EvseController.GetNoGndTripCnt();
       u3.u = g_EvseController.GetStuckRelayTripCnt();
+#else
+	  u2.u = 0;
+	  u3.u = 0;
+#endif // ADVPWR
       sprintf(buffer,"%x %x %x",u1.u,u2.u,u3.u);
       bufCnt = 1; // flag response text output
       rc = 0;
@@ -933,10 +960,18 @@ void RapiInit()
 {
 #ifdef RAPI_SERIAL
   g_ESRP.init();
-#endif
+#ifdef GPPBUGKLUDGE
+  static char g_rapiSerialBuffer[ESRAPI_BUFLEN];
+  g_ESRP.setBuffer(g_rapiSerialBuffer);
+#endif // GPPBUGKLUDGE
+#endif // RAPI_SERIAL
 #ifdef RAPI_I2C
   g_EIRP.init();
-#endif
+#ifdef GPPBUGKLUDGE
+  static char g_rapiI2ClBuffer[ESRAPI_BUFLEN];
+  g_ESRP.setBuffer(g_rapiI2CBuffer);
+#endif // GPPBUGKLUDGE
+#endif // RAPI_I2C
 }
 
 void RapiDoCmd()
@@ -958,7 +993,7 @@ void RapiDoCmd()
 #endif // RDCDELAY
 
   g_EIRP.doCmd();
-#endif
+#endif // RAPI_I2C
 }
 
 void RapiSendEvseState(uint8_t nodupe)

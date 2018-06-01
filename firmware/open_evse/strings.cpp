@@ -118,3 +118,7 @@ const char *g_sMaxCurrentFmt = STRF_MAX_CURRENT;
 const char g_psSetDateTime[] PROGMEM = STR_SET_DATE_TIME;
 const char *g_DelayMenuItems[] = STR_YESNO_SETSTART_SETSTOP;
 #endif // DELAYTIMER_MENU
+
+#ifdef OVERCURRENT_THRESHOLD
+const char g_psOverCurrent[] PROGMEM = STR_OVER_CURRENT;
+#endif // OVERCURRENT_THRESHOLD

@@ -79,6 +79,9 @@ F0 {1|0}- enable/disable display updates
      enables/disables g_OBD.Update()
  $F0 1^43 - enable display updates and call g_OBD.Update()
  $F0 0^42 - disable display updates
+F1 - simulate front panel button short press
+ N.B.: it is possible that an asynchronous state change will be sent by the
+  EVSE prior to sending the response to $F1
 FB color - set LCD backlight color
 colors:
  OFF 0
@@ -88,7 +91,7 @@ colors:
  TEAL 6
  BLUE 4
  VIOLET 5
- WHITE 7 
+ WHITE 7
 
  $FB 7*03 - set backlight to white
 FD - disable EVSE
@@ -140,13 +143,15 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [V]- set current capacity
- response:
-   if amps < minimum current capacity, will set to minimum and return $NK amps
-   if amps > maximum current capacity, will set to maximum and return $NK amps
-   otherwise return $OK amps
    default action is to save new current capacity to EEPROM.
    if V is specified, then new current capacity is volatile, and will be
-     reset to previous value at next reboot
+     reset to EEPROM value at next reboot
+ response:
+   if amps < minimum current capacity (6A), will set to minimum and return $NK ampsset
+   if amps > maximum allowed current capacity, will set to maximum and return $NK ampsset
+   if in over temperature status, raising current capacity will fail and return $NK ampsset
+   otherwise return $OK ampsset
+   ampsset: the resultant current capacity, which may be < requested amps
 (DEPRECATED) SD 0|1 - disable/enable diode check
  $SD 0*0B
  $SD 1*0C
@@ -291,7 +296,14 @@ T0 amps - set fake charging current
 #define INVALID_SEQUENCE_ID 0
 
 class EvseRapiProcessor {
+#ifdef GPPBUGKLUDGE
+  char *buffer;
+public:
+  void setBuffer(char *buf) { buffer = buf; }
+private:
+#else
   char buffer[ESRAPI_BUFLEN]; // input buffer
+#endif // GPPBUGKLUDGE
   int8_t bufCnt; // # valid bytes in buffer
   char *tokens[ESRAPI_MAX_ARGS];
   int8_t tokenCnt;

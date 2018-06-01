@@ -32,7 +32,8 @@
 #define EVSE_STATE_STUCK_RELAY 0x08 //stuck relay
 #define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
 #define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown
-#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_TEMPERATURE
+#define EVSE_STATE_OVER_CURRENT 0x0B // over current error shutdown
+#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_CURRENT
            
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
@@ -172,6 +173,9 @@ class J1772EVSEController {
 #ifdef MENNEKES_LOCK
   MennekesLock m_MennekesLock;
 #endif // MENNEKES_LOCK
+#ifdef OVERCURRENT_THRESHOLD
+  unsigned long m_OverCurrentStartMs;
+#endif // OVERCURRENT_THRESHOLD
 
 #ifdef ADVPWR
 // power states for doPost() (active low)
@@ -318,6 +322,11 @@ public:
     else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
   }
   uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+#else
+  uint8_t AutoSvcLevelEnabled() { return 0; }
+  void EnableAutoSvcLevel(uint8_t tf) {}
+  void SetAutoSvcLvlSkipped(uint8_t tf) {}
+  uint8_t AutoSvcLvlSkipped() { return 1; }
 #endif // AUTOSVCLEVEL
   void SetNoGndTripped();
   uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
@@ -344,7 +353,10 @@ public:
     return (m_wFlags & ECF_GFI_TEST_DISABLED) ? 0 : 1;
   }
   void EnableGfiSelfTest(uint8_t tf);
-#endif
+#else // !GFI_SELFTEST
+  uint8_t GfiSelfTestEnabled() { return 0; }
+  void EnableGfiSelfTest(uint8_t tf) {}
+#endif // GFI_SELFTEST
 #endif // GFI
 
 #ifdef TEMPERATURE_MONITORING  
@@ -406,9 +418,6 @@ public:
     readAmmeter();
     return m_AmmeterReading / 1000;
   }
-  uint8_t LimitsAllowed() {
-    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
-  }
 #ifdef CHARGE_LIMIT
   void ClrChargeLimit() { m_chargeLimitTotWs = 0; m_chargeLimitkWh = 0; }
   void SetChargeLimitkWh(uint8_t kwh);
@@ -418,6 +427,9 @@ public:
 #else // !AMMETER
   int32_t GetChargingCurrent() { return -1; }
 #endif // AMMETER
+  uint8_t LimitsAllowed() {
+    return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
+  }
 #ifdef TIME_LIMIT
   void ClrTimeLimit() { m_timeLimitEnd = 0; m_timeLimit15 = 0; }
   void SetTimeLimitEnd(time_t limit) { m_timeLimitEnd = limit; }
