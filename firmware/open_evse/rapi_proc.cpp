@@ -960,10 +960,18 @@ void RapiInit()
 {
 #ifdef RAPI_SERIAL
   g_ESRP.init();
-#endif
+#ifdef GPPBUGKLUDGE
+  static char g_rapiSerialBuffer[ESRAPI_BUFLEN];
+  g_ESRP.setBuffer(g_rapiSerialBuffer);
+#endif // GPPBUGKLUDGE
+#endif // RAPI_SERIAL
 #ifdef RAPI_I2C
   g_EIRP.init();
-#endif
+#ifdef GPPBUGKLUDGE
+  static char g_rapiI2ClBuffer[ESRAPI_BUFLEN];
+  g_ESRP.setBuffer(g_rapiI2CBuffer);
+#endif // GPPBUGKLUDGE
+#endif // RAPI_I2C
 }
 
 void RapiDoCmd()
@@ -985,7 +993,7 @@ void RapiDoCmd()
 #endif // RDCDELAY
 
   g_EIRP.doCmd();
-#endif
+#endif // RAPI_I2C
 }
 
 void RapiSendEvseState(uint8_t nodupe)

@@ -296,7 +296,14 @@ T0 amps - set fake charging current
 #define INVALID_SEQUENCE_ID 0
 
 class EvseRapiProcessor {
+#ifdef GPPBUGKLUDGE
+  char *buffer;
+public:
+  void setBuffer(char *buf) { buffer = buf; }
+private:
+#else
   char buffer[ESRAPI_BUFLEN]; // input buffer
+#endif // GPPBUGKLUDGE
   int8_t bufCnt; // # valid bytes in buffer
   char *tokens[ESRAPI_MAX_ARGS];
   int8_t tokenCnt;

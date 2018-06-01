@@ -256,6 +256,22 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DELAYTIMER_MENU
 #endif
 
+#else // !RTC
+// this weird error comes out if RTC not defined, due to a bug in g++
+//D:\git\open_evse\firmware\open_evse\open_evse.ino: In function 'ProcessInputs'//:
+//
+//open_evse:2384: error: unable to find a register to spill in class 'NO_REGS'
+//
+// }
+//
+// ^
+//
+//open_evse:2384: error: this is the insn:
+//
+//(insn 884 881 887 135 (set (mem:QI (post_dec:HI (reg/f:HI 32 __SP_L__)) [0  S1// A8])
+//
+////        (subreg:QI (reg/f:HI 1065) 1)) C:\Users\Geek\AppData\Local\Temp\arduino_build_853681\sketch\rapi_proc.cpp:418 1 {pushqi1}
+#define GPPBUGKLUDGE
 #endif // RTC
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
