@@ -258,6 +258,13 @@ void J1772EVSEController::ShowDisabledTests()
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
+#ifdef RELAY_AUTO_PWM_PIN
+  // turn on charging pin to close relay
+  digitalWrite(RELAY_AUTO_PWM_PIN,HIGH);
+  delay(m_relayCloseMs);
+  // switch to PWM to hold closed
+  analogWrite(RELAY_AUTO_PWM_PIN,m_relayHoldPwm);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.write(1);
 #endif
@@ -267,6 +274,8 @@ void J1772EVSEController::chargingOn()
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(1);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
   m_bVFlags |= ECVF_CHARGING_ON;
   
   if (m_bVFlags2 & ECVF2_SESSION_ENDED) {
@@ -283,6 +292,9 @@ void J1772EVSEController::chargingOn()
 
 void J1772EVSEController::chargingOff()
 { // turn off charging current
+#ifdef RELAY_AUTO_PWM_PIN
+  digitalWrite(RELAY_AUTO_PWM_PIN,LOW);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.write(0);
 #endif
@@ -292,6 +304,8 @@ void J1772EVSEController::chargingOff()
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(0);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
   m_ChargeOffTime = now();
@@ -847,12 +861,29 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
+#ifdef RELAY_AUTO_PWM_PIN_TESTING
+  m_relayHoldPwm = eeprom_read_byte((uint8_t*)EOFS_RELAY_HOLD_PWM);
+  m_relayCloseMs = eeprom_read_dword((uint32_t*)EOFS_RELAY_CLOSE_MS);
+  if (m_relayCloseMs > 5000) {
+    m_relayCloseMs = 0;
+    m_relayHoldPwm = 248;
+  }
+  Serial.print("\nrelayCloseMs: ");Serial.println(m_relayCloseMs);
+  Serial.print("relayHoldPwm: ");Serial.println(m_relayHoldPwm);
+#endif
+
+
+#ifdef RELAY_AUTO_PWM_PIN
+  pinMode(RELAY_AUTO_PWM_PIN,OUTPUT);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
 #endif
 #ifdef CHARGING2_REG
   pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
 #ifdef CHARGINGAC_REG
   pinChargingAC.init(CHARGINGAC_REG,CHARGINGAC_IDX,DigitalPin::OUT);
 #endif

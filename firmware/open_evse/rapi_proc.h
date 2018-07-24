@@ -265,6 +265,12 @@ T0 amps - set fake charging current
  response: $OK
  $T0 75
 
+Z0 FOR TESTING RELAY_AUTO_PWM_PIN ONLY
+Z0 closems holdpwm
+   closems(dec) = # ms to apply DC to relay pin
+   holdpwm(dec) = pwm duty cycle for relay hold 0-255
+
+
  *
  */
 

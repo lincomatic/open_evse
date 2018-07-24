@@ -148,6 +148,10 @@ class J1772EVSEController {
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
 #endif // ADVPWR
+#ifdef RELAY_AUTO_PWM_PIN_TESTING
+  unsigned long m_relayCloseMs; // #ms for DC pulse to close relay
+  uint8_t m_relayHoldPwm; // PWM duty cycle to hold relay closed
+#endif // RELAY_AUTO_PWM_PIN_TESTING
   uint16_t m_wFlags; // ECF_xxx
   uint8_t m_bVFlags; // ECVF_xxx
   uint8_t m_bVFlags2; // ECVF2_xxx
@@ -267,6 +271,13 @@ public:
   int8_t InFaultState() {
     return ((m_EvseState >= EVSE_FAULT_STATE_BEGIN) && (m_EvseState <= EVSE_FAULT_STATE_END));
   }
+
+#ifdef RELAY_AUTO_PWM_PIN_TESTING
+  void setPwmPinParms(uint32_t delayms,uint8_t pwm) {
+    m_relayCloseMs = delayms;
+    m_relayHoldPwm = pwm;
+  }
+#endif
 
   void SetHardFault() { m_bVFlags |= ECVF_HARD_FAULT; }
   void ClrHardFault() { m_bVFlags &= ~ECVF_HARD_FAULT; }

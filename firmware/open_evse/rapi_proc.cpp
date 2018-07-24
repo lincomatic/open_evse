@@ -726,6 +726,23 @@ int EvseRapiProcessor::processCmd()
     }
     break;
 #endif //RAPI_T_COMMANDS
+#if defined(RELAY_HOLD_DELAY_TUNING)
+  case 'Z': // reserved op
+    switch(*s) {
+    case '1': // set relayCloseMs
+      if (tokenCnt == 2) {
+	u1.u32 = dtou32(tokens[1]);
+	g_EvseController.setRelayHoldDelay(u1.u32);
+	sprintf(g_sTmp,"\nZ1 %ld",u1.u32);
+	Serial.println(g_sTmp);
+	eeprom_write_dword((uint32_t*)EOFS_RELAY_HOLD_DELAY,u1.u32);
+      }
+      rc = 0;
+      break;
+
+    }
+    break;
+#endif // RELAY_AUTO_PWM_PIN_TESTING
 
   default:
     ; // do nothing
