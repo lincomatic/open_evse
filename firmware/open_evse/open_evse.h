@@ -340,6 +340,10 @@ extern AutoCurrentCapacityController g_ACCController;
 #error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
 #endif
 
+#if defined(GFI_SELFTEST) && !defined(GFI)
+#error INVALID_CONFIG - GFI NEEDED FOR GFI SELF TEST
+#endif
+
 // for testing print various diagnostic messages to the UART
 //#define SERDBG
 
