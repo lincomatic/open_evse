@@ -1,5 +1,8 @@
 Change Log
 
+20180823 SCL
+- merged PR#94: doesn't affect functionality, only to correct compile errors on minimal builds
+	
 20180724 SCL
 - added RELAY_AUTO_PWM code - not tested - needs PWM-capable pin to function
 	
