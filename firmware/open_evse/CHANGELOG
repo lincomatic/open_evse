@@ -1,5 +1,157 @@
 Change Log
 
+20180724 SCL
+- added RELAY_AUTO_PWM code - not tested - needs PWM-capable pin to function
+	
+20180523 SCL
+- when RTC not defined, g++ bug pops out:
+	open_evse:2384: error: unable to find a register to spill in class 'NO_REGS'
+  -> add GPPBUGKLUDGE
+	
+D5.0.0 20180518 SCL
+- implement $F1 RAPI command to simulate front panel short press
+- SAFETY: don't allow $SC to raise current capacity during over temperature event
+- SAFETY: SetCurrentCapacity() -> when nosave set, don't allow current capacity to be
+	raised above EEPROM value
+	-> don't allow $SC with V to raise current capacity above value in EEPROM
+	-> don't allow PP to set current capacity higher than EEPROM
+- PP code cleanup
+- don't allow SetCurrentCapacity() to go above PP value
+- implement over current protection. if OVERCURRENT_THRESHOLD is set,
+	then if EV draws >= OVERCURRENT_THRESHOLD amps for >=
+	OVERCURRENT_TIMEOUT ms -> hard fault
+	
+20180417 SCL
+- fix compile errors when no GFI and ADVPWR. Must also undef UL_COMPLIANT,
+	GFI_SELFTEST, AUTOSVCLEVEL
+	
+20180406 SCL
+- fix compile error when AMMETER not defined
+	
+20180404 SCL
+- get rid of deprecated/superfluous PP_TABLE_TESLA
+- don't let delay timer override EVSE_STATE_DISABLED
+	
+D4.13.0 20180403 SCL
+- revert change from D4.12.0: delay timer would always wait for EV finish charging before ending.
+  -> timer will go to sleep at end of specified time window unless charge or time limit set -> charge or time limit will still override timer end.
+- cleanup of time/charge limit zeroing code
+
+	
+20180328 SCL
+- fixed bug: $ST command would clear timer instead of setting it if all
+	4 parameters had leading zeros
+	e.g. $ST 01 05 02 01
+	
+20180323 SCL
+- added PERIODIC_LCD_REFRESH_MS code for Glyn Hudson, currently disabled
+  -> redraw of LCD at periodic intervals, in case it gets corrupted
+  -> was needed for him to get past CE EMC testing
+	
+20180313 SCL
+- merge PR#83 THREEPHASE from Glyn Hudson
+- related code cleanup
+	
+D4.12.3 20180209 SCL
+- display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault 
+	
+D4.12.2 20180206 SCL
+- revamp time limit code to base on seconds instead of millis(). time limit
+	fix in D4.12.1 was completely wrong. in existing code time limit was
+	getting reset every time entering sleep state
+	
+D4.12.1 20180206 SCL
+BUGGY DO NOT USE
+- time limit - used to be total length of charge session
+	-> now, setting *extends* total charge session time
+- charge limit - used to be total kWh of charge session
+	-> now, setting *extends* total charge session kWh
+	
+D4.12.0 20180206 SCL
+- restructure skip limits code
+- don't allow RAPI to set charge/time limits when not allowed ($SH/$S3)
+	-> return $NK if not allowed
+- add new clock icon for time limit
+- delaytimer changes/fixes:
+ fixes problems when delay timer enabled:
+   a) press sleep button during timer charging session -> would not stay sleeping.. wakes up again instantly
+   -> fixed: stays sleeping w/ timer temporarily disabled until end of timer awake interval or EV disconnected.. then timer re-enabled automatically
+   b) wake up EVSE between timer sessions, set time or charge limit -> EVSE goes into READY state after EV disconnected
+   -> fixed.. stays sleeping with timer enabled after EV disconnected
+   c) timer is near end of charging session window.. plug in car, set time or charge limit which requires EV to charge beyond timer's charging session -> timer can kick in and stop charging even though charge/time limit not met
+   -> fixed.. EVSE wont' stop charging until charge/time limit met. timer temporarily disabled until limit met or EV is unplugged
+ code changes:
+	1) don't save EVSE settings when enable/disable (why were we doing that???) - to save life of EEPROM
+	2) don't save EVSE settings when setting start/end time (why were we doing that???) - to save life of EEPROM
+	3) when timer enabled and manualoverride, don't wake from sleep after time/charge limit reched and EV disconnected
+	4) don't CheckTime() in Enable() - superfluous
+	5) if wake from sleep via short press, temporarily disable timer (ManualOverride) until EV disconnected or if short press back to sleep, enable timer again. while timer temporarily disabled, timer icon no longer shown on LCD
+	-> lets charge start before normal timer start, and run until EV fully charged, even if timer stop time reached
+	-> if already charging, short press sleep/wake allows charge to proceed past normal timer stop time. timer re-enabled at end of charging or EV disconnect
+	6) if charge/time limit set or cancelled while timer enabled, timer temporarily disabled until limit reached or EV disconnected or short press sleep
+	7) don't need skip SetLimitSleep() @ end of charge/time limit if timer turned on ... new code will automatically make it sleep again after wake when EV disconnected
+	
+D4.11.1 20180108 SCL
+- add wdt_delay() .. use instead of delay() when delay is > watchdog timer
+	-> actually, OK to use everywhere
+	
+D4.11.0 20171207 SCL
+- rewrite Gfi::SelfTest() so that it doesn't hang when the test pin has hardware failure
+- clear elapsed charging time only when EV is disconnected and then reconnected (previously would reset every time charging stopped)
+
+	
+D4.10.4 20171121 SCL
+- rewrite KWH_RECORDING code - class EnergyMeter
+	-> fix usage counting bug.. was erroneously assuming 1sec intervals
+	
+D4.10.3 20171114 SCL
+- fix bug: couldn't set Max Current to odd maximum.
+	-> change Max Current menu to increment by 1A instead of 2A per button press
+	
+	
+D4.10.2 20171027 SCL
+- don't write to EEPROM when calling SetCurrentCapacity() in SetSvcLevel()
+
+20171018 SCL
+- get rid of MIN_CURRENT_L2/L1 -> use MIN_CURRENT_J1772
+	
+	
+20171010 SCL	
+- $SC remove bad code (*tokens[2] = 'N') ( should have been ==, not =)..
+	was working properly, anyway, but didn't care what character was
+	specified. just remove the clause altogether, and allow any 3rd
+	arg to make current capacity volatile
+- change $SC doc to [V] (volatile) instead of [N] for not saving to EEPROM 
+
+20170922 SCL
+- change "Resetting..." to "Restarting..."
+	
+vD4.10.1 20170921 SCL
+- move inline string "Resetting" to strings.h/cpp
+	
+vD4.10.0 20170817 SCL
+- change TMP007 temperature was showing up as 230 when not installed.
+- also, temperature for other devices was 0 when not installed, but 0 is a
+	valid temperature
+	-> change all default temps to TEMPERATURE_NOT_INSTALLED (currently
+	-2560)
+	-> bump up RAPI version to 4.0.1
+- when sleeping, and EV connected, set LCD backlight to white instead of violet
+- platformio compatibility - all code in open_evse.ino moved to open_evse.cpp to avoid bug in platformio's .ino munger that causes phantom compiler warnings (SVC_LVL_MNU_CNT redefined)
+	-> I wonder if this really works to avoid bugs.. doesn't pio still 
+	munge the CPP files, as well?
+
+vD4.9.1 20170811 SCL
+- added RAPI_FF - adds RAPI $FF command and deprecates all other enable/disable
+	commands, i.e. SD/SE/SF/SG/SR/SV
+	-> RAPIVER = 4.0.0
+- $FF T 0|1 enable/disable temperature monitoring
+- get rid of $S0 entirely, since it was half-baked and part of TEMPERATURE_MONITORING_NY
+	
+vD4.8.1 20170810 SCL
+- fix buffer overflow bug in EvseRapiProcessor::tokenize() - limit tokenCnt to
+	ESRAPI_MAX_ARGS
+	
 vD4.8.0 20170726 SCL
 - RAPI $SO 0 0 disables temperature checking
 - added RAPI $GD - get delay timer

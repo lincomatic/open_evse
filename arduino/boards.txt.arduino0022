@@ -1,10 +1,10 @@
-#############################################################
+############################################################
 evse.name=[USBasp]OpenEVSE
 evse.upload.using=usbasp
 evse.upload.maximum_size=32768
 evse.bootloader.low_fuses=0xff
 evse.bootloader.high_fuses=0xdf
-evse.bootloader.extended_fuses=0x05
+evse.bootloader.extended_fuses=0x04
 evse.bootloader.unlock_bits=0x3F
 evse.bootloader.lock_bits=0x0F
 evse.build.mcu=atmega328p
