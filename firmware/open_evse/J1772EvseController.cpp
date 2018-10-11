@@ -1636,12 +1636,9 @@ if (TempChkEnabled()) {
     }
 #endif // !FAKE_CHARGING_CURRENT
   }
-#endif // AMMETER
-  if (m_EvseState == EVSE_STATE_C) {
-    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
 #ifdef OVERCURRENT_THRESHOLD
+  if (m_EvseState == EVSE_STATE_C) {
     //testing    m_ChargingCurrent = (m_CurrentCapacity+OVERCURRENT_THRESHOLD+12)*1000L;
     if (m_ChargingCurrent >= ((m_CurrentCapacity+OVERCURRENT_THRESHOLD)*1000L)) {
       if (m_OverCurrentStartMs) { // already in overcurrent state
@@ -1660,7 +1657,19 @@ if (TempChkEnabled()) {
 	m_OverCurrentStartMs = millis();
       }
     }
+    else {
+      m_OverCurrentStartMs = 0; // clear overcurrent
+    }
+  }
+  else {
+    m_OverCurrentStartMs = 0; // clear overcurrent
+  }
 #endif // OVERCURRENT_THRESHOLD    
+#endif // AMMETER
+  if (m_EvseState == EVSE_STATE_C) {
+    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
+    m_ElapsedChargeTime = now() - m_ChargeOnTime;
+
 
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {
