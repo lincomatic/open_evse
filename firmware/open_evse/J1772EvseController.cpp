@@ -1646,8 +1646,15 @@ if (TempChkEnabled()) {
 	  //
 	  // overcurrent for too long. stop charging and hard fault
 	  //
-	  // spin until EV is disconnected
 	  m_EvseState = EVSE_STATE_OVER_CURRENT;
+
+	  m_Pilot.SetState(PILOT_STATE_P12); // Signal the EV to pause
+	  while ((millis()-curms) < 1000) { // give EV 1s to stop charging
+	    wdt_reset();
+	  }
+	  chargingOff(); // open the EVSE relays hopefully the EV has already discon
+
+	  // spin until EV is disconnected
 	  HardFault();
 	  
 	  m_OverCurrentStartMs = 0; // clear overcurrent
