@@ -1,5 +1,8 @@
 Change Log
 
+D5.0.1 20181018 SCL
+- fix Issue #94. Overcurrent caused lockup. Merge fixes from test1 branch 
+
 20180823 SCL
 - merged PR#94: doesn't affect functionality, only to correct compile errors on minimal builds
 	

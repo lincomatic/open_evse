@@ -1649,6 +1649,7 @@ if (TempChkEnabled()) {
 	  m_EvseState = EVSE_STATE_OVER_CURRENT;
 
 	  m_Pilot.SetState(PILOT_STATE_P12); // Signal the EV to pause
+	  curms = millis();
 	  while ((millis()-curms) < 1000) { // give EV 1s to stop charging
 	    wdt_reset();
 	  }
