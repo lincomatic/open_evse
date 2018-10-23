@@ -15,6 +15,8 @@
  ****************************************************/
 
 #include "open_evse.h"
+
+#ifdef TMP007_IS_ON_I2C
 #include <util/delay.h>
 
 //#define TESTDIE 0x0C78
@@ -149,3 +151,4 @@ void Adafruit_TMP007::write16(uint8_t a, uint16_t d) {
 #endif
   Wire.endTransmission(); // end transmission
 }
+#endif // TMP007_IS_ON_I2C

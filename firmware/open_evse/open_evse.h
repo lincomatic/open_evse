@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 // See platformio.ini
-// #define VERSION "D5.0.0"
+// #define VERSION "D5.0.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -300,6 +300,21 @@ extern AutoCurrentCapacityController g_ACCController;
 // certification.. redraw display periodically when enabled
 #define PERIODIC_LCD_REFRESH_MS 120000UL
 
+// when closing DC relay set to HIGH for m_relayCloseMs, then
+// switch to m_relayHoldPwm
+// ONLY WORKS PWM-CAPABLE PINS!!!
+// use Arduino pin number PD5 = 5, PD6 = 6
+//#define RELAY_AUTO_PWM_PIN 5
+// enables RAPI $Z0 for tuning PWM (see rapi_proc.h for $Z0 syntax)
+// PWM parameters written to/loaded from EEPROM
+// when done tuning, put hardcoded parameters into m_relayCloseMs
+// and m_relayHoldPwm below
+//#define RELAY_AUTO_PWM_PIN_TESTING
+#ifndef RELAY_AUTO_PWM_PIN_TESTING
+#define m_relayCloseMs 250UL
+#define m_relayHoldPwm 50 // duty cycle 0-255
+#endif //RELAY_AUTO_PWM_PIN_TESTING
+
 //-- end features
 
 #ifndef DEFAULT_LCD_BKL_TYPE
@@ -332,6 +347,10 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
 #error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
+#endif
+
+#if defined(GFI_SELFTEST) && !defined(GFI)
+#error INVALID_CONFIG - GFI NEEDED FOR GFI SELF TEST
 #endif
 
 // for testing print various diagnostic messages to the UART
@@ -413,6 +432,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define MAX_CURRENT_CAPACITY_L2 32 // J1772 Max for L2 = 80
 
 //J1772EVSEController
+
 #define CURRENT_PIN 0 // analog current reading pin ADCx
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
 #define PP_PIN 2 // PP_READ - ADC2
@@ -440,6 +460,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define ACLINE2_REG &PIND
 #define ACLINE2_IDX 4
 
+#ifndef RELAY_AUTO_PWM_PIN
 // digital Relay trigger pin
 #define CHARGING_REG &PINB
 #define CHARGING_IDX 0
@@ -449,6 +470,7 @@ extern AutoCurrentCapacityController g_ACCController;
 //digital Charging pin for AC relay
 #define CHARGINGAC_REG &PINB
 #define CHARGINGAC_IDX 1
+#endif // !RELAY_AUTO_PWM_PIN
 
 // obsolete LED pin
 //#define RED_LED_REG &PIND
@@ -519,6 +541,19 @@ extern AutoCurrentCapacityController g_ACCController;
 #define EOFS_GROUP_CURRENT_CAPACITY 31 // 1 byte
 // non-volatile flags
 #define EOFS_DUO_NVFLAGS 32 // 1 byte
+#define EOFS_DUO_SHARED_AMPS 33 // 1 byte
+
+//- start TESTING ONLY
+#ifdef RELAY_AUTO_PWM_PIN_TESTING
+#define EOFS_RELAY_HOLD_PWM 512
+#define EOFS_RELAY_CLOSE_MS 513
+#endif //  RELAY_AUTO_PWM_PIN_TESTING
+#ifdef RELAY_HOLD_DELAY_TUNING
+#define EOFS_RELAY_HOLD_DELAY 512
+#endif // RELAY_HOLD_DELAY_TUNING
+//- end TESTING ONLY
+
+
 
 // must stay within thresh for this time in ms before switching states
 #define DELAY_STATE_TRANSITION 250

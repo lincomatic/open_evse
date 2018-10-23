@@ -1,5 +1,14 @@
 Change Log
 
+D5.0.1 20181018 SCL
+- fix Issue #94. Overcurrent caused lockup. Merge fixes from test1 branch 
+
+20180823 SCL
+- merged PR#94: doesn't affect functionality, only to correct compile errors on minimal builds
+	
+20180724 SCL
+- added RELAY_AUTO_PWM code - not tested - needs PWM-capable pin to function
+	
 20180523 SCL
 - when RTC not defined, g++ bug pops out:
 	open_evse:2384: error: unable to find a register to spill in class 'NO_REGS'

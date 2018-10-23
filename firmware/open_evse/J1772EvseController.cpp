@@ -258,6 +258,13 @@ void J1772EVSEController::ShowDisabledTests()
 
 void J1772EVSEController::chargingOn()
 {  // turn on charging current
+#ifdef RELAY_AUTO_PWM_PIN
+  // turn on charging pin to close relay
+  digitalWrite(RELAY_AUTO_PWM_PIN,HIGH);
+  delay(m_relayCloseMs);
+  // switch to PWM to hold closed
+  analogWrite(RELAY_AUTO_PWM_PIN,m_relayHoldPwm);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.write(1);
 #endif
@@ -267,6 +274,8 @@ void J1772EVSEController::chargingOn()
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(1);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
   m_bVFlags |= ECVF_CHARGING_ON;
   
   if (m_bVFlags2 & ECVF2_SESSION_ENDED) {
@@ -283,6 +292,9 @@ void J1772EVSEController::chargingOn()
 
 void J1772EVSEController::chargingOff()
 { // turn off charging current
+#ifdef RELAY_AUTO_PWM_PIN
+  digitalWrite(RELAY_AUTO_PWM_PIN,LOW);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.write(0);
 #endif
@@ -292,6 +304,8 @@ void J1772EVSEController::chargingOff()
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(0);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
   m_bVFlags &= ~ECVF_CHARGING_ON;
 
   m_ChargeOffTime = now();
@@ -847,12 +861,29 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
+#ifdef RELAY_AUTO_PWM_PIN_TESTING
+  m_relayHoldPwm = eeprom_read_byte((uint8_t*)EOFS_RELAY_HOLD_PWM);
+  m_relayCloseMs = eeprom_read_dword((uint32_t*)EOFS_RELAY_CLOSE_MS);
+  if (m_relayCloseMs > 5000) {
+    m_relayCloseMs = 0;
+    m_relayHoldPwm = 248;
+  }
+  Serial.print("\nrelayCloseMs: ");Serial.println(m_relayCloseMs);
+  Serial.print("relayHoldPwm: ");Serial.println(m_relayHoldPwm);
+#endif
+
+
+#ifdef RELAY_AUTO_PWM_PIN
+  pinMode(RELAY_AUTO_PWM_PIN,OUTPUT);
+#else // !RELAY_AUTO_PWM_PIN
 #ifdef CHARGING_REG
   pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
 #endif
 #ifdef CHARGING2_REG
   pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
 #endif
+#endif // RELAY_AUTO_PWM_PIN
+
 #ifdef CHARGINGAC_REG
   pinChargingAC.init(CHARGINGAC_REG,CHARGINGAC_IDX,DigitalPin::OUT);
 #endif
@@ -914,7 +945,6 @@ void J1772EVSEController::Init()
   
   m_AmmeterReading = 0;
   m_ChargingCurrent = 0;
-
 #ifdef OVERCURRENT_THRESHOLD
   m_OverCurrentStartMs = 0;
 #endif //OVERCURRENT_THRESHOLD
@@ -1606,12 +1636,9 @@ if (TempChkEnabled()) {
     }
 #endif // !FAKE_CHARGING_CURRENT
   }
-#endif // AMMETER
-  if (m_EvseState == EVSE_STATE_C) {
-    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
 #ifdef OVERCURRENT_THRESHOLD
+  if (m_EvseState == EVSE_STATE_C) {
     //testing    m_ChargingCurrent = (m_CurrentCapacity+OVERCURRENT_THRESHOLD+12)*1000L;
     if (m_ChargingCurrent >= ((m_CurrentCapacity+OVERCURRENT_THRESHOLD)*1000L)) {
       if (m_OverCurrentStartMs) { // already in overcurrent state
@@ -1619,8 +1646,16 @@ if (TempChkEnabled()) {
 	  //
 	  // overcurrent for too long. stop charging and hard fault
 	  //
-	  // spin until EV is disconnected
 	  m_EvseState = EVSE_STATE_OVER_CURRENT;
+
+	  m_Pilot.SetState(PILOT_STATE_P12); // Signal the EV to pause
+	  curms = millis();
+	  while ((millis()-curms) < 1000) { // give EV 1s to stop charging
+	    wdt_reset();
+	  }
+	  chargingOff(); // open the EVSE relays hopefully the EV has already discon
+
+	  // spin until EV is disconnected
 	  HardFault();
 	  
 	  m_OverCurrentStartMs = 0; // clear overcurrent
@@ -1630,7 +1665,19 @@ if (TempChkEnabled()) {
 	m_OverCurrentStartMs = millis();
       }
     }
+    else {
+      m_OverCurrentStartMs = 0; // clear overcurrent
+    }
+  }
+  else {
+    m_OverCurrentStartMs = 0; // clear overcurrent
+  }
 #endif // OVERCURRENT_THRESHOLD
+#endif // AMMETER
+  if (m_EvseState == EVSE_STATE_C) {
+    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
+    m_ElapsedChargeTime = now() - m_ChargeOnTime;
+
 
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {
