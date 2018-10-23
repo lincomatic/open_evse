@@ -2,7 +2,7 @@ download/**
 archive/**
 genrapi/**
 craig/*
-ma/*
+utils/ma/*
 *.sav
 *.zip
 *.bak
