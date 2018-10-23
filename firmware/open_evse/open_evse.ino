@@ -65,7 +65,7 @@ SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
 SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
-//DiodeChkMenu g_DiodeChkMenu;
+DiodeChkMenu g_DiodeChkMenu;
 #ifdef RGBLCD
 BklTypeMenu g_BklTypeMenu;
 #endif // RGBLCD
@@ -75,10 +75,10 @@ GfiTestMenu g_GfiTestMenu;
 #ifdef TEMPERATURE_MONITORING
 TempOnOffMenu g_TempOnOffMenu;
 #endif // TEMPERATURE_MONITORING
-//VentReqMenu g_VentReqMenu;
+VentReqMenu g_VentReqMenu;
 #ifdef ADVPWR
-//GndChkMenu g_GndChkMenu;
-//RlyChkMenu g_RlyChkMenu;
+GndChkMenu g_GndChkMenu;
+RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
@@ -128,11 +128,11 @@ Menu *g_SetupMenuList[] = {
 #endif // RGBLCD
   &g_SvcLevelMenu,
   &g_MaxCurrentMenu,
-  //&g_DiodeChkMenu,
-  //&g_VentReqMenu,
+  &g_DiodeChkMenu,
+  &g_VentReqMenu,
 #ifdef ADVPWR
-  //&g_GndChkMenu,
-  //&g_RlyChkMenu,
+  &g_GndChkMenu,
+  &g_RlyChkMenu,
 #endif // ADVPWR
 #ifdef GFI_SELFTEST
   &g_GfiTestMenu,

@@ -1636,12 +1636,9 @@ if (TempChkEnabled()) {
     }
 #endif // !FAKE_CHARGING_CURRENT
   }
-#endif // AMMETER
-  if (m_EvseState == EVSE_STATE_C) {
-    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeOnTime;
 
 #ifdef OVERCURRENT_THRESHOLD
+  if (m_EvseState == EVSE_STATE_C) {
     //testing    m_ChargingCurrent = (m_CurrentCapacity+OVERCURRENT_THRESHOLD+12)*1000L;
     if (m_ChargingCurrent >= ((m_CurrentCapacity+OVERCURRENT_THRESHOLD)*1000L)) {
       if (m_OverCurrentStartMs) { // already in overcurrent state
@@ -1649,8 +1646,16 @@ if (TempChkEnabled()) {
 	  //
 	  // overcurrent for too long. stop charging and hard fault
 	  //
-	  // spin until EV is disconnected
 	  m_EvseState = EVSE_STATE_OVER_CURRENT;
+
+	  m_Pilot.SetState(PILOT_STATE_P12); // Signal the EV to pause
+	  curms = millis();
+	  while ((millis()-curms) < 1000) { // give EV 1s to stop charging
+	    wdt_reset();
+	  }
+	  chargingOff(); // open the EVSE relays hopefully the EV has already discon
+
+	  // spin until EV is disconnected
 	  HardFault();
 	  
 	  m_OverCurrentStartMs = 0; // clear overcurrent
@@ -1660,7 +1665,19 @@ if (TempChkEnabled()) {
 	m_OverCurrentStartMs = millis();
       }
     }
+    else {
+      m_OverCurrentStartMs = 0; // clear overcurrent
+    }
+  }
+  else {
+    m_OverCurrentStartMs = 0; // clear overcurrent
+  }
 #endif // OVERCURRENT_THRESHOLD    
+#endif // AMMETER
+  if (m_EvseState == EVSE_STATE_C) {
+    m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
+    m_ElapsedChargeTime = now() - m_ChargeOnTime;
+
 
 #ifdef TEMPERATURE_MONITORING
   if(TempChkEnabled()) {

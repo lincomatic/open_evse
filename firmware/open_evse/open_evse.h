@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "5.0.0"
+#define VERSION "5.0.1"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -106,7 +106,7 @@
 #define WATCHDOG
 
 // auto detect ampacity by PP pin resistor
-#define PP_AUTO_AMPACITY
+//#define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
@@ -121,7 +121,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-#define MENNEKES_LOCK
+//#define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -244,7 +244,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DELAYTIMER
 
 #if defined(DELAYTIMER) && defined(BTN_MENU)
-//#define DELAYTIMER_MENU
+#define DELAYTIMER_MENU
 #endif
 
 #else // !RTC
@@ -289,7 +289,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // glynhudson reports that LCD gets corrupted by EMC testing during CE
 // certification.. redraw display periodically when enabled
-#define PERIODIC_LCD_REFRESH_MS 120000UL
+//#define PERIODIC_LCD_REFRESH_MS 120000UL
 
 // when closing DC relay set to HIGH for m_relayCloseMs, then
 // switch to m_relayHoldPwm
@@ -338,6 +338,10 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #if defined(UL_COMPLIANT) && !defined(GFI_SELFTEST)
 #error INVALID CONFIG - GFI SELF TEST NEEDED FOR UL COMPLIANCE
+#endif
+
+#if defined(GFI_SELFTEST) && !defined(GFI)
+#error INVALID_CONFIG - GFI NEEDED FOR GFI SELF TEST
 #endif
 
 // for testing print various diagnostic messages to the UART
