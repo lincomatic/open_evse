@@ -1,10 +1,6 @@
-This is the development branch - use for testing only
-
 
 Firmware for Open EVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
-See http://code.google.com/p/open-evse/ for project details.
-
-Compilation help: http://code.google.com/p/open-evse/wiki/LoadingFirmware
+See https://github.com/OpenEVSE/open_evse
 
 NOTES:
 - Working versions of the required libraries are included in the libraries/ folder
