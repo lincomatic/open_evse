@@ -217,7 +217,7 @@ extern AutoCurrentCapacityController g_ACCController;
 // half cycle (for ground check on both legs)
 #define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
-// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the
+// connect an SPST-NO button between pin defined by BTN_REG/BTN_IDX and GND or enable ADAFRUIT_BTN to use the
 // select button of the Adafruit RGB LCD
 // How to use 1-button menu
 // Long press activates menu
