@@ -26,6 +26,7 @@
 #define _I2CADDR_H_
 //
 // I2C addresses
+// NOTE: see open_evse.h for LCD_I2C_ADDR
 //
 // LiquidTWI2
 #define MCP23017_ADDRESS 0x20
