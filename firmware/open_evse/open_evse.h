@@ -206,9 +206,15 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
+
 // Support PCF8574* based I2C backpack using F. Malpartida's library
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
+// *requires* I2CLCD enabled and RGBLCD disabled
 //#define I2CLCD_PCF8574
+#ifdef I2CLCD_PCF8574
+#define I2CLCD
+#undef RGBLCD
+#endif // I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -318,10 +324,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
-
-#ifndef I2CLCD
-#undef I2CLCD_PCF8574
-#endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
