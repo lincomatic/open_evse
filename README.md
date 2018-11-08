@@ -1,5 +1,6 @@
 This is the development branch - latest bleeding edge code here
 The version in this repo is usually functional
+DO NOT use any of the other branches, including the stable branch.. they're just for my own testing, or kept for historical purposes
 
 Tip Jar: I developed/maintain this firmware on a volunteer basis. Any donation, no matter how small, is greatly appreciated.
 
