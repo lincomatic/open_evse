@@ -8,10 +8,8 @@ Tip Jar: I developed/maintain this firmware on a volunteer basis. Any donation, 
 
 Firmware for OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
-Compilation help: http://code.google.com/p/open-evse/wiki/LoadingFirmware
-
 NOTES:
-- Working versions of the required libraries are included in the libraries/ folder
+- Working versions of the required libraries are included with the firmware code. This avoids potential issues related to using the wrong versions of the libraries.
 - Arduino 1.6.x is STRONGLY RECOMMENDED for compiling OpenEVSE. Older versions of Arduino will build sketches which are too big to fit into OpenEVSE, unless features are disabled.
 - Current official build tools version is Arduino AVR Boards by Arduino v1.6.15
 ------------
