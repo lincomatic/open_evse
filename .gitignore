@@ -172,3 +172,7 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
