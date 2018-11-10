@@ -130,9 +130,9 @@ S2 0|1 - disable/enable ammeter calibration mode - ammeter is read even when not
 S3 cnt - set charge time limit to cnt*15 minutes (0=disable, max=255)
  NOTES:
   - allowed only when EV connected in State B or C
+  - current session will stop when time reached. the limit automatically
+    gets cancelled when EV disconnected
   - temporarily disables delay timer until EV disconnected or limit reached
-  - actually *extends* the current charging session. So if current session
-    has already charged for 2hrs, then $S3 2 ends charging after total 2:30
  response:
   $OK - accepted
   $NK - invalid EVSE state
@@ -170,9 +170,9 @@ SC amps [V]- set current capacity
 SH kWh - set cHarge limit to kWh
  NOTES:
   - allowed only when EV connected in State B or C
+  - current session will stop when total kWh reached. the limit automatically
+    gets cancelled when EV disconnected
   - temporarily disables delay timer until EV disconnected or limit reached
-  - actually *extends* the charge to the limit. So say, current session has
-    already charged 10kWh, $SH 5 will charge until 15kWh
  response:
   $OK - accepted
   $NK - invalid EVSE state
