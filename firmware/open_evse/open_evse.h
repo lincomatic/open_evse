@@ -41,8 +41,12 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
+<<<<<<< HEAD
 // See platformio.ini
 // #define VERSION "D5.0.1"
+=======
+#define VERSION "D5.1.0"
+>>>>>>> 4a86e4d5b9e72cbb4adf036056bd9c8dae5b1e7a
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -215,9 +219,15 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
+
 // Support PCF8574* based I2C backpack using F. Malpartida's library
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
+// *requires* I2CLCD enabled and RGBLCD disabled
 //#define I2CLCD_PCF8574
+#ifdef I2CLCD_PCF8574
+#define I2CLCD
+#undef RGBLCD
+#endif // I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -226,7 +236,7 @@ extern AutoCurrentCapacityController g_ACCController;
 // half cycle (for ground check on both legs)
 #define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
-// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the
+// connect an SPST-NO button between pin defined by BTN_REG/BTN_IDX and GND or enable ADAFRUIT_BTN to use the
 // select button of the Adafruit RGB LCD
 // How to use 1-button menu
 // Long press activates menu
@@ -327,10 +337,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
-
-#ifndef I2CLCD
-#undef I2CLCD_PCF8574
-#endif
 
 //If LCD and RTC is defined, un-define CLI so we can save ram space.
 #if defined(SERIALCLI) && defined(DELAYTIMER_MENU)

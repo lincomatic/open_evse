@@ -173,6 +173,7 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+<<<<<<< HEAD
 
 # Platform IO
 .pioenvs
@@ -184,3 +185,9 @@ pip-log.txt
 Platformio
 ############
 .pioenvs/
+=======
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+>>>>>>> 4a86e4d5b9e72cbb4adf036056bd9c8dae5b1e7a

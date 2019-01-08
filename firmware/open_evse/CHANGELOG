@@ -1,5 +1,8 @@
 Change Log
 
+D5.1.0 20181109 SCL
+- change session time & charge limits to be absolute instead of extending the current session. e.g. already charged 2kWh.. set limit to 3kWh ... stop @ 3kWh instead of 5kWh
+	
 D5.0.1 20181018 SCL
 - fix Issue #94. Overcurrent caused lockup. Merge fixes from test1 branch 
 
