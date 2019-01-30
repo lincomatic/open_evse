@@ -767,7 +767,9 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
       SetGreenLed(0);
       SetRedLed(1);
+#ifdef LCD16X2
       LcdPrint_P(0,g_psHighTemp);
+#endif
     }
 #endif // TEMPERATURE_MONITORING
   }
