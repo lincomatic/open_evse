@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2016 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2019 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -64,10 +64,28 @@ xk = 2-hex-digit checksum - 8-bit XOR of all characters before '^'
 ss = optional 2-hex-digit sequence ID which was sent with the command
      only present if a sequence ID was send with the command
 
-asynchronous notification messages
-$ST state\r - EVSE state transition - sent whenever EVSE state changes
- state: EVSE_STATE_xxx
-$WF mode\r - Request client WiFi mode
+A-prefix: asynchronous notification messages
+
+Boot Notification
+$AB postcode fwrev
+ postcode(hex):
+   if boot OK then postcode = 00
+   if error then postcode
+       07 = bad ground
+       08 = stuck relay
+       09 = GFI test failed
+ fwrev(string): firmware revision
+
+EVSE state transition: sent whenever EVSE state changes
+$AT evsestate pilotstate currentcapacity vflags
+ evsestate(hex): EVSE_STATE_xxx
+ pilotstate(hex): EVSE_STATE_xxx
+ currentcapacity(decimal): amps
+ vflags(hex): m_wVFlags bits
+
+
+Request client WiFi mode - only if RAPI_WF defined
+$WF mode\r
  mode: WIFI_MODE_XXX
  (currently very long press (10 sec) of menu btn on OpenEVSE will send WIFI_MODE_AP_DEFAULT
 v2.0.1+: 2-hex-digit XOR checksum appended to asynchronous messages
@@ -143,30 +161,15 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [V]- set current capacity
-   default action is to save new current capacity to EEPROM.
-   if V is specified, then new current capacity is volatile, and will be
-     reset to EEPROM value at next reboot
  response:
-   if amps < minimum current capacity (6A), will set to minimum and return $NK ampsset
-   if amps > maximum allowed current capacity, will set to maximum and return $NK ampsset
+   if amps < minimum current capacity, will set to minimum and return $NK ampsset
+   if amps > maximum current capacity, will set to maximum and return $NK ampsset
    if in over temperature status, raising current capacity will fail and return $NK ampsset
    otherwise return $OK ampsset
-   ampsset: the resultant current capacity, which may be < requested amps
-(DEPRECATED) SD 0|1 - disable/enable diode check
- $SD 0*0B
- $SD 1*0C
-(DEPRECATED) SE 0|1 - disable/enable command echo
- $SE 0*0C
- $SE 1*0D
- use this for interactive terminal sessions with RAPI.
- RAPI will echo back characters as they are typed, and add a <LF> character
- after its replies. Valid only over a serial connection, DO NOT USE on I2C
-(DEPRECATED) SF 0|1 - disable/enable GFI self test
- $SF 0*0D
- $SF 1*0E
-(DEPRECATED) SG 0|1 - disable/enable ground check
- $SG 0*0E
- $SG 1*0F
+   ampsset: the resultant current capacity
+   default action is to save new current capacity to EEPROM.
+   if V is specified, then new current capacity is volatile, and will be
+     reset to previous value at next reboot
 SH kWh - set cHarge limit to kWh
  NOTES:
   - allowed only when EV connected in State B or C
@@ -177,88 +180,107 @@ SH kWh - set cHarge limit to kWh
   $OK - accepted
   $NK - invalid EVSE state
 SK - set accumulated Wh (v1.0.3+)
- $SK 0*12 - set accumulated Wh to 0
+ $SK 0^2C - set accumulated Wh to 0
 SL 1|2|A  - set service level L1/L2/Auto
  $SL 1*14
  $SL 2*15
  $SL A*24
 SM voltscalefactor voltoffset - set voltMeter settings
-(DEPRECATED) SR 0|1 - disable/enable stuck relay check
- $SR 0*19
- $SR 1*1A
 ST starthr startmin endhr endmin - set timer
- $ST 0 0 0 0*0B - cancel timer
-(DEPRECATED)SV 0|1 - disable/enable vent required
- $SV 0*1D
- $SV 1*1E
+ $ST 0 0 0 0^23 - cancel timer
 
 G0 - get EV connect state
  response: $OK connectstate
  connectstate: 0=not connected, 1=connected, 2=unknown
  -> connectstate is unknown when EVSE pilot is -12VDC
-G3 - get time limit
+ $G0^53
+
+G3 - get charging time limit
  response: $OK cnt
  cnt*15 = minutes
         = 0 = no time limit
+ $G3^50
+
 G4 - get auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
  response: $OK lockstate
   lockstate = 0=unlocked, =1=locked
+ $G4^57
 GA - get ammeter settings
  response: $OK currentscalefactor currentoffset
- $GA*AC
-GC - get current capacity range in amps
- response: $OK minamps maxamps
- $GC*AE
+ $GA^22
+
+GC - get current capacity info
+ response: $OK minamps maxamps pilotamps
+ all values decimal
+ minamps - min allowed current capacity
+ maxamps - max allowed current capacity
+ pilotamps - current capacity advertised by pilot
+ $GC^20
+
 GD - get Delay timer
  response: $OK starthr startmin endhr endmin
    all values decimal
    if timer disabled, starthr=startmin=endhr=endmin=0
+ $GD^27
+
 GE - get settings
  response: $OK amps(decimal) flags(hex)
- $GE*B0
+ $GE^26
+
 GF - get fault counters
  response: $OK gfitripcnt nogndtripcnt stuckrelaytripcnt (all values hex)
  maximum trip count = 0xFF for any counter
- $GF*B1
+ $GF^25
+
 GG - get charging current and voltage
  response: $OK milliamps millivolts
  AMMETER must be defined in order to get amps, otherwise returns -1 amps
  VOLTMETER must be defined in order to get voltage, otherwise returns -1 volts
- $GG*B2
+ $GG^24
+
 GH - get cHarge limit
  response: $OK kWh
  kWh = 0 = no charge limit
+ $GH^2B
+
 GM - get voltMeter settings
  response: $OK voltcalefactor voltoffset
  $GM^2E
+
 GO get Overtemperature thresholds
  response: $OK ambientthresh irthresh
  thresholds are in 10ths of a degree Celcius
  $GO^2C
 GP - get temPerature (v1.0.3+)
- $GP*BB
  response: $OK ds3231temp mcp9808temp tmp007temp
  ds3231temp - temperature from DS3231 RTC
  mcp9808temp - temperature from MCP9808
  tmp007temp - temperature from TMP007
  all temperatures are in 10th's of a degree Celcius
  if any temperature sensor is not installed, its return value is -2560
+ $GP^33
+
 GS - get state
- response: $OK evsestate elapsed
- evsestate(dec): EVSE_STATE_xxx
+ response: $OK evsestate elapsed pilotstate vflags
+ evsestate(hex): EVSE_STATE_xxx
  elapsed(dec): elapsed charge time in seconds of current or last charging session
- $GS*BE
+ pilotstate(hex): EVSE_STATE_xxx
+ vflags(hex): EVCF_xxx
+ $GS^30
+
 GT - get time (RTC)
  response: $OK yr mo day hr min sec       yr=2-digit year
- $GT*BF
+ $GT^37
+
 GU - get energy usage (v1.0.3+)
- $GU*C0
  response: $OK Wattseconds Whacc
  Wattseconds - Watt-seconds used this charging session, note you'll divide Wattseconds by 3600 to get Wh
  Whacc - total Wh accumulated over all charging sessions, note you'll divide Wh by 1000 to get kWh
+ $GU^36
+
 GV - get version
  response: $OK firmware_version protocol_version
- $GV*C1
+ $GV^35
 
 T commands for debugging only #define RAPI_T_COMMMANDS
 T0 amps - set fake charging current
@@ -276,15 +298,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#ifdef RAPI_FF
-#define RAPIVER "4.0.1"
-#elif defined(RAPI_SEQUENCE_ID)
-#define RAPIVER "3.0.1"
-#elif defined(RAPI_RESPONSE_CHK)
-#define RAPIVER "2.0.4"
-#else
-#define RAPIVER "1.0.5"
-#endif
+#define RAPIVER "5.0.0"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1
@@ -314,7 +328,6 @@ private:
   char *tokens[ESRAPI_MAX_ARGS];
   int8_t tokenCnt;
   char echo;
-#ifdef RAPI_SEQUENCE_ID
   uint8_t curReceivedSeqId;
   void appendSequenceId(char *s,uint8_t seqId);
 #ifdef RAPI_SENDER
@@ -323,7 +336,6 @@ private:
   int8_t isAsyncToken();
   int8_t isRespToken();
 #endif // RAPI_SENDER
-#endif // RAPI_SEQUENCE_ID
 
   virtual int available() = 0;
   virtual int read() = 0;
@@ -353,6 +365,7 @@ public:
 
   int doCmd();
   void sendEvseState();
+  void sendBootNotification();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
   void writeStr(const char *msg) { writeStart();write(msg);writeEnd(); }
 
@@ -401,5 +414,6 @@ void RapiInit();
 void RapiDoCmd();
 void RapiSendEvseState(uint8_t nodupe=1);
 void RapiSetWifiMode(uint8_t mode);
+void RapiSendBootNotification();
 
 #endif // RAPI

@@ -80,28 +80,23 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECF_TEMP_CHK_DISABLED  0x0400 // no Temperature Monitoring
 #define ECF_DEFAULT            0x0000
 
-// J1772EVSEController volatile m_bVFlags bits - not saved to EEPROM
-#define ECVF_AUTOSVCLVL_SKIPPED 0x01 // auto svc level test skipped during post
-#define ECVF_HARD_FAULT         0x02 // in non-autoresettable fault
-#define ECVF_LIMIT_SLEEP        0x04 // currently sleeping after reaching time/charge limit
-#define ECVF_AUTH_LOCKED        0x08 // locked pending authentication
-#define ECVF_AMMETER_CAL        0x10 // ammeter calibration mode
-#define ECVF_NOGND_TRIPPED      0x20 // no ground has tripped at least once
-#define ECVF_CHARGING_ON        0x40 // charging relay is closed
-#define ECVF_GFI_TRIPPED        0x80 // gfi has tripped at least once
-
-#ifdef AUTH_LOCK
-#define ECVF_DEFAULT            ECVF_AUTH_LOCKED
+// J1772EVSEController volatile m_wVFlags bits - not saved to EEPROM
+#define ECVF_AUTOSVCLVL_SKIPPED 0x0001 // auto svc level test skipped during post
+#define ECVF_HARD_FAULT         0x0002 // in non-autoresettable fault
+#define ECVF_LIMIT_SLEEP        0x0004 // currently sleeping after reaching time/charge limit
+#define ECVF_AUTH_LOCKED        0x0008 // locked pending authentication
+#define ECVF_AMMETER_CAL        0x0010 // ammeter calibration mode
+#define ECVF_NOGND_TRIPPED      0x0020 // no ground has tripped at least once
+#define ECVF_CHARGING_ON        0x0040 // charging relay is closed
+#define ECVF_GFI_TRIPPED        0x0080 // gfi has tripped at least once since boot
+#define ECVF_EV_CONNECTED       0x0100 // EV connected - valid only when pilot not N12
+#define ECVF_SESSION_ENDED      0x0200 // used for charging session time calc
+#define ECVF_EV_CONNECTED_PREV  0x0400 // prev EV connected flag
+#if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
+#define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
 #else
-#define ECVF_DEFAULT            0x00
+#define ECVF_DEFAULT            ECVF_SESSION_ENDED
 #endif
-
-// J1772EVSEController volatile m_bVFlags2 bits - not saved to EEPROM
-#define ECVF2_EV_CONNECTED      0x01 // EV connected - valid only when pilot not N12
-#define ECVF2_EV_CONNECTED_PREV 0x02 // prev EV connected flag
-#define ECVF2_SESSION_ENDED     0x04 // used for charging session time calc
-
-#define ECVF2_DEFAULT           ECVF2_SESSION_ENDED
 
 
 class J1772EVSEController {
@@ -153,8 +148,7 @@ class J1772EVSEController {
   uint8_t m_relayHoldPwm; // PWM duty cycle to hold relay closed
 #endif // RELAY_AUTO_PWM_PIN_TESTING
   uint16_t m_wFlags; // ECF_xxx
-  uint8_t m_bVFlags; // ECVF_xxx
-  uint8_t m_bVFlags2; // ECVF2_xxx
+  uint16_t m_wVFlags; // ECVF_xxx
   THRESH_DATA m_ThreshData;
   uint8_t m_EvseState;
   uint8_t m_PrevEvseState;
@@ -180,6 +174,24 @@ class J1772EVSEController {
 #ifdef OVERCURRENT_THRESHOLD
   unsigned long m_OverCurrentStartMs;
 #endif // OVERCURRENT_THRESHOLD
+  void setFlags(uint16_t flags) { 
+    m_wFlags |= flags; 
+  }
+  void clrFlags(uint16_t flags) { 
+    m_wFlags &= ~flags; 
+  }
+  void setVFlags(uint16_t flags) { 
+    m_wVFlags |= flags; 
+  }
+  void clrVFlags(uint16_t flags) { 
+    m_wVFlags &= ~flags; 
+  }
+  uint16_t getVFlags(uint16_t flags) {
+    return m_wVFlags & flags;
+  }
+  uint8_t vFlagIsSet(uint16_t flag) {
+    return (m_wVFlags & flag) ? 1 : 0;
+  }
 
 #ifdef ADVPWR
 // power states for doPost() (active low)
@@ -199,25 +211,7 @@ class J1772EVSEController {
 #endif // ADVPWR
   void chargingOn();
   void chargingOff();
-  uint8_t chargingIsOn() { return m_bVFlags & ECVF_CHARGING_ON; }
-  void setFlags(uint16_t flags) { 
-    m_wFlags |= flags; 
-  }
-  void clrFlags(uint16_t flags) { 
-    m_wFlags &= ~flags; 
-  }
-  void setVFlags(uint8_t flags) { 
-    m_bVFlags |= flags; 
-  }
-  void clrVFlags(uint8_t flags) { 
-    m_bVFlags &= ~flags; 
-  }
-  void setVFlags2(uint8_t flags) { 
-    m_bVFlags2 |= flags; 
-  }
-  void clrVFlags2(uint8_t flags) { 
-    m_bVFlags2 &= ~flags; 
-  }
+  uint8_t chargingIsOn() { return vFlagIsSet(ECVF_CHARGING_ON); }
 
 #ifdef TIME_LIMIT
   uint8_t m_timeLimit15; // increments of 15min to extend charge time
@@ -252,8 +246,8 @@ public:
   void LoadThresholds();
 
   uint16_t GetFlags() { return m_wFlags; }
-  uint8_t GetVFlags() { return m_bVFlags; }
-  uint8_t GetVFlags2() { return m_bVFlags2; }
+  uint16_t GetVFlags() { return m_wVFlags; }
+
   uint8_t GetState() { 
     return m_EvseState; 
   }
@@ -279,9 +273,9 @@ public:
   }
 #endif
 
-  void SetHardFault() { m_bVFlags |= ECVF_HARD_FAULT; }
-  void ClrHardFault() { m_bVFlags &= ~ECVF_HARD_FAULT; }
-  int8_t InHardFault() { return (m_bVFlags & ECVF_HARD_FAULT) ? 1 : 0; }
+  void SetHardFault() { setVFlags(ECVF_HARD_FAULT); }
+  void ClrHardFault() { clrVFlags(ECVF_HARD_FAULT); }
+  int8_t InHardFault() { return vFlagIsSet(ECVF_HARD_FAULT); }
   unsigned long GetResetMs();
 
   uint8_t GetCurrentCapacity() { 
@@ -329,10 +323,10 @@ public:
   uint8_t AutoSvcLevelEnabled() { return (m_wFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
   void EnableAutoSvcLevel(uint8_t tf);
   void SetAutoSvcLvlSkipped(uint8_t tf) {
-    if (tf) m_bVFlags |= ECVF_AUTOSVCLVL_SKIPPED;
-    else m_bVFlags &= ~ECVF_AUTOSVCLVL_SKIPPED;
+    if (tf) setVFlags(ECVF_AUTOSVCLVL_SKIPPED);
+    else clrVFlags(ECVF_AUTOSVCLVL_SKIPPED);
   }
-  uint8_t AutoSvcLvlSkipped() { return m_bVFlags & ECVF_AUTOSVCLVL_SKIPPED; }
+  uint8_t AutoSvcLvlSkipped() { return vFlagIsSet(ECVF_AUTOSVCLVL_SKIPPED); }
 #else
   uint8_t AutoSvcLevelEnabled() { return 0; }
   void EnableAutoSvcLevel(uint8_t tf) {}
@@ -340,7 +334,7 @@ public:
   uint8_t AutoSvcLvlSkipped() { return 1; }
 #endif // AUTOSVCLEVEL
   void SetNoGndTripped();
-  uint8_t NoGndTripped() { return m_bVFlags & ECVF_NOGND_TRIPPED; }
+  uint8_t NoGndTripped() { return vFlagIsSet(ECVF_NOGND_TRIPPED); }
 
 
 
@@ -349,15 +343,15 @@ public:
 
   void HardFault();
 
-  void SetLimitSleep(uint8_t tf) {
-    if (tf) m_bVFlags |= ECVF_LIMIT_SLEEP;
-    else m_bVFlags &= ~ECVF_LIMIT_SLEEP;
+  void SetLimitSleep(int8_t tf) {
+    if (tf) setVFlags(ECVF_LIMIT_SLEEP);
+    else clrVFlags(ECVF_LIMIT_SLEEP);
   }
-  uint8_t LimitSleepIsSet() { return m_bVFlags & ECVF_LIMIT_SLEEP; }
+  uint8_t LimitSleepIsSet() { return vFlagIsSet(ECVF_LIMIT_SLEEP); }
 
 #ifdef GFI
   void SetGfiTripped();
-  uint8_t GfiTripped() { return m_bVFlags & ECVF_GFI_TRIPPED; }
+  uint8_t GfiTripped() { return vFlagIsSet(ECVF_GFI_TRIPPED); }
   uint8_t GetGfiTripCnt() { return m_GfiTripCnt+1; }
 #ifdef GFI_SELFTEST
   uint8_t GfiSelfTestEnabled() {
@@ -395,7 +389,13 @@ public:
   uint32_t GetVoltage() { return (uint32_t)-1; }
 #endif // VOLTMETER
 #ifdef AMMETER
-  int32_t GetChargingCurrent() { return m_ChargingCurrent; }
+  int32_t GetChargingCurrent() {
+#ifdef OCPPDBG
+    return 78*1000;
+#else
+    return m_ChargingCurrent;
+#endif // OCPPDBG
+  }
 #ifdef FAKE_CHARGING_CURRENT
   void SetChargingCurrent(int32_t current) {
     m_ChargingCurrent = current;
@@ -414,15 +414,11 @@ public:
     eeprom_write_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR,scale);
   }
   uint8_t AmmeterCalEnabled() { 
-    return (m_bVFlags & ECVF_AMMETER_CAL) ? 1 : 0;
+    return vFlagIsSet(ECVF_AMMETER_CAL);
   }
   void EnableAmmeterCal(uint8_t tf) {
-    if (tf) {
-      m_bVFlags |= ECVF_AMMETER_CAL;
-    }
-    else {
-      m_bVFlags &= ~ECVF_AMMETER_CAL;
-    }
+    if (tf) setVFlags(ECVF_AMMETER_CAL);
+    else clrVFlags(ECVF_AMMETER_CAL);
   }
   void ZeroChargingCurrent() { m_ChargingCurrent = 0; }
   uint8_t GetInstantaneousChargingAmps() {
@@ -472,24 +468,24 @@ public:
   void OpenRelay() {
     chargingOff();
   }
-  uint8_t RelayIsClosed() { return m_bVFlags & ECVF_CHARGING_ON; }
+  uint8_t RelayIsClosed() { return vFlagIsSet(ECVF_CHARGING_ON); }
 #ifdef AUTH_LOCK
   void AuthLock(uint8_t tf);
-  uint8_t AuthLockIsOn() { return m_bVFlags & ECVF_AUTH_LOCKED; }
+  uint8_t AuthLockIsOn() { return vFlagIsSet(ECVF_AUTH_LOCKED); }
 #endif // AUTH_LOCK
 
-  void SetEvConnected() { setVFlags2(ECVF2_EV_CONNECTED); }
+  void SetEvConnected() { setVFlags(ECVF_EV_CONNECTED); }
   void ClrEvConnected() {
-    clrVFlags2(ECVF2_EV_CONNECTED);
-    setVFlags2(ECVF2_SESSION_ENDED);
+    clrVFlags(ECVF_EV_CONNECTED);
+    setVFlags(ECVF_SESSION_ENDED);
  }
-  void SetEvConnectedPrev() { setVFlags2(ECVF2_EV_CONNECTED_PREV); }
-  void ClrEvConnectedPrev() { clrVFlags2(ECVF2_EV_CONNECTED_PREV); }
+  void SetEvConnectedPrev() { setVFlags(ECVF_EV_CONNECTED_PREV); }
+  void ClrEvConnectedPrev() { clrVFlags(ECVF_EV_CONNECTED_PREV); }
   // EvConnected value valid when pilot state not N12
-  uint8_t EvConnected() { return m_bVFlags2 & ECVF2_EV_CONNECTED; }
+  uint8_t EvConnected() { return vFlagIsSet(ECVF_EV_CONNECTED); }
   uint8_t EvConnectedTransition() {
-    if (((m_bVFlags2 & (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV)) == 0) ||
-	((m_bVFlags2 & (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV)) == (ECVF2_EV_CONNECTED|ECVF2_EV_CONNECTED_PREV))) return 0;
+    if (((m_wVFlags & (ECVF_EV_CONNECTED|ECVF_EV_CONNECTED_PREV)) == 0) ||
+	((m_wVFlags & (ECVF_EV_CONNECTED|ECVF_EV_CONNECTED_PREV)) == (ECVF_EV_CONNECTED|ECVF_EV_CONNECTED_PREV))) return 0;
     else return 1;
   }
 };

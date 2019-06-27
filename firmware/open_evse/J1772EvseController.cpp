@@ -174,8 +174,10 @@ void J1772EVSEController::AuthLock(uint8_t tf)
 {
   if (tf) setVFlags(ECVF_AUTH_LOCKED);
   else clrVFlags(ECVF_AUTH_LOCKED);
-  Update(1);
-  g_OBD.Update(OBD_UPD_FORCE);
+  if (!InFaultState()) {
+    Update(1);
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
 }
 #endif // AUTH_LOCK
 
@@ -208,7 +210,7 @@ void J1772EVSEController::DisabledTest_P(PGM_P message)
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
 #endif
 #ifndef NOCHECKS
-  wdt_delay(SHOW_DISABLED_DELAY);
+  delay(SHOW_DISABLED_DELAY); // don't call wdt_delay() because called before WDT_ENABLE()
 #endif
 }
 
@@ -257,7 +259,8 @@ void J1772EVSEController::ShowDisabledTests()
 #endif //SHOW_DISABLED_TESTS
 
 void J1772EVSEController::chargingOn()
-{  // turn on charging current
+{
+  // turn on charging current
 #ifdef RELAY_AUTO_PWM_PIN
   // turn on charging pin to close relay
   digitalWrite(RELAY_AUTO_PWM_PIN,HIGH);
@@ -276,11 +279,11 @@ void J1772EVSEController::chargingOn()
 #endif
 #endif // RELAY_AUTO_PWM_PIN
 
-  m_bVFlags |= ECVF_CHARGING_ON;
+  setVFlags(ECVF_CHARGING_ON);
   
-  if (m_bVFlags2 & ECVF2_SESSION_ENDED) {
+  if (vFlagIsSet(ECVF_SESSION_ENDED)) {
     m_AccumulatedChargeTime = 0;
-    m_bVFlags2 &= ~ECVF2_SESSION_ENDED;
+    clrVFlags(ECVF_SESSION_ENDED);
   }
   else {
     m_AccumulatedChargeTime += m_ElapsedChargeTime;
@@ -291,7 +294,8 @@ void J1772EVSEController::chargingOn()
 }
 
 void J1772EVSEController::chargingOff()
-{ // turn off charging current
+{
+ // turn off charging current
 #ifdef RELAY_AUTO_PWM_PIN
   digitalWrite(RELAY_AUTO_PWM_PIN,LOW);
 #else // !RELAY_AUTO_PWM_PIN
@@ -306,7 +310,7 @@ void J1772EVSEController::chargingOff()
 #endif
 #endif // RELAY_AUTO_PWM_PIN
 
-  m_bVFlags &= ~ECVF_CHARGING_ON;
+  clrVFlags(ECVF_CHARGING_ON);
 
   m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
@@ -351,7 +355,7 @@ void J1772EVSEController::SetGfiTripped()
     return;
   }
 #endif
-  m_bVFlags |= ECVF_GFI_TRIPPED;
+  setVFlags(ECVF_GFI_TRIPPED);
 
   // this is repeated in Update(), but we want to keep latency as low as possible
   // for safety so we do it here first anyway
@@ -900,6 +904,10 @@ void J1772EVSEController::Init()
   pinAuthLock.init(AUTH_LOCK_REG,AUTH_LOCK_IDX,DigitalPin::INP_PU);
 #endif
 
+#ifdef AUTH_LOCK
+  AuthLock(AUTH_LOCK);
+#endif // AUTH_LOCK
+
 #ifdef GFI
   m_Gfi.Init();
 #endif // GFI
@@ -967,8 +975,8 @@ void J1772EVSEController::Init()
   m_wFlags |= ECF_MONO_LCD;
 #endif
 
-  m_bVFlags = ECVF_DEFAULT;
-  m_bVFlags2 = ECVF2_DEFAULT;
+  m_wVFlags = ECVF_DEFAULT;
+
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
@@ -1015,7 +1023,7 @@ void J1772EVSEController::Init()
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
 #ifdef RAPI
-      RapiSendEvseState();
+      RapiSendBootNotification();
 #endif
       while (1) { // spin forever
 	  ProcessInputs();
@@ -1040,6 +1048,10 @@ void J1772EVSEController::Init()
 #endif
 
   g_OBD.SetGreenLed(0);
+
+#ifdef RAPI
+  RapiSendBootNotification();
+#endif
 }
 
 void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
@@ -1420,9 +1432,10 @@ if (TempChkEnabled()) {
 #ifdef AUTH_LOCK_REG
   {
     int8_t locked;
-    if (pinAuthLock.read()) locked = ECVF_AUTH_LOCKED;
+    if (pinAuthLock.read()) locked = 1;
     else locked = 0;
-    if (locked != (m_bVFlags & ECVF_AUTH_LOCKED)) {
+    int8_t flagslocked = vFlagIsSet(ECVF_AUTH_LOCKED) ? 1 : 0;
+    if (locked != flagslocked) {
       AuthLock(locked);
       g_OBD.Update(OBD_UPD_FORCE);
       forcetransition = 1;
@@ -1496,7 +1509,7 @@ if (TempChkEnabled()) {
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
-#ifdef UL_GFI_SELFTEST
+#if defined(UL_GFI_SELFTEST) && !defined(NOCHECKS)
       // test GFI before closing relay
       if (GfiSelfTestEnabled() && m_Gfi.SelfTest()) {
        // GFI test failed - hard fault

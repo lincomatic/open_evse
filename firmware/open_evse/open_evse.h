@@ -41,7 +41,7 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "D5.1.0"
+#define VERSION "D6.0.0"
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -49,6 +49,8 @@
 //#include "Language_norwegian.h"
 
 //-- begin features
+
+#define OCPP
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL
@@ -74,18 +76,6 @@
 
 // RAPI over serial
 #define RAPI_SERIAL
-
-// RAPI $FF command
-#define RAPI_FF
-
-#ifdef RAPI_FF
-// force on RAPI_SEQUENCE_ID and RAPI_RESPONSE_CHK when RAPI_FF on
-// optional sequence id can be inserted as last parameter to commands/responses
-#define RAPI_SEQUENCE_ID
-
-// add checksum to RAPI responses RAPI v2.0.0+
-#define RAPI_RESPONSE_CHK
-#endif // RAPI_FF
 
 // RAPI over I2C
 //#define RAPI_I2C
@@ -270,6 +260,12 @@ extern AutoCurrentCapacityController g_ACCController;
 ////        (subreg:QI (reg/f:HI 1065) 1)) C:\Users\Geek\AppData\Local\Temp\arduino_build_853681\sketch\rapi_proc.cpp:418 1 {pushqi1}
 #define GPPBUGKLUDGE
 #endif // RTC
+
+#ifdef OCPP
+#define AUTH_LOCK 1
+#define RAPI_SERIAL
+#endif // OCPP
+
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
 //#define SLEEP_STATUS_REG &PINB
@@ -1387,6 +1383,7 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
+char *GetFirmwareVersion(char *str);
 void wdt_delay(uint32_t ms);
 
 

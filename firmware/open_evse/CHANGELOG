@@ -1,4 +1,18 @@
 Change Log
+	
+D6.0.0 20190626 SCL
+- added code to facilitate OCPP support
+- RAPI changes that may render code incompatible w/ existing clients
+  -> see $AB, $AT, $SC
+  -> sequence ID always enabled
+  -> $FF command always enabled, deprecating old redundant commands
+  -> $WF enabled only if RAPI_WF defined
+  -> get rid of RAPI_RESPONSE_CHK define.. always enabled
+- J1772EvseController -> expand m_bVFlags to m_wVFlags, get rid of m_bVFlags2,
+	clean up flag setting/clearing/testing code
+D5.2.0 20190329 SCL
+- change $GS to return state(hex) elapsed(dec) pilotstate(hex)
+- get rid of async notification $ST - always send $AT	
 
 D5.1.0 20181109 SCL
 - change session time & charge limits to be absolute instead of extending the current session. e.g. already charged 2kWh.. set limit to 3kWh ... stop @ 3kWh instead of 5kWh

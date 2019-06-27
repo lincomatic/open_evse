@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2015 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2019 Sam C. Lin <lincomatic@gmail.com>
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
@@ -1009,14 +1009,14 @@ void Btn::read()
       lastDebounceTime = 0;
     }
   }
-#ifdef RAPI
+#ifdef RAPI_WF
   else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
     if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
       vlongDebounceTime = 0;
       RapiSetWifiMode(WIFI_MODE_AP_DEFAULT);
     }
   }
-#endif // RAPI
+#endif // RAPI_WF
 }
 
 uint8_t Btn::shortPress()
