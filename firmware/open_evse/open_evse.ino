@@ -2196,10 +2196,12 @@ void BtnHandler::ChkBtn()
 	  g_OBD.DisableUpdate(0);
 	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
 	  g_OBD.Update(OBD_UPD_FORCE);
+	  g_EvseController.ClrInMenu();
 	}
       }
     }
     else {
+      g_EvseController.SetInMenu();
 #if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
       g_SettingsMenu.CheckSkipLimits();
 #endif // CHARGE_LIMIT

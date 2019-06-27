@@ -10,6 +10,9 @@ D6.0.0 20190626 SCL
   -> get rid of RAPI_RESPONSE_CHK define.. always enabled
 - J1772EvseController -> expand m_bVFlags to m_wVFlags, get rid of m_bVFlags2,
 	clean up flag setting/clearing/testing code
+  -> added ECVF_UI_IN_MENU... flag is set/unset when in/out of UI menus..
+	$AT is sent on transition
+	
 D5.2.0 20190329 SCL
 - change $GS to return state(hex) elapsed(dec) pilotstate(hex)
 - get rid of async notification $ST - always send $AT	

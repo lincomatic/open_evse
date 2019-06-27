@@ -1263,7 +1263,6 @@ public:
   BtnHandler();
   void init() { m_Btn.init(); }
   void ChkBtn();
-  uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
   uint8_t GetSavedLcdMode() { return m_SavedLcdMode; }
   void SetSavedLcdMode(uint8_t mode ) { m_SavedLcdMode = mode; }
   int8_t DoShortPress(int8_t infaultstate);

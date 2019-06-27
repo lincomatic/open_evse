@@ -92,6 +92,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_EV_CONNECTED       0x0100 // EV connected - valid only when pilot not N12
 #define ECVF_SESSION_ENDED      0x0200 // used for charging session time calc
 #define ECVF_EV_CONNECTED_PREV  0x0400 // prev EV connected flag
+#define ECVF_UI_IN_MENU         0x0800 // onboard UI currently in a menu
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
 #else
@@ -488,6 +489,8 @@ public:
 	((m_wVFlags & (ECVF_EV_CONNECTED|ECVF_EV_CONNECTED_PREV)) == (ECVF_EV_CONNECTED|ECVF_EV_CONNECTED_PREV))) return 0;
     else return 1;
   }
+  void SetInMenu() { setVFlags(ECVF_UI_IN_MENU); }
+  void ClrInMenu() { clrVFlags(ECVF_UI_IN_MENU); }
 };
 
 #ifdef FT_ENDURANCE
