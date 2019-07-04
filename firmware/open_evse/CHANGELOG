@@ -1,4 +1,7 @@
 Change Log
+
+20190703 SCL
+- change OEII voltage defaults to lincomatic's from CraigK's
 	
 D6.0.0 20190626 SCL
 - added code to facilitate OCPP support
@@ -12,6 +15,7 @@ D6.0.0 20190626 SCL
 	clean up flag setting/clearing/testing code
   -> added ECVF_UI_IN_MENU... flag is set/unset when in/out of UI menus..
 	$AT is sent on transition
+  -> bump RAPIVER to 5.0.0
 	
 D5.2.0 20190329 SCL
 - change $GS to return state(hex) elapsed(dec) pilotstate(hex)
