@@ -50,7 +50,7 @@
 
 //-- begin features
 
-#define OCPP
+//#define OCPP
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL
@@ -76,6 +76,9 @@
 
 // RAPI over serial
 #define RAPI_SERIAL
+
+// RAPI $WF support
+#define RAPI_WF
 
 // RAPI over I2C
 //#define RAPI_I2C

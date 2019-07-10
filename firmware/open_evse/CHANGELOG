@@ -1,12 +1,22 @@
 Change Log
-
+	
+20190709 SCL
+- turn on RAPI_WF -> makes sketch too big for AVR build tools 1.6.15
+  -> testing v1.6.23, which builds sketch 32574 bytes and uses RAM 1570 (2 bytes less than 1.6.15)
+- turn off OCPP by default
+- N.B.: With current default settings, sketch is too big when built with AVR build tools v1.6.15. Can turn off RAPI_WF to reduce size, or use v1.6.23, which builds a sketch that fits - FOR TESTING ONLY
+	
 20190703 SCL
 - change OEII voltage defaults to lincomatic's from CraigK's
 	
 D6.0.0 20190626 SCL
 - added code to facilitate OCPP support
 - RAPI changes that may render code incompatible w/ existing clients
-  -> see $AB, $AT, $SC
+  -> see $AB, $AT, $GS
+     -> $AB async notification sent at boot
+     -> $AT replaces $ST async notification
+     -> $GS has new extra parameters, and first parameter, state,
+	is now HEX instead of DEC, for consistency with $AT
   -> sequence ID always enabled
   -> $FF command always enabled, deprecating old redundant commands
   -> $WF enabled only if RAPI_WF defined
