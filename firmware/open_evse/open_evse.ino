@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2019 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2019 Sam C. Lin
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
