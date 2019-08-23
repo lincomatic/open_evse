@@ -1179,7 +1179,7 @@ Menu *SetupMenu::Select()
   }
   else {
     m_CurIdx = 0;
-    return NULL;
+    g_EvseController.Reboot();
   }
 }
 
@@ -2188,16 +2188,11 @@ void BtnHandler::ChkBtn()
 
       }
       else { // exit
-	if (infaultstate) {
-	  g_EvseController.Reboot();
-	}
-	else {
-	  g_EvseController.Enable();
-	  g_OBD.DisableUpdate(0);
-	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
-	  g_OBD.Update(OBD_UPD_FORCE);
-	  g_EvseController.ClrInMenu();
-	}
+	g_EvseController.Enable();
+	g_OBD.DisableUpdate(0);
+	g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
+	g_OBD.Update(OBD_UPD_FORCE);
+	g_EvseController.ClrInMenu();
       }
     }
     else {

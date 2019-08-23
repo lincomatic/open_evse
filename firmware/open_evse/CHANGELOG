@@ -1,5 +1,8 @@
 Change Log
 	
+20190822 SCL
+- for consistency/safety sake, force reboot after exiting Setup menu
+	
 20190709 SCL
 - turn on RAPI_WF -> makes sketch too big for AVR build tools 1.6.15
   -> testing v1.6.23, which builds sketch 32574 bytes and uses RAM 1570 (2 bytes less than 1.6.15)
