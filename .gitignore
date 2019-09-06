@@ -174,5 +174,6 @@ pip-log.txt
 .DS_Store
 .pioenvs
 .piolibdeps
+.pio
 .clang_complete
 .gcc-flags.json
