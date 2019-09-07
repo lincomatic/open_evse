@@ -26,20 +26,20 @@ python:
 
 env:
   - PIO_ENV=openevse
-  - BUILD_ENV=platformio
-    PIO_ENV=openevse_1-6-14
-  - BUILD_ENV=platformio
-    PIO_ENV=openevse_1-6-17
-  - BUILD_ENV=platformio
-    PIO_ENV=openevse_1-6-23
-  - BUILD_ENV=platformio
-    AVR_CORE_VERSION=1.6.14
-  - BUILD_ENV=arduino
-    AVR_CORE_VERSION=1.6.15
-  - BUILD_ENV=arduino
-    AVR_CORE_VERSION=1.6.17
-  - BUILD_ENV=arduino
-    AVR_CORE_VERSION=1.6.23
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-14
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-17
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-23
+    BUILD_ENV=platformio
+  - AVR_CORE_VERSION=1.6.14
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.15
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.17
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.23
     BUILD_ENV=arduino
 
 sudo: false
@@ -49,10 +49,10 @@ cache:
     - "~/.arduino15"
 
 install:
-  - bash -e ci/install_${BUILD_ENV:platformio}.sh
+  - bash -e ci/install_${BUILD_ENV:-platformio}.sh
 
 script:
-  - bash -e ci/build_${BUILD_ENV:platformio}.sh
+  - bash -e ci/build_${BUILD_ENV:-platformio}.sh
 
 after_script:
-  - bash -e ci/info_${BUILD_ENV:platformio}.sh
+  - bash -e ci/info_${BUILD_ENV:-platformio}.sh
