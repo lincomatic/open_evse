@@ -55,6 +55,4 @@ script:
   - bash -e ci/build_${BUILD_ENV:platformio}.sh
 
 after_script:
-  - grep version= ~/.platformio/packages/framework-arduinoavr/platform.txt
-  - ~/.platformio/packages/toolchain-atmelavr/bin/avr-gcc --version
-  - ls -l .pio/build/$PIO_ENV/firmware.hex
+  - bash -e ci/info_${BUILD_ENV:platformio}.sh
