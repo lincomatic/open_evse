@@ -24,6 +24,12 @@ language: python
 python:
   - "3.6"
 
+env:
+  - PIO_ENV=openevse
+  - PIO_ENV=openevse_1-6-14
+  - PIO_ENV=openevse_1-6-17
+  - PIO_ENV=openevse_1-6-23
+
 sudo: false
 cache:
   directories:
@@ -34,3 +40,8 @@ install:
 
 script:
   - platformio run
+
+after_script:
+  - grep version= ~/.platformio/packages/framework-arduinoavr/platform.txt
+  - ~/.platformio/packages/toolchain-atmelavr/bin/avr-gcc --version
+  - ls -l .pio/build/$PIO_ENV/firmware.hex
