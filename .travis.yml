@@ -39,7 +39,7 @@ install:
   - pip install -U platformio
 
 script:
-  - platformio run
+  - platformio run -e $PIO_ENV
 
 after_script:
   - grep version= ~/.platformio/packages/framework-arduinoavr/platform.txt
