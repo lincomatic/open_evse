@@ -22,7 +22,7 @@
 
 language: python
 python:
-  - "3.6"
+  - "2.7"
 
 env:
   - PIO_ENV=openevse
