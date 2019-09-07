@@ -37,6 +37,8 @@ cache:
 
 install:
   - pip install -U platformio
+  - pio upgrade
+  - pio --version
 
 script:
   - platformio run -e $PIO_ENV
