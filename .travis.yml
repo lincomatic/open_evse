@@ -25,10 +25,22 @@ python:
   - "2.7"
 
 env:
-  - PIO_ENV=openevse
-  - PIO_ENV=openevse_1-6-14
-  - PIO_ENV=openevse_1-6-17
-  - PIO_ENV=openevse_1-6-23
+  - BUILD_ENV=platformio
+    PIO_ENV=openevse
+  - BUILD_ENV=platformio
+    PIO_ENV=openevse_1-6-14
+  - BUILD_ENV=platformio
+    PIO_ENV=openevse_1-6-17
+  - BUILD_ENV=platformio
+    PIO_ENV=openevse_1-6-23
+  - BUILD_ENV=arduino
+    AVR_CORE_VERSION=1.6.14
+  - BUILD_ENV=arduino
+    AVR_CORE_VERSION=1.6.15
+  - BUILD_ENV=arduino
+    AVR_CORE_VERSION=1.6.17
+  - BUILD_ENV=arduino
+    AVR_CORE_VERSION=1.6.23
 
 sudo: false
 cache:
@@ -36,12 +48,10 @@ cache:
     - "~/.platformio"
 
 install:
-  - pip install -U platformio
-  - pio upgrade
-  - pio --version
+  - bash -e ci/install_${BUILD_ENV:platformio}.sh
 
 script:
-  - platformio run -e $PIO_ENV
+  - bash -e ci/build_${BUILD_ENV:platformio}.sh
 
 after_script:
   - grep version= ~/.platformio/packages/framework-arduinoavr/platform.txt
