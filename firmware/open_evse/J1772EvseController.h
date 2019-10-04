@@ -473,7 +473,7 @@ public:
   }
   uint8_t RelayIsClosed() { return vFlagIsSet(ECVF_CHARGING_ON); }
 #ifdef AUTH_LOCK
-  void AuthLock(uint8_t tf);
+  void AuthLock(uint8_t tf,uint8_t update);
   uint8_t AuthLockIsOn() { return vFlagIsSet(ECVF_AUTH_LOCKED); }
 #endif // AUTH_LOCK
 

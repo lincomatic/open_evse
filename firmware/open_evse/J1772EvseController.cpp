@@ -172,11 +172,11 @@ void J1772EVSEController::SaveSettings()
 
 
 #ifdef AUTH_LOCK
-void J1772EVSEController::AuthLock(uint8_t tf)
+void J1772EVSEController::AuthLock(uint8_t tf,uint8_t update)
 {
   if (tf) setVFlags(ECVF_AUTH_LOCKED);
   else clrVFlags(ECVF_AUTH_LOCKED);
-  if (!InFaultState()) {
+  if (update && !InFaultState()) {
     Update(1);
     g_OBD.Update(OBD_UPD_FORCE);
   }
@@ -907,7 +907,7 @@ void J1772EVSEController::Init()
 #endif
 
 #ifdef AUTH_LOCK
-  AuthLock(AUTH_LOCK);
+  AuthLock(AUTH_LOCK,0);
 #endif // AUTH_LOCK
 
 #ifdef GFI
@@ -1436,9 +1436,14 @@ if (TempChkEnabled()) {
     int8_t locked;
     if (pinAuthLock.read()) locked = 1;
     else locked = 0;
-    int8_t flagslocked = vFlagIsSet(ECVF_AUTH_LOCKED) ? 1 : 0;
-    if (locked != flagslocked) {
-      AuthLock(locked);
+
+    if (m_EvseState == EVSE_STATE_A) {
+      // ignore the pin, and always lock in STATE_A
+      locked = 1;
+    }
+
+    if (locked != AuthLockIsOn()) {
+      AuthLock(locked,0);
       g_OBD.Update(OBD_UPD_FORCE);
       forcetransition = 1;
     }
@@ -1482,6 +1487,10 @@ if (TempChkEnabled()) {
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
+#if defined(AUTH_LOCK) && ((AUTH_LOCK != 0) || !defined(AUTH_LOCK_REG))
+      // lock when transition to STATE_A if default is locked
+      AuthLock(1,0);
+#endif 
 #ifdef CHARGE_LIMIT
 	ClrChargeLimit();
 #endif // CHARGE_LIMIT
