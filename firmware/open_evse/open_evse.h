@@ -162,6 +162,8 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TEMPERATURE_MONITORING  // Temperature monitoring support
 // not yet #define TEMPERATURE_MONITORING_NY
 
+#define HEARTBEAT_SUPERVISION // Heartbeat Supervision support
+
 #ifdef AMMETER
 
 // if OVERCURRENT_THRESHOLD is defined, then EVSE will hard fault in
@@ -537,6 +539,13 @@ extern AutoCurrentCapacityController g_ACCController;
 // non-volatile flags
 #define EOFS_DUO_NVFLAGS 32 // 1 byte
 #define EOFS_DUO_SHARED_AMPS 33 // 1 byte
+//
+// Reserved for HEARTBEAT_SUPERVISION (3 Bytes)
+//
+// Duration in seconds:
+#define EOFS_HEARTBEAT_SUPERVISION_INTERVAL 34 // 2 bytes (zero if infinite)
+// Fallback Current in quarter Amperes:
+#define EOFS_HEARTBEAT_SUPERVISION_CURRENT 36 // 1 byte 
 
 //- start TESTING ONLY
 #ifdef RELAY_AUTO_PWM_PIN_TESTING
@@ -1394,4 +1403,3 @@ void wdt_delay(uint32_t ms);
 
 #include "strings.h"
 #include "rapi_proc.h"
-
