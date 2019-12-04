@@ -101,11 +101,11 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_DEFAULT            ECVF_SESSION_ENDED
 #endif
 
-#define HS_INTERVAL_DEFAULT     0x0000	//By default, on an unformatted EEPROM, Heartbeat Supervision is not activated
-#define HS_IFALLBACK_DEFAULT	0x00    //By default, on an unformatted EEPROM, HS fallback current is 0 Amperes 
+#define HS_INTERVAL_DEFAULT     0x0000  //By default, on an unformatted EEPROM, Heartbeat Supervision is not activated
+#define HS_IFALLBACK_DEFAULT    0x00    //By default, on an unformatted EEPROM, HS fallback current is 0 Amperes 
 #define HS_ACK_COOKIE           0XA5    //ACK will not work unless it contin this cookie
-#define HS_MISSEDPULSE_NOACK    0x02	//HEARTBEAT_SUPERVISION missed a pulse and this has not been acknowleged
-#define HS_MISSEDPULSE		    0x01	//HEARTBEAT_SUPERVISION missed a pulse and this is the semi-permanent record flag
+#define HS_MISSEDPULSE_NOACK    0x02    //HEARTBEAT_SUPERVISION missed a pulse and this has not been acknowleged
+#define HS_MISSEDPULSE          0x01    //HEARTBEAT_SUPERVISION missed a pulse and this is the semi-permanent record flag
 
 
 class J1772EVSEController {
@@ -246,10 +246,10 @@ class J1772EVSEController {
 #endif // VOLTMETER
 
 #ifdef HEARTBEAT_SUPERVISION
-  uint16_t 	m_HsInterval;  		// Number of seconds HS will wait for a heartbeat before reducing ampacity to m_IFallback.  If 0 disable.
-  uint8_t  	m_IFallback;   		// HEARTBEAT_SUPERVISION fallback current in Amperes.  
-  uint8_t 	m_HsTriggered;		// Will be 0 if HEARTBEAT_SUPERVISION has never had a missed pulse
-  unsigned long m_HsLastPulse;	// The last time we saw a HS pulse or the last time m_HsInterval elpased without seeing one.  Set to 0 if HEARTBEAT_SUPERVISION triggered                                   
+  uint16_t     m_HsInterval;          // Number of seconds HS will wait for a heartbeat before reducing ampacity to m_IFallback.  If 0 disable.
+  uint8_t      m_IFallback;           // HEARTBEAT_SUPERVISION fallback current in Amperes.  
+  uint8_t     m_HsTriggered;        // Will be 0 if HEARTBEAT_SUPERVISION has never had a missed pulse
+  unsigned long m_HsLastPulse;    // The last time we saw a HS pulse or the last time m_HsInterval elpased without seeing one.  Set to 0 if HEARTBEAT_SUPERVISION triggered                                   
 #endif //HEARTBEAT_SUPERVISION
 
 public:
@@ -387,7 +387,7 @@ public:
   void EnableTempChk(uint8_t tf);
 #endif //TEMPERATURE_MONITORING
 
-#ifdef	HEARTBEAT_SUPERVISION
+#ifdef HEARTBEAT_SUPERVISION
 int HeartbeatSupervision(uint16_t interval, uint8_t amps);
 int HsPulse();
 int HsRestoreAmpacity();

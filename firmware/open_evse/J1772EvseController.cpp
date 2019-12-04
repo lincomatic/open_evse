@@ -1903,10 +1903,10 @@ int J1772EVSEController::HeartbeatSupervision(uint16_t interval, uint8_t amps)
   m_IFallback = amps;
   m_HsTriggered = 0;         //We clear the "Triggered" flag whenever we initiate HEARTBEAT_SUPERVISION
   m_HsLastPulse = millis();  //RESET m_HsLastPulse if it was set to 0 as a flag of previous HEARTBEAT_SUPERVISION enforcement
-  if (eeprom_read_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL) != m_HsInterval){ //only write EEPROM if it is needful!
+  if (eeprom_read_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL) != m_HsInterval) { //only write EEPROM if it is needful!
 	eeprom_write_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL, m_HsInterval);
   }
-  if (eeprom_read_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT) != m_IFallback){ //only write EEPROM if it is needful!
+  if (eeprom_read_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT) != m_IFallback) { //only write EEPROM if it is needful!
     eeprom_write_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT, amps);
   }
   return 0; // No error codes yet
@@ -1916,26 +1916,28 @@ int J1772EVSEController::HsPulse()
 {
   int rc = 1;
   if ((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //We were in a state of missed pulse therefore we need to restore the current capacity since we now see a Pulse
+    rc = 1; //We have been triggered but have not been acknowledged responce with NK
+  }
   else { // If we have been triggered it has been dealt with (m_HsTriggered = HS_MISSEDPULSE or 0)
     rc = 0; 
   }
-	m_HsLastPulse = millis(); //We just had a heartbeat so reset the HEARTBEAT SUPERVISION timeout interval;
-	return rc;
+  m_HsLastPulse = millis(); //We just had a heartbeat so reset the HEARTBEAT SUPERVISION timeout interval;
+  return rc;
 }
 
 int J1772EVSEController::HsRestoreAmpacity()
-{	
+{
   UNION4B u1,u2,u3,u4;
   int rc=1;
-  if(m_HsTriggered){//At some point while active, HEARTBEAT_SUPERVISION was triggered, so we will have to perturb the ampacity
-    u3.u8 = g_EvseController.GetCurrentCapacity();  //What is the ceiling for what we can set ampacity?
+  if(m_HsTriggered) {//At some point while active, HEARTBEAT_SUPERVISION was triggered, so we will have to perturb the ampacity
+    u3.u8 = g_EvseController.GetCurrentCapacity();  //We get the ceiling for how high we can set ampacity
 #ifdef TEMPERATURE_MONITORING
-    if (!g_TempMonitor.OverTemperature()){ //We need to ensure that OverTemperature is not active before we raise current capacity
+    if (!g_TempMonitor.OverTemperature()) { //We need to ensure that OverTemperature is not active before we raise current capacity
       rc = g_EvseController.SetCurrentCapacity(u3.u8,1,0);  //We are not writing EEPROM, but we are setting current to maximum capacity
     }
-	else {
-	  rc = 1;  //Fail.  Cannnot restore ampacity, as TEMPERATURE_MONITORING OverTemperature() is still in force 
-	}
+    else {
+      rc = 1;  //Fail.  Cannnot restore ampacity, as TEMPERATURE_MONITORING OverTemperature() is still in force 
+    }
 #else // !TEMPERATURE_MONITORING
     rc = g_EvseController.SetCurrentCapacity(u3.u8,1,0); 
 #endif // TEMPERATURE_MONITORING
@@ -1947,23 +1949,26 @@ int J1772EVSEController::HsExpirationCheck()
 {
   unsigned long sinceLastPulse = (millis() - m_HsLastPulse);
   int rc=1;
+  if (m_HsInterval != 0) { //HEARTBEAT_SUPERVISION is currently active
     if((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //There has been a pulse miss that has not been acknowledged
-	  }
+      if(!(m_IFallback > GetCurrentCapacity())) { //We are still in HEARTBEAT_SUPERVISION ampacity limiting but the current capacity is not OK
+        rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM        
+      }
     }
-    else if (sinceLastPulse > m_HsInterval){//Whups, we didn't get a heartbeat within the specified time interval, and HS is in active state
-	  //We have had an 'oopsie', and as a result may have to perturb the system ampacity setting.  We flag that here by setting m_HsTriggered = HS_MISSEDPULSE_NOACK
+    else if (sinceLastPulse > m_HsInterval) {//Whups, we didn't get a heartbeat within the specified time interval, and HS is in active state.
+      //Something went wrong, and as a result we may have to perturb the system ampacity setting.
+          //We flag that here by setting m_HsTriggered = HS_MISSEDPULSE_NOACK
       m_HsTriggered = HS_MISSEDPULSE_NOACK; //Flag the fact that HEARTBEAT_SUPERVISION had a missed pulse and report same when pulsed, until acknowledged
-	  if (m_IFallback <  GetCurrentCapacity()) {  //Check to see if we need to drop ampacity
-	    rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM
-	    } 
-	}		
-	else
-	{  //Do nothing
-	}  	
-	
+      if (m_IFallback <  GetCurrentCapacity()) {  //Check to see if we need to drop ampacity
+        rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM
+        } 
+    }
+    else {  //Do nothing
+    }
+    
     m_HsLastPulse = millis(); //In all cases, reset the timer so we don't check again until the next interval
   }
-  else{
+  else {
     rc = 0; //HEARTBEAT_SUPERVISION inactive, return normally
   }
   return rc;
@@ -1971,17 +1976,16 @@ int J1772EVSEController::HsExpirationCheck()
 
 int J1772EVSEController::HsAckMissedPulse(uint8_t ack)
 {
-	int rc = 1;
-	if (ack == HS_ACK_COOKIE){ //Is this a legitimate acknowlegement of missed HEARTBEAT_SUPERVISION pulse?
-      if(m_HsTriggered == HS_MISSEDPULSE_NOACK){// Has HEARTBEAT_SUPERVISION missed a pulse with no subsequenr acknowledgement?
-	    rc = HsRestoreAmpacity();	// Let's make an attempt to restore ampacity to original conditions
-	    if (rc == 0){ 			
-		  m_HsTriggered = HS_MISSEDPULSE;       // Ampacity restoration was successful, leave a semi-permanent record that a pulse was missed and ampacity was perturbed
-		  ;
-		} //else: Ampacity could not be restored at this time. HsAckMissedPulse() unsuccessful.
-	  }
-	}
-	return rc;
+    int rc = 1;
+    if (ack == HS_ACK_COOKIE) { //Is this a legitimate acknowlegement of missed HEARTBEAT_SUPERVISION pulse?
+      if(m_HsTriggered == HS_MISSEDPULSE_NOACK) {// Has HEARTBEAT_SUPERVISION missed a pulse with no subsequenr acknowledgement?
+        rc = HsRestoreAmpacity(); // Let's make an attempt to restore ampacity to original conditions
+        if (rc == 0) {
+          m_HsTriggered = HS_MISSEDPULSE;       // Ampacity restoration was successful, leave a semi-permanent record that a pulse was missed and ampacity was perturbed
+        } //else: Ampacity could not be restored at this time. HsAckMissedPulse() unsuccessful.
+      }
+    }
+    return rc;
 }
 
 int J1772EVSEController::HsDeactivate()
@@ -1994,17 +1998,17 @@ int J1772EVSEController::HsDeactivate()
 
 int J1772EVSEController::GetHearbeatInterval()
 {
-	return (int)m_HsInterval;
+  return (int)m_HsInterval;
 }
 
 int J1772EVSEController::GetHearbeatCurrent()
 {
-	return (int)m_IFallback;
+  return (int)m_IFallback;
 }
 
 int J1772EVSEController::GetHearbeatTrigger()
 {
-	return (int)m_HsTriggered;
+  return (int)m_HsTriggered;
 }
 
 #endif //HEARTBEAT_SUPERVISION
