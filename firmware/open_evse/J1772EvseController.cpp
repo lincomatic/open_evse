@@ -1909,14 +1909,13 @@ int J1772EVSEController::HeartbeatSupervision(uint16_t interval, uint8_t amps)
   if (eeprom_read_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT) != m_IFallback){ //only write EEPROM if it is needful!
     eeprom_write_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT, amps);
   }
+  return 0; // No error codes yet
 }
 
 int J1772EVSEController::HsPulse()
 {
   int rc = 1;
-  if (m_HsTriggered = HS_MISSEDPULSE_NOACK) { //We were in a state of missed pulse therefore we need to restore the current capacity since we now see a Pulse
-	rc = 1; //We have been triggered but have not been acknowledged responce with NK
-	}
+  if ((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //We were in a state of missed pulse therefore we need to restore the current capacity since we now see a Pulse
   else { // If we have been triggered it has been dealt with (m_HsTriggered = HS_MISSEDPULSE or 0)
     rc = 0; 
   }
@@ -1948,10 +1947,7 @@ int J1772EVSEController::HsExpirationCheck()
 {
   unsigned long sinceLastPulse = (millis() - m_HsLastPulse);
   int rc=1;
-  if (m_HsInterval != 0){ //HEARTBEAT_SUPERVISION is currently active
-    if(m_HsTriggered = HS_MISSEDPULSE_NOACK) { //There has been a pulse miss that has not been acknowledged
-      if(!(m_IFallback > GetCurrentCapacity())){ //We are still in HEARTBEAT_SUPERVISION ampacity limiting but the current capacity is not OK
-	    rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM        
+    if((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //There has been a pulse miss that has not been acknowledged
 	  }
     }
     else if (sinceLastPulse > m_HsInterval){//Whups, we didn't get a heartbeat within the specified time interval, and HS is in active state
