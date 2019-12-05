@@ -490,7 +490,7 @@ int EvseRapiProcessor::processCmd()
     case 'Y': // HEARTBEAT SUPERVISION
       if (tokenCnt == 1)  { //This is a heartbeat
         rc = g_EvseController.HsPulse(); //pet the dog
-        }
+      }
       else if (tokenCnt == 3) { //This is a full HEARTBEAT_SUPERVISION setpoint command with both parameters
         u2.u16 = (uint16_t)dtou32(tokens[2]);	// HS Interval in seconds.  0 = disabled
         u1.u8 = (uint8_t)dtou32(tokens[1]);	// HS fallback current, in amperes  
@@ -499,17 +499,17 @@ int EvseRapiProcessor::processCmd()
         }
         else { // This is the case where we are disabling HEARTBEAT_SUPERVISION  
           rc = (g_EvseController.HsDeactivate() || g_EvseController.HsRestoreAmpacity());
-        }		
+        }
       }
-  	  else if (tokenCnt == 2) { //This is a command to ack a hearbtbeat supervison miss
+      else if (tokenCnt == 2) { //This is a command to ack a hearbtbeat supervison miss
         u1.u8 = (uint8_t)dtou32(tokens[1]); //Magic cookie
-  	    g_EvseController.HsAckMissedPulse(u1.u8);
-  	  }
+        g_EvseController.HsAckMissedPulse(u1.u8);
+      }
       else { //Invalid number of tokens, return 1
         rc = 1; //Invalid number of tokens
       }
       sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
-	  bufCnt = 1; 
+      bufCnt = 1; 
       break;
 #endif //HEARTBEAT_SUPERVISION
 
