@@ -526,14 +526,16 @@ void J1772EVSEController::Sleep()
     pinSleepStatus.write(1);
 #endif // SLEEP_STATUS_REG
 
-    g_OBD.Update(OBD_UPD_FORCE);
-#ifdef RAPI
-    RapiSendEvseState();
-#endif // RAPI
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
     // when to open the contacts in Update()
     m_ChargeOffTimeMS = millis();
+
+    g_OBD.Update(OBD_UPD_FORCE);
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
   }
 }
 
@@ -1119,17 +1121,26 @@ void J1772EVSEController::Update(uint8_t forcetransition)
       // if it doesn't happen within 3 sec, we'll just open our relay anyway
       // c) no current draw means EV opened its contacts even if it stays in STATE C
       //    allow 3A slop for ammeter inaccuracy
+#ifdef AMMETER
+      readAmmeter();
+      long instantma = m_AmmeterReading*m_CurrentScaleFactor - m_AmmeterCurrentOffset;
+      if (instantma < 0) instantma = 0;
+#endif // AMMETER
       if ((phigh >= m_ThreshData.m_ThreshBC)
 #ifdef AMMETER
-	  || (m_AmmeterReading <= 3000)
+	 || (instantma <= 1000L)
 #endif // AMMETER
-	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
-	chargingOff();
+	  || ((curms - m_ChargeOffTimeMS) >= 3000UL)) {
 #ifdef FT_SLEEP_DELAY
-	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
+	//	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
+	//	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	sprintf(g_sTmp,"%d %lu %lu",phigh,instantma,(curms-m_ChargeOffTimeMS));
 	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	chargingOff();
+	for(;;)
 	wdt_delay(2000);
-#endif
+#endif // FT_SLEEP_DELAY
+	chargingOff();
       }
     }
     else { // not charging
