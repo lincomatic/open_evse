@@ -730,6 +730,11 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psDisabled);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
@@ -744,13 +749,18 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
       break;
 #endif // GFI_SELFTEST
-	case EVSE_STATE_SLEEPING:
+    case EVSE_STATE_SLEEPING:
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2
       LcdSetBacklightColor(g_EvseController.EvConnected() ? WHITE : VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psSleeping);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
