@@ -3,6 +3,7 @@ archive/**
 genrapi/**
 craig/*
 utils/ma/*
+lib/**
 *.sav
 *.zip
 *.bak
