@@ -376,7 +376,7 @@ int EvseRapiProcessor::processCmd()
 #if defined(AUTH_LOCK) && !defined(AUTH_LOCK_REG)
     case '4': // auth lock
       if (tokenCnt == 2) {
-	g_EvseController.AuthLock((int8_t)dtou32(tokens[1]),0);
+	g_EvseController.AuthLock((int8_t)dtou32(tokens[1]),1);
 	rc = 0;
       }
       break;

@@ -935,7 +935,11 @@ void OnboardDisplay::Update(int8_t updmode)
     else if (curstate == EVSE_STATE_SLEEPING) {
       LcdSetCursor(0,0);
       g_DelayTimer.PrintTimerIcon();
-      //     LcdPrint_P(g_DelayTimer.IsTimerEnabled() ? g_psWaiting : g_psSleeping);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psSleeping);
       sprintf(g_sTmp,"%02d:%02d:%02d",g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
       LcdPrint(0,1,g_sTmp);
