@@ -188,6 +188,15 @@ SL 1|2|A  - set service level L1/L2/Auto
 SM voltscalefactor voltoffset - set voltMeter settings
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0^23 - cancel timer
+SY heartbeatinterval hearbeatcurrentlimit
+ Response includes heartbeatinterval hearbeatcurrentlimit hearbeattrigger
+ hearbeattrigger: 0 - There has never been a missed pulse, 
+ 2 - there is a missed pulse, and HS is still in current limit
+ 1 - There was a missed pulse once, but it has since been acknkoledged. Ampacity has been successfully restored to max permitted 
+ $SY 100 6  //If no pulse for 100 seconds, set EVE ampacity limit to 6A until missed pulse is acknowledged
+ $SY        //This is a heartbeat supervision pulse.  Need one every heartbeatinterval seconds.
+ $SY 165    //This is an acknowledgemnt of a missed pulse.  Magic Cookie = 165 (=0XA5)
+ When you send a pulse, an NK response indicates that a previous pulse was missed and has not yet been acked
 
 G0 - get EV connect state
  response: $OK connectstate
@@ -286,6 +295,13 @@ T commands for debugging only #define RAPI_T_COMMMANDS
 T0 amps - set fake charging current
  response: $OK
  $T0 75
+ 
+GY - Get Hearbeat Supervision Status
+ Response includes heartbeatinterval hearbeatcurrentlimit hearbeattrigger
+ hearbeattrigger: 0 - There has never been a missed pulse, 
+ 2 - there is a missed pulse, and HS is still in current limit
+ 1 - There was a missed pulse once, but it has since been acknkoledged. Ampacity has been successfully restored to max permitted 
+ See SY above for worked expamples.
 
 Z0 FOR TESTING RELAY_AUTO_PWM_PIN ONLY
 Z0 closems holdpwm

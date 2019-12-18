@@ -8,6 +8,7 @@
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
  * portions Copyright (c) 2015 William McBrine
+ * portions Copyright (c) 2019 Tim Kuechler BowElectric at gmail
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -21,6 +22,7 @@
  10/25/14      Craig K         add smoothing to the Amperage readout
  3/1/15        Craig K         add TEMPERATURE_MONITORING
  3/7/15        Craig K         add KWH_RECORDING
+ 10/28/2019    Tim Kuechler    add HEARTBEAT_SUPERVISION
   
  * This file is part of Open EVSE.
 

@@ -3,9 +3,10 @@ Change Log
 D6.1.3 20191217 SCL
 - fix bug in displaying lock icon in SLEEP
 - update EVSE status after receiving $S4 command
+- merge PR109 HEARTBEAT_SUPERVISION code by Tim Kuechler
 	
 D6.1.2 20191216 SCL
-- fix bug in relay opening delay code for SLEEP state - wasn't reading/comparing charging current correctly.. was always reading too low, so would instantly open the contactor
+- fix bug in relay opening delay code for SLEEP state - wasn't reading/comparing charging current correctly.. was always reading too low, so would instantly open the contactor 
 - change SLEEP delay threshold current from 3A -> 1A
 
 20191215 SCL
