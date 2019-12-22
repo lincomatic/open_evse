@@ -328,16 +328,18 @@ void TempMonitor::Read()
     Wire.endTransmission();
       
     Wire.requestFrom(DS1307_ADDRESS, 2);
-    m_DS3231_temperature = (((int16_t)wirerecv()) << 2) | (wirerecv() >> 6);
-    if (m_DS3231_temperature == 0x3FF) {
-      // assume chip not present
-      m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;
-    }
-    else {
-      if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00; // sign extend negative number
-      // convert from .25C to .1C
-      m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;
-    }
+    m_DS3231_temperature = (((int16_t)wirerecv()) << 8) | (wirerecv()); // read upper and lower byte
+    m_DS3231_temperature = m_DS3231_temperature >> 6;                   // lower 6 bits always zero, ignore them
+    if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00;  // sign extend if a negative number since we shifted over by 6 bits
+    m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;             // handle this as 0.25C resolution
+                                                                        // Note that the device's sign bit only pertains to the device's upper byte.
+                                                                        // The small side effect is that -0.25, -0.5, and -0.75C actual temperatues
+                                                                        // will be read from the device without negative sign, thus appearing as +0.25C...
+                                                                        // There is no software workaround to this small hardware shortcoming.
+                                                                        // Temperatures outside of these values work perfectly with 1/4 degree resolution.
+                                                                        // I wrote this note so nobody wastes time trying to "fix" this in software
+                                                                        // since fundamentally it is a hardware limitaion of the DS3231.
+    
 #endif // OPENEVSE_2
 #endif // RTC
 
