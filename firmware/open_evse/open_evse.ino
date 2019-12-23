@@ -326,8 +326,8 @@ void TempMonitor::Read()
     Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x11));
     Wire.endTransmission();
-      
-    Wire.requestFrom(DS1307_ADDRESS, 2);
+	  
+    if(Wire.requestFrom(DS1307_ADDRESS, 2)) {                           // detect presence of DS3231 on I2C while addressing to read from it
     m_DS3231_temperature = (((int16_t)wirerecv()) << 8) | (wirerecv()); // read upper and lower byte
     m_DS3231_temperature = m_DS3231_temperature >> 6;                   // lower 6 bits always zero, ignore them
     if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00;  // sign extend if a negative number since we shifted over by 6 bits
@@ -339,6 +339,9 @@ void TempMonitor::Read()
                                                                         // Temperatures outside of these values work perfectly with 1/4 degree resolution.
                                                                         // I wrote this note so nobody wastes time trying to "fix" this in software
                                                                         // since fundamentally it is a hardware limitaion of the DS3231.
+      }                                                                    
+    else                                                                    
+      m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;
     
 #endif // OPENEVSE_2
 #endif // RTC
