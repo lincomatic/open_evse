@@ -177,7 +177,7 @@ void J1772EVSEController::AuthLock(uint8_t tf,uint8_t update)
   if (tf) setVFlags(ECVF_AUTH_LOCKED);
   else clrVFlags(ECVF_AUTH_LOCKED);
   if (update && !InFaultState()) {
-    Update(1);
+    Update(0);
     g_OBD.Update(OBD_UPD_FORCE);
   }
 }
