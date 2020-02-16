@@ -27,6 +27,10 @@ python:
 env:
   - PIO_ENV=openevse
     BUILD_ENV=platformio
+  - PIO_ENV=emonevse
+    BUILD_ENV=platformio
+  - PIO_ENV=emonevse-3ph
+    BUILD_ENV=platformio
   - PIO_ENV=openevse_1-6-14
     BUILD_ENV=platformio
   - PIO_ENV=openevse_1-6-17
