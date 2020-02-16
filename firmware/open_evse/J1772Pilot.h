@@ -1,7 +1,9 @@
 #pragma once
 /*
  * This file is part of Open EVSE.
-
+ *
+ * Copyright (c) 2011-2019 Sam C. Lin
+ *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)

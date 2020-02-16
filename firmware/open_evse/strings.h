@@ -23,7 +23,9 @@
 #pragma once
 
 extern const char VERSTR[] PROGMEM;
-inline void GetVerStr(char *buf) { strcpy_P(buf,VERSTR); }
+inline void GetVerStr(char *buf) {
+  strcpy_P(buf,VERSTR);
+}
 
 
 #if defined(BTN_MENU) || defined(SHOW_DISABLED_TESTS)

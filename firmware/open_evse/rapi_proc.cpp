@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2016 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2019 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -82,11 +82,9 @@ void receiveEvent(int numBytes)
 
 EvseRapiProcessor::EvseRapiProcessor()
 {
-#ifdef RAPI_SEQUENCE_ID
   curReceivedSeqId = INVALID_SEQUENCE_ID;
 #ifdef RAPI_SENDER
   curSentSeqId = INVALID_SEQUENCE_ID;
-#endif
 #endif
 }
 
@@ -119,9 +117,7 @@ int EvseRapiProcessor::doCmd()
 	    }
 	    else {
 	      reset();
-#ifdef RAPI_SEQUENCE_ID
 	      curReceivedSeqId = INVALID_SEQUENCE_ID;
-#endif // RAPI_SEQUENCE_ID
 	      response(0);
 	    }
 	  }
@@ -140,31 +136,37 @@ int EvseRapiProcessor::doCmd()
 }
 
 
-void EvseRapiProcessor::sendEvseState()
+void EvseRapiProcessor::sendBootNotification()
 {
-#ifdef RAPI_RESPONSE_CHK
-  sprintf(g_sTmp,"%cST %02x",ESRAPI_SOC,g_EvseController.GetState());
+  sprintf(g_sTmp,"%cAB %02x ",ESRAPI_SOC,g_EvseController.GetState());
+  char *s = g_sTmp+strlen(g_sTmp);
+  GetVerStr(s);
   appendChk(g_sTmp);
-#else
-  sprintf(g_sTmp,"%cST %02x%c",ESRAPI_SOC,g_EvseController.GetState(),ESRAPI_EOC);
-#endif //RAPI_RESPONSE_CHK
   writeStart();
   write(g_sTmp);
   writeEnd();
 }
 
-void EvseRapiProcessor::setWifiMode(uint8_t mode)
+
+void EvseRapiProcessor::sendEvseState()
 {
-#ifdef RAPI_RESPONSE_CHK
-  sprintf(g_sTmp,"%cWF %02x",ESRAPI_SOC,(int)mode);
+    sprintf(g_sTmp,"%cAT %02x %02x %d %04x",ESRAPI_SOC,g_EvseController.GetState(),g_EvseController.GetPilotState(),g_EvseController.GetMaxCurrentCapacity(),g_EvseController.GetVFlags());
   appendChk(g_sTmp);
-#else
-  sprintf(g_sTmp,"%cWF %02x%c",ESRAPI_SOC,(int)mode,ESRAPI_EOC);
-#endif //RAPI_RESPONSE_CHK
   writeStart();
   write(g_sTmp);
   writeEnd();
 }
+
+#ifdef RAPI_WF
+void EvseRapiProcessor::setWifiMode(uint8_t mode)
+{
+  sprintf(g_sTmp,"%cWF %02x",ESRAPI_SOC,(int)mode);
+  appendChk(g_sTmp);
+  writeStart();
+  write(g_sTmp);
+  writeEnd();
+}
+#endif // RAPI_WF
 
 int EvseRapiProcessor::tokenize(char *buf)
 {
@@ -225,14 +227,12 @@ int EvseRapiProcessor::processCmd()
   }
 #endif // RAPI_SENDER
 
-#ifdef RAPI_SEQUENCE_ID
   curReceivedSeqId = INVALID_SEQUENCE_ID;
   const char *seqtoken = tokens[tokenCnt-1];
   if ((tokenCnt > 1) && (*seqtoken == ESRAPI_SOS)) {
     curReceivedSeqId = htou8(++seqtoken);
     tokenCnt--;
   }
-#endif // RAPI_SEQUENCE_ID
 
   // we use bufCnt as a flag in response() to signify data to write
   bufCnt = 0;
@@ -271,7 +271,6 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Enable();
       rc = 0;
       break;
-#ifdef RAPI_FF
     case 'F': // enable/disable feature
       if (tokenCnt == 3) {
 	u1.u8 = (uint8_t)(*tokens[2] - '0');
@@ -309,7 +308,6 @@ int EvseRapiProcessor::processCmd()
 	}
       }
       break;
-#endif // RAPI_FF
 #ifdef LCD16X2
     case 'P': // print to LCD
       if (tokenCnt >= 4) {
@@ -378,7 +376,7 @@ int EvseRapiProcessor::processCmd()
 #if defined(AUTH_LOCK) && !defined(AUTH_LOCK_REG)
     case '4': // auth lock
       if (tokenCnt == 2) {
-	g_EvseController.AuthLock((int8_t)dtou32(tokens[1]));
+	g_EvseController.AuthLock((int8_t)dtou32(tokens[1]),1);
 	rc = 0;
       }
       break;
@@ -421,36 +419,6 @@ int EvseRapiProcessor::processCmd()
 	bufCnt = 1; // flag response text output
       }
       break;
-#ifndef RAPI_FF
-    case 'D': // diode check
-      if (tokenCnt == 2) {
-	g_EvseController.EnableDiodeCheck((*tokens[1] == '0') ? 0 : 1);
-	rc = 0;
-      }
-      break;
-    case 'E': // echo
-      if (tokenCnt == 2) {
-	echo = ((*tokens[1] == '0') ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#ifdef GFI_SELFTEST
-    case 'F': // GFI self test
-      if (tokenCnt == 2) {
-	g_EvseController.EnableGfiSelfTest(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#endif // GFI_SELFTEST
-#ifdef ADVPWR
-    case 'G': // ground check
-      if (tokenCnt == 2) {
-	g_EvseController.EnableGndChk(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#endif // ADVPWR
-#endif // !RAPI_FF
 #ifdef CHARGE_LIMIT
     case 'H': // cHarge limit
       if (tokenCnt == 2) {
@@ -497,15 +465,7 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // VOLTMETER
-#if defined(ADVPWR) && !defined(RAPI_FF)
-    case 'R': // stuck relay check
-      if (tokenCnt == 2) {
-	g_EvseController.EnableStuckRelayChk(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
-      }
-      break;
-#endif // ADVPWR && !RAPI_FF
-#ifdef DELAYTIMER
+#ifdef DELAYTIMER     
     case 'T': // timer
       if (tokenCnt == 5) {
 	extern DelayTimer g_DelayTimer;
@@ -524,15 +484,35 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // DELAYTIMER
-#ifndef RAPI_FF
-    case 'V': // vent required
-      if (tokenCnt == 2) {
-	g_EvseController.EnableVentReq(*tokens[1] == '0' ? 0 : 1);
-	rc = 0;
+#endif // DELAYTIMER      
+
+#ifdef HEARTBEAT_SUPERVISION
+    case 'Y': // HEARTBEAT SUPERVISION
+      if (tokenCnt == 1)  { //This is a heartbeat
+        rc = g_EvseController.HsPulse(); //pet the dog
       }
+      else if (tokenCnt == 3) { //This is a full HEARTBEAT_SUPERVISION setpoint command with both parameters
+        u2.u16 = (uint16_t)dtou32(tokens[2]);	// HS Interval in seconds.  0 = disabled
+        u1.u8 = (uint8_t)dtou32(tokens[1]);	// HS fallback current, in amperes  
+        if (u1.u16 != 0) { //Set-up new heartbeat supervision parameters 
+          rc = g_EvseController.HeartbeatSupervision(u1.u16, u2.u8); 
+        }
+        else { // This is the case where we are disabling HEARTBEAT_SUPERVISION  
+          rc = (g_EvseController.HsDeactivate() || g_EvseController.HsRestoreAmpacity());
+        }
+      }
+      else if (tokenCnt == 2) { //This is a command to ack a hearbtbeat supervison miss
+        u1.u8 = (uint8_t)dtou32(tokens[1]); //Magic cookie
+        g_EvseController.HsAckMissedPulse(u1.u8);
+      }
+      else { //Invalid number of tokens, return 1
+        rc = 1; //Invalid number of tokens
+      }
+      sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+      bufCnt = 1; 
       break;
-#endif // !RAPI_FF
+#endif //HEARTBEAT_SUPERVISION
+
     }
     break;
 
@@ -584,7 +564,8 @@ int EvseRapiProcessor::processCmd()
       else {
 	u2.i = MAX_CURRENT_CAPACITY_L1;
       }
-      sprintf(buffer,"%d %d",u1.i,u2.i);
+      u3.i = g_EvseController.GetCurrentCapacity();
+      sprintf(buffer,"%d %d %d",u1.i,u2.i,u3.i);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
@@ -683,7 +664,10 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // TEMPERATURE_MONITORING
     case 'S': // get state
-      sprintf(buffer,"%d %ld",g_EvseController.GetState(),g_EvseController.GetElapsedChargeTime());
+      u1.u8 = g_EvseController.GetState();
+      u2.u8 = g_EvseController.GetPilotState();
+      u3.u16 = g_EvseController.GetVFlags();
+      sprintf(buffer,"%02x %ld %02x %04x",u1.u8,g_EvseController.GetElapsedChargeTime(),u2.u8,u3.u16);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
@@ -709,6 +693,14 @@ int EvseRapiProcessor::processCmd()
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
+	  
+#ifdef HEARTBEAT_SUPERVISION
+    case 'Y': // HEARTBEAT SUPERVISION
+	  sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+      bufCnt = 1; 
+      break;
+#endif //HEARTBEAT_SUPERVISION
+	   
     }
     break;
 
@@ -777,43 +769,27 @@ void EvseRapiProcessor::response(uint8_t ok)
 {
   writeStart();
 
-#ifdef RAPI_RESPONSE_CHK
   sprintf(g_sTmp,"%c%s",ESRAPI_SOC,ok ? "OK" : "NK");
   if (bufCnt) {
     strcat(g_sTmp," ");
     strcat(g_sTmp,buffer);
   }
-#ifdef RAPI_SEQUENCE_ID
   if (curReceivedSeqId != INVALID_SEQUENCE_ID) {
     appendSequenceId(g_sTmp,curReceivedSeqId);
   }
-#endif // RAPI_SEQUENCE_ID
   appendChk(g_sTmp);
   write(g_sTmp);
-#else // !RAPI_RESPONSE_CHK
-  write(ESRAPI_SOC);
-  write(ok ? "OK" : "NK");
-
-  if (bufCnt) {
-    write(" ");
-    write(buffer);
-  }
-  write(ESRAPI_EOC);
-#endif // RAPI_RESPONSE_CHK
   if (echo) write('\n');
 
   writeEnd();
 }
 
-#ifdef RAPI_SEQUENCE_ID
 void EvseRapiProcessor::appendSequenceId(char *s,uint8_t seqId)
 {
   sprintf(s+strlen(s)," %c%02X",ESRAPI_SOS,seqId);
 }
-#endif // RAPI_SEQUENCE_ID
 
 #ifdef RAPI_SENDER
-#ifdef RAPI_SEQUENCE_ID
 uint8_t EvseRapiProcessor::getSendSequenceId()
 {
   if (++curSentSeqId == INVALID_SEQUENCE_ID) ++curSentSeqId;
@@ -844,16 +820,13 @@ int8_t EvseRapiProcessor::isRespToken()
     return 0;
   }
 }
-#endif // RAPI_SEQUENCE_ID
 
 
 void EvseRapiProcessor::_sendCmd(const char *cmdstr)
 {
   *sendbuf = ESRAPI_SOC;
   strcpy(sendbuf+1,cmdstr);
-#ifdef RAPI_SEQUENCE_ID
   appendSequenceId(sendbuf,getSendSequenceId());
-#endif
   appendChk(sendbuf);
   writeStart();
   write(sendbuf);
@@ -903,25 +876,19 @@ int8_t EvseRapiProcessor::sendCmd(const char *cmdstr)
  start:
   while (receiveResp(msstart) > 0) WDT_RESET();
   if (tokenCnt) {
-#ifdef RAPI_SEQUENCE_ID
     uint8_t seqId = INVALID_SEQUENCE_ID;
     const char *seqtoken = tokens[tokenCnt-1];
     if ((tokenCnt > 1) && isRespToken() && (*seqtoken == ESRAPI_SOS)) {
       seqId = htou8(++seqtoken);
       tokenCnt--;
     }
-#endif // RAPI_SEQUENCE_ID
     if (!strcmp(tokens[0],"OK")
-#ifdef RAPI_SEQUENCE_ID
 	&& (seqId == curSentSeqId)
-#endif // RAPI_SEQUENCE_ID
 	) {
       return 0;
     }
     else if (!strcmp(tokens[0],"NK")
-#ifdef RAPI_SEQUENCE_ID
 	     && (seqId == curSentSeqId)
-#endif // RAPI_SEQUENCE_ID
 	     ) {
       return 1;
     }
@@ -1031,6 +998,17 @@ void RapiSendEvseState(uint8_t nodupe)
   }
 }
 
+void RapiSendBootNotification()
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.sendBootNotification();
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.sendBootNotification();
+#endif
+}
+
+#ifdef RAPI_WF
 void RapiSetWifiMode(uint8_t mode)
 {
 #ifdef RAPI_SERIAL
@@ -1040,5 +1018,5 @@ void RapiSetWifiMode(uint8_t mode)
   g_EIRP.setWifiMode(mode);
 #endif
 }
-
+#endif // RAPI_WF
 #endif // RAPI

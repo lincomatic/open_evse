@@ -1,19 +1,13 @@
+
 # OpenEVSE Firmware Loading
 
-## Introduction
+## Introduction 
 
-Loading firmware to the OpenEVSE requires an ISP. There are many AVR/Arduino compatible programmers available from Adafruit, Sparkfun and the OpenEVSE Store. This wiki is based on the OpenEVSE AVR ISP found here: https://openevse-store.myshopify.com/collections/frontpage/products/openevse-programmer
+Loading firmware to the OpenEVSE requires an ISP. There are many AVR/Arduino compatible programmers available from Adafruit, Sparkfun and the OpenEVSE Store. The instructions below are based on the USBasp.
 
-## Falsh pre-compiled using avrdude:
+## USBasp Windows Driver
 
-If compiling firmware is not required the easiest method to load pre-compiled firmware releases is to use avrdude and an ISP programmer:
-
-`$ avrdude -p atmega328p -c usbasp -P usb -e -U flash:w:firmware.hex`
-
-
-## Window Driver
-
-Platform IO and Arduino IDE need the libusbK driver, not the driver you may have installed as part of the [How to Load OpenEVSE Firmware (WinAVR)](https://openevse.dozuki.com/Guide/How+to+Load+OpenEVSE+Firmware+%28WinAVR%29/7) guide.
+Current versions of avrdude used by Platform IO and Arduino IDE need the libusbK driver in order to function properly with generic USBasp clones.
 
 1. Plug in USBasp
 2. Download Zadig from http://zadig.akeo.ie
@@ -23,9 +17,11 @@ Platform IO and Arduino IDE need the libusbK driver, not the driver you may have
 6. Select libusbK(v3.0.7.0) driver
 7. Click Install
 
-## Firmware
+## Firmware Building and Uploading
 
-The latest firmware source code is located in GIThub: https://github.com/lincomatic/open_evse
+The latest firmware source code is located in GitHub: https://github.com/lincomatic/open_evse/tree/development
+
+The latest stable firmware source code is located in GitHub: https://github.com/OpenEVSE/open_evse
 
 ### Platform IO
 
@@ -35,27 +31,10 @@ Either install the command line only [PlatformIO Core](http://docs.platformio.or
 
 If you already have Atom or VS Code installed you can just install the [Atom package](https://atom.io/packages/platformio-ide) or [VSCode extension](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide) respectively.
 
-#### 2. Compile
-
-`$ pio run`
-
-The first time platformIO is ran the AVR arduino tool chain and all the required libs will be installed if required.
-
-#### 3. Upload
-
-If using `USBasp` [OpenEVSE ISP programmer](https://openevse-store.myshopify.com/collections/frontpage/products/openevse-programmer):
-
-`$ pio run -t program`
-
-If using `AVRISP mkII` ISP programmer:
-
-`$ pio run -t program -e openevse-mk2isp`
-
-
 ### Arduino IDE
 
 <div class="alert alert-success">
-Note: These following instructions have been extracted from Google Code and are not complete/properly edited
+Note: These following instrictions have been extracted from Google Code and are not complete/properly edited
 </div>
 
 The Arduino IDE includes an code editor, serial monitor, and will compile and upload your code to the OpenEVSE.
@@ -86,7 +65,16 @@ open_evse.build.variant=standard
 
 After you do that (and restart Arduino), you'll find a new entry in your Boards menu called "OpenEVSE". Select that when preparing to upload firmware.
 
-See also: http://blog.lincomatic.com/?p=10
+#### 2. Compile
+
+`$ pio run`
+
+The first time platformIO is ran the AVR arduino tool chain and all the required libs will be installed if required.
+
+#### 3. Upload
+
+`$ pio run -t program`
+
 
 ### Setting Fuse Bits
 

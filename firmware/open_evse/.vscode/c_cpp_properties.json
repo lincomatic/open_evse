@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "C:\\Users\\Geek\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.15\\cores\\arduino"
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": false,
+                "path": [
+                    "C:\\Users\\Geek\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.15\\cores\\arduino",
+                    "${workspaceRoot}"
+                ]
+            },
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 3
+}
