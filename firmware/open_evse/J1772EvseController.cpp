@@ -1,6 +1,8 @@
 /*
  * This file is part of Open EVSE.
-
+ *
+ * Copyright (c) 2011-2019 Sam C. Lin
+ *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)
@@ -170,12 +172,17 @@ void J1772EVSEController::SaveSettings()
 
 
 #ifdef AUTH_LOCK
-void J1772EVSEController::AuthLock(uint8_t tf)
+void J1772EVSEController::AuthLock(uint8_t tf,uint8_t update)
 {
   if (tf) setVFlags(ECVF_AUTH_LOCKED);
   else clrVFlags(ECVF_AUTH_LOCKED);
-  Update(1);
-  g_OBD.Update(OBD_UPD_FORCE);
+  if (update && !InFaultState()) {
+    if (m_EvseState != EVSE_STATE_A)
+      Update(1);
+    else
+      Update(0);
+    g_OBD.Update(OBD_UPD_FORCE);
+  }
 }
 #endif // AUTH_LOCK
 
@@ -208,7 +215,7 @@ void J1772EVSEController::DisabledTest_P(PGM_P message)
   g_OBD.LcdMsg_P(g_psDisabledTests, message);
 #endif
 #ifndef NOCHECKS
-  wdt_delay(SHOW_DISABLED_DELAY);
+  delay(SHOW_DISABLED_DELAY); // don't call wdt_delay() because called before WDT_ENABLE()
 #endif
 }
 
@@ -257,7 +264,8 @@ void J1772EVSEController::ShowDisabledTests()
 #endif //SHOW_DISABLED_TESTS
 
 void J1772EVSEController::chargingOn()
-{  // turn on charging current
+{
+  // turn on charging current
 #ifdef RELAY_AUTO_PWM_PIN
   // turn on charging pin to close relay
   digitalWrite(RELAY_AUTO_PWM_PIN,HIGH);
@@ -276,11 +284,11 @@ void J1772EVSEController::chargingOn()
 #endif
 #endif // RELAY_AUTO_PWM_PIN
 
-  m_bVFlags |= ECVF_CHARGING_ON;
+  setVFlags(ECVF_CHARGING_ON);
   
-  if (m_bVFlags2 & ECVF2_SESSION_ENDED) {
+  if (vFlagIsSet(ECVF_SESSION_ENDED)) {
     m_AccumulatedChargeTime = 0;
-    m_bVFlags2 &= ~ECVF2_SESSION_ENDED;
+    clrVFlags(ECVF_SESSION_ENDED);
   }
   else {
     m_AccumulatedChargeTime += m_ElapsedChargeTime;
@@ -291,7 +299,8 @@ void J1772EVSEController::chargingOn()
 }
 
 void J1772EVSEController::chargingOff()
-{ // turn off charging current
+{
+ // turn off charging current
 #ifdef RELAY_AUTO_PWM_PIN
   digitalWrite(RELAY_AUTO_PWM_PIN,LOW);
 #else // !RELAY_AUTO_PWM_PIN
@@ -306,7 +315,7 @@ void J1772EVSEController::chargingOff()
 #endif
 #endif // RELAY_AUTO_PWM_PIN
 
-  m_bVFlags &= ~ECVF_CHARGING_ON;
+  clrVFlags(ECVF_CHARGING_ON);
 
   m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
@@ -351,7 +360,7 @@ void J1772EVSEController::SetGfiTripped()
     return;
   }
 #endif
-  m_bVFlags |= ECVF_GFI_TRIPPED;
+  setVFlags(ECVF_GFI_TRIPPED);
 
   // this is repeated in Update(), but we want to keep latency as low as possible
   // for safety so we do it here first anyway
@@ -520,14 +529,16 @@ void J1772EVSEController::Sleep()
     pinSleepStatus.write(1);
 #endif // SLEEP_STATUS_REG
 
-    g_OBD.Update(OBD_UPD_FORCE);
-#ifdef RAPI
-    RapiSendEvseState();
-#endif // RAPI
     // try to prevent arcing of our relay by waiting for EV to open its contacts first
     // use the charge end time variable temporarily to count down
     // when to open the contacts in Update()
     m_ChargeOffTimeMS = millis();
+
+    g_OBD.Update(OBD_UPD_FORCE);
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
   }
 }
 
@@ -900,6 +911,10 @@ void J1772EVSEController::Init()
   pinAuthLock.init(AUTH_LOCK_REG,AUTH_LOCK_IDX,DigitalPin::INP_PU);
 #endif
 
+#ifdef AUTH_LOCK
+  AuthLock(AUTH_LOCK,0);
+#endif // AUTH_LOCK
+
 #ifdef GFI
   m_Gfi.Init();
 #endif // GFI
@@ -967,8 +982,8 @@ void J1772EVSEController::Init()
   m_wFlags |= ECF_MONO_LCD;
 #endif
 
-  m_bVFlags = ECVF_DEFAULT;
-  m_bVFlags2 = ECVF2_DEFAULT;
+  m_wVFlags = ECVF_DEFAULT;
+
 #ifdef GFI
   m_GfiRetryCnt = 0;
   m_GfiTripCnt = eeprom_read_byte((uint8_t*)EOFS_GFI_TRIP_CNT);
@@ -1015,7 +1030,7 @@ void J1772EVSEController::Init()
 #ifdef UL_COMPLIANT
       // UL wants EVSE to hard fault until power cycle if POST fails
 #ifdef RAPI
-      RapiSendEvseState();
+      RapiSendBootNotification();
 #endif
       while (1) { // spin forever
 	  ProcessInputs();
@@ -1040,6 +1055,23 @@ void J1772EVSEController::Init()
 #endif
 
   g_OBD.SetGreenLed(0);
+
+#ifdef RAPI
+  RapiSendBootNotification();
+#endif
+
+#ifdef HEARTBEAT_SUPERVISION
+  //Grab the EEPROM setpoints and see if they are legitimate
+  m_HsInterval = eeprom_read_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL);
+  m_IFallback = eeprom_read_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT);
+  //Legit check:
+  if (m_HsInterval == 0xffff) { //EEPROM not initialized, let's just load the default values eh?  <== CANADA
+  	m_HsInterval = HS_INTERVAL_DEFAULT;
+  	m_IFallback = HS_IFALLBACK_DEFAULT;
+  }
+  m_HsLastPulse = millis();    //Set up the HS pulse interval start time as "now"
+#endif //HEARTBEAT_SUPERVISION
+
 }
 
 void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
@@ -1105,17 +1137,26 @@ void J1772EVSEController::Update(uint8_t forcetransition)
       // if it doesn't happen within 3 sec, we'll just open our relay anyway
       // c) no current draw means EV opened its contacts even if it stays in STATE C
       //    allow 3A slop for ammeter inaccuracy
+#ifdef AMMETER
+      readAmmeter();
+      long instantma = m_AmmeterReading*m_CurrentScaleFactor - m_AmmeterCurrentOffset;
+      if (instantma < 0) instantma = 0;
+#endif // AMMETER
       if ((phigh >= m_ThreshData.m_ThreshBC)
 #ifdef AMMETER
-	  || (m_AmmeterReading <= 3000)
+	 || (instantma <= 1000L)
 #endif // AMMETER
-	  || ((curms - m_ChargeOffTimeMS) >= 3000)) {
-	chargingOff();
+	  || ((curms - m_ChargeOffTimeMS) >= 3000UL)) {
 #ifdef FT_SLEEP_DELAY
-	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
+	//	sprintf(g_sTmp,"SLEEP OPEN %d",(int)phigh);
+	//	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	sprintf(g_sTmp,"%d %lu %lu",phigh,instantma,(curms-m_ChargeOffTimeMS));
 	g_OBD.LcdMsg(g_sTmp,(phigh >= m_ThreshData.m_ThreshBC) ? "THRESH" : "TIMEOUT");
+	chargingOff();
+	for(;;)
 	wdt_delay(2000);
-#endif
+#endif // FT_SLEEP_DELAY
+	chargingOff();
       }
     }
     else { // not charging
@@ -1420,10 +1461,16 @@ if (TempChkEnabled()) {
 #ifdef AUTH_LOCK_REG
   {
     int8_t locked;
-    if (pinAuthLock.read()) locked = ECVF_AUTH_LOCKED;
+    if (pinAuthLock.read()) locked = 1;
     else locked = 0;
-    if (locked != (m_bVFlags & ECVF_AUTH_LOCKED)) {
-      AuthLock(locked);
+
+    if (m_EvseState == EVSE_STATE_A) {
+      // ignore the pin, and always lock in STATE_A
+      locked = 1;
+    }
+
+    if (locked != AuthLockIsOn()) {
+      AuthLock(locked,0);
       g_OBD.Update(OBD_UPD_FORCE);
       forcetransition = 1;
     }
@@ -1467,6 +1514,10 @@ if (TempChkEnabled()) {
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
+#if defined(AUTH_LOCK) && ((AUTH_LOCK != 0) || !defined(AUTH_LOCK_REG))
+      // lock when transition to STATE_A if default is locked
+      AuthLock(1,0);
+#endif 
 #ifdef CHARGE_LIMIT
 	ClrChargeLimit();
 #endif // CHARGE_LIMIT
@@ -1496,7 +1547,7 @@ if (TempChkEnabled()) {
     }
     else if (m_EvseState == EVSE_STATE_C) {
       m_Pilot.SetPWM(m_CurrentCapacity);
-#ifdef UL_GFI_SELFTEST
+#if defined(UL_GFI_SELFTEST) && !defined(NOCHECKS)
       // test GFI before closing relay
       if (GfiSelfTestEnabled() && m_Gfi.SelfTest()) {
        // GFI test failed - hard fault
@@ -1727,6 +1778,11 @@ if (TempChkEnabled()) {
     }
   }
 #endif // TEMPERATURE_MONITORING
+
+#ifdef HEARTBEAT_SUPERVISION
+    HsExpirationCheck();  //Check to see if HS is engaged, and if so whether we missed a pulse
+#endif //HEARTBEAT_SUPERVISION
+
 #ifdef CHARGE_LIMIT
     if (m_chargeLimitTotWs && (g_EnergyMeter.GetSessionWs() >= m_chargeLimitTotWs)) {
       ClrChargeLimit(); // clear charge limit
@@ -1853,6 +1909,123 @@ int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8
 
   return rc;
 }
+
+#ifdef HEARTBEAT_SUPERVISION
+int J1772EVSEController::HeartbeatSupervision(uint16_t interval, uint8_t amps)
+{
+  m_HsInterval = interval;
+  m_IFallback = amps;
+  m_HsTriggered = 0;         //We clear the "Triggered" flag whenever we initiate HEARTBEAT_SUPERVISION
+  m_HsLastPulse = millis();  //RESET m_HsLastPulse if it was set to 0 as a flag of previous HEARTBEAT_SUPERVISION enforcement
+  if (eeprom_read_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL) != m_HsInterval) { //only write EEPROM if it is needful!
+	eeprom_write_word((uint16_t*)EOFS_HEARTBEAT_SUPERVISION_INTERVAL, m_HsInterval);
+  }
+  if (eeprom_read_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT) != m_IFallback) { //only write EEPROM if it is needful!
+    eeprom_write_byte((uint8_t*)EOFS_HEARTBEAT_SUPERVISION_CURRENT, amps);
+  }
+  return 0; // No error codes yet
+}
+
+int J1772EVSEController::HsPulse()
+{
+  int rc = 1;
+  if ((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //We were in a state of missed pulse therefore we need to restore the current capacity since we now see a Pulse
+    rc = 1; //We have been triggered but have not been acknowledged responce with NK
+  }
+  else { // If we have been triggered it has been dealt with (m_HsTriggered = HS_MISSEDPULSE or 0)
+    rc = 0; 
+  }
+  m_HsLastPulse = millis(); //We just had a heartbeat so reset the HEARTBEAT SUPERVISION timeout interval;
+  return rc;
+}
+
+int J1772EVSEController::HsRestoreAmpacity()
+{
+  UNION4B u1,u2,u3,u4;
+  int rc=1;
+  if(m_HsTriggered) {//At some point while active, HEARTBEAT_SUPERVISION was triggered, so we will have to perturb the ampacity
+    u3.u8 = g_EvseController.GetCurrentCapacity();  //We get the ceiling for how high we can set ampacity
+#ifdef TEMPERATURE_MONITORING
+    if (!g_TempMonitor.OverTemperature()) { //We need to ensure that OverTemperature is not active before we raise current capacity
+      rc = g_EvseController.SetCurrentCapacity(u3.u8,1,0);  //We are not writing EEPROM, but we are setting current to maximum capacity
+    }
+    else {
+      rc = 1;  //Fail.  Cannnot restore ampacity, as TEMPERATURE_MONITORING OverTemperature() is still in force 
+    }
+#else // !TEMPERATURE_MONITORING
+    rc = g_EvseController.SetCurrentCapacity(u3.u8,1,0); 
+#endif // TEMPERATURE_MONITORING
+  }
+  return rc;
+}
+
+int J1772EVSEController::HsExpirationCheck()
+{
+  unsigned long sinceLastPulse = (millis() - m_HsLastPulse);
+  int rc=1;
+  if (m_HsInterval != 0) { //HEARTBEAT_SUPERVISION is currently active
+    if((m_HsTriggered = HS_MISSEDPULSE_NOACK)) { //There has been a pulse miss that has not been acknowledged
+      if(!(m_IFallback > GetCurrentCapacity())) { //We are still in HEARTBEAT_SUPERVISION ampacity limiting but the current capacity is not OK
+        rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM        
+      }
+    }
+    else if (sinceLastPulse > m_HsInterval) {//Whups, we didn't get a heartbeat within the specified time interval, and HS is in active state.
+      //Something went wrong, and as a result we may have to perturb the system ampacity setting.
+          //We flag that here by setting m_HsTriggered = HS_MISSEDPULSE_NOACK
+      m_HsTriggered = HS_MISSEDPULSE_NOACK; //Flag the fact that HEARTBEAT_SUPERVISION had a missed pulse and report same when pulsed, until acknowledged
+      if (m_IFallback <  GetCurrentCapacity()) {  //Check to see if we need to drop ampacity
+        rc=SetCurrentCapacity(m_IFallback,0,0);  //Drop the current, but do not update the display and do not write it to EEPROM
+        } 
+    }
+    else {  //Do nothing
+    }
+    
+    m_HsLastPulse = millis(); //In all cases, reset the timer so we don't check again until the next interval
+  }
+  else {
+    rc = 0; //HEARTBEAT_SUPERVISION inactive, return normally
+  }
+  return rc;
+}
+
+int J1772EVSEController::HsAckMissedPulse(uint8_t ack)
+{
+    int rc = 1;
+    if (ack == HS_ACK_COOKIE) { //Is this a legitimate acknowlegement of missed HEARTBEAT_SUPERVISION pulse?
+      if(m_HsTriggered == HS_MISSEDPULSE_NOACK) {// Has HEARTBEAT_SUPERVISION missed a pulse with no subsequenr acknowledgement?
+        rc = HsRestoreAmpacity(); // Let's make an attempt to restore ampacity to original conditions
+        if (rc == 0) {
+          m_HsTriggered = HS_MISSEDPULSE;       // Ampacity restoration was successful, leave a semi-permanent record that a pulse was missed and ampacity was perturbed
+        } //else: Ampacity could not be restored at this time. HsAckMissedPulse() unsuccessful.
+      }
+    }
+    return rc;
+}
+
+int J1772EVSEController::HsDeactivate()
+{
+  int rc=1;
+  m_HsInterval = 0;
+  rc=(int)m_HsInterval;
+  return rc;
+}
+
+int J1772EVSEController::GetHearbeatInterval()
+{
+  return (int)m_HsInterval;
+}
+
+int J1772EVSEController::GetHearbeatCurrent()
+{
+  return (int)m_IFallback;
+}
+
+int J1772EVSEController::GetHearbeatTrigger()
+{
+  return (int)m_HsTriggered;
+}
+
+#endif //HEARTBEAT_SUPERVISION
 
 #if defined(GFI) || defined(ADVPWR)
 unsigned long J1772EVSEController::GetResetMs()

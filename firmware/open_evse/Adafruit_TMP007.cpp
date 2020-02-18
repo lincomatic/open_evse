@@ -61,7 +61,7 @@ int16_t Adafruit_TMP007::readObjTempC10(void) {
 
   if (raw & 0x1) return (int16_t)TEMPERATURE_NOT_INSTALLED;
 
-  uint32_t temp = ((int32_t)raw) * 78125;
+  int32_t temp = ((int32_t)raw) * 78125;       // must be signed integer to handle temps < 0C
   return (int16_t) (temp / 1000000);
 }
 

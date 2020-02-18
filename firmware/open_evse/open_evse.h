@@ -41,8 +41,9 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-// See platformio.ini
-// #define VERSION "D5.1.0"
+#ifndef VERSION
+#define VERSION "D6.1.3"
+#endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
@@ -58,6 +59,8 @@
 //#include "Language_norwegian.h"
 
 //-- begin features
+
+//#define OCPP
 
 // auto detect L1/L2
 //#define AUTOSVCLEVEL
@@ -76,7 +79,10 @@
 //  to enable/disable charging function
 // if AUTH_LOCK_REG/IDX are also defined (see below), then a hardware pin is
 //  used to control access, rather than RAPI
-//#define AUTH_LOCK
+// defining AUTH_LOCK enables locking functionality
+// AUTH_LOCK = 1 -> default to locked, automatically lock whenever transition to state A
+// AUTH_LOCK = 0 -> only locks when RAPI command sent to lock
+//#define AUTH_LOCK 1
 
 // serial remote api
 #define RAPI
@@ -84,17 +90,8 @@
 // RAPI over serial
 #define RAPI_SERIAL
 
-// RAPI $FF command
-#define RAPI_FF
-
-#ifdef RAPI_FF
-// force on RAPI_SEQUENCE_ID and RAPI_RESPONSE_CHK when RAPI_FF on
-// optional sequence id can be inserted as last parameter to commands/responses
-#define RAPI_SEQUENCE_ID
-
-// add checksum to RAPI responses RAPI v2.0.0+
-#define RAPI_RESPONSE_CHK
-#endif // RAPI_FF
+// RAPI $WF support
+#define RAPI_WF
 
 // RAPI over I2C
 //#define RAPI_I2C
@@ -143,11 +140,11 @@ extern AutoCurrentCapacityController g_ACCController;
 #define VOLTMETER_POLL_INTERVAL (35)
 // This is just a wild guess
 // #define VOLTMETER_SCALE_FACTOR (266)     // original guess
-#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
-//#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
+//#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
 // #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
-#define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
-//#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
+//#define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // OPENEVSE_2
 
 // GFI support
@@ -173,7 +170,8 @@ extern AutoCurrentCapacityController g_ACCController;
 #endif //UL_COMPLIANT
 
 #define TEMPERATURE_MONITORING  // Temperature monitoring support
-// not yet #define TEMPERATURE_MONITORING_NY
+
+//#define HEARTBEAT_SUPERVISION // Heartbeat Supervision support
 
 #ifdef AMMETER
 
@@ -279,6 +277,12 @@ extern AutoCurrentCapacityController g_ACCController;
 ////        (subreg:QI (reg/f:HI 1065) 1)) C:\Users\Geek\AppData\Local\Temp\arduino_build_853681\sketch\rapi_proc.cpp:418 1 {pushqi1}
 #define GPPBUGKLUDGE
 #endif // RTC
+
+#ifdef OCPP
+#define AUTH_LOCK 1
+#define RAPI_SERIAL
+#endif // OCPP
+
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
 //#define SLEEP_STATUS_REG &PINB
@@ -544,6 +548,13 @@ extern AutoCurrentCapacityController g_ACCController;
 // non-volatile flags
 #define EOFS_DUO_NVFLAGS 32 // 1 byte
 #define EOFS_DUO_SHARED_AMPS 33 // 1 byte
+//
+// Reserved for HEARTBEAT_SUPERVISION (3 Bytes)
+//
+// Duration in seconds:
+#define EOFS_HEARTBEAT_SUPERVISION_INTERVAL 34 // 2 bytes (zero if infinite)
+// Fallback Current in quarter Amperes:
+#define EOFS_HEARTBEAT_SUPERVISION_CURRENT 36 // 1 byte 
 
 //- start TESTING ONLY
 #ifdef RELAY_AUTO_PWM_PIN_TESTING
@@ -1276,7 +1287,6 @@ public:
   BtnHandler();
   void init() { m_Btn.init(); }
   void ChkBtn();
-  uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
   uint8_t GetSavedLcdMode() { return m_SavedLcdMode; }
   void SetSavedLcdMode(uint8_t mode ) { m_SavedLcdMode = mode; }
   int8_t DoShortPress(int8_t infaultstate);
@@ -1396,6 +1406,7 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
+char *GetFirmwareVersion(char *str);
 void wdt_delay(uint32_t ms);
 
 

@@ -1,15 +1,62 @@
+# Continuous Integration (CI) is the practice, in software
+# engineering, of merging all developer working copies with a shared mainline
+# several times a day < http://docs.platformio.org/page/ci/index.html >
+#
+# Documentation:
+#
+# * Travis CI Embedded Builds with PlatformIO
+#   < https://docs.travis-ci.com/user/integration/platformio/ >
+#
+# * PlatformIO integration with Travis CI
+#   < http://docs.platformio.org/page/ci/travis.html >
+#
+# * User Guide for `platformio ci` command
+#   < http://docs.platformio.org/page/userguide/cmd_ci.html >
+#
+#
+# Please choice one of the following templates (proposed below) and uncomment
+# it (remove "# " before each line) or use own configuration according to the
+# Travis CI documentation (see above).
+#
+
+
 language: python
 python:
-    - "2.7"
+  - "2.7"
 
-# Cache PlatformIO packages using Travis CI container-based infrastructure
+env:
+  - PIO_ENV=openevse
+    BUILD_ENV=platformio
+  - PIO_ENV=emonevse
+    BUILD_ENV=platformio
+  - PIO_ENV=emonevse-3ph
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-14
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-17
+    BUILD_ENV=platformio
+  - PIO_ENV=openevse_1-6-23
+    BUILD_ENV=platformio
+  - AVR_CORE_VERSION=1.6.14
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.15
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.17
+    BUILD_ENV=arduino
+  - AVR_CORE_VERSION=1.6.23
+    BUILD_ENV=arduino
+
 sudo: false
 cache:
-    directories:
-        - "~/.platformio"
+  directories:
+    - "~/.platformio"
+    - "~/.arduino15"
 
 install:
-    - pip install -U platformio    
+  - bash -e ci/install_${BUILD_ENV:-platformio}.sh
 
 script:
-    - platformio run
+  - bash -e ci/build_${BUILD_ENV:-platformio}.sh
+
+after_script:
+  - bash -e ci/info_${BUILD_ENV:-platformio}.sh
