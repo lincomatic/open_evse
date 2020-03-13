@@ -27,7 +27,7 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 - [OpenEnergyMonitor OpenEVSE Setup Guide](https://guide.openenergymonitor.org/integrations/openevse)
 - [OpenEnergyMonitor OpenEVSE Shop](https://shop.openenergymonitor.com/ev-charging/)
 
-- [OpenEVSE Controller Datasheet](https://www.openevse.com/files/OpenEVSE_Plus_v4.pdf)
+- [OpenEVSE Controller Datasheet](https://github.com/OpenEVSE/OpenEVSE_PLUS/blob/master/OpenEVSE_PLUS_v5/OpenEVSE_Plus_v5.pdf)
 - [OpenEVSE Controller Hardware Repo](https://github.com/OpenEVSE/OpenEVSE_PLUS)
 - [OpenEVSE Project Homepage](https://openevse.com)
 
