@@ -65,8 +65,9 @@
 #ifdef BTN_MENU
 SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
-SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
+#ifndef NOSETUP_MENU
+SvcLevelMenu g_SvcLevelMenu;
 DiodeChkMenu g_DiodeChkMenu;
 #ifdef RGBLCD
 BklTypeMenu g_BklTypeMenu;
@@ -82,6 +83,7 @@ VentReqMenu g_VentReqMenu;
 GndChkMenu g_GndChkMenu;
 RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
+#endif // NOSETUP_MENU
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
 #if defined(DELAYTIMER_MENU)
@@ -122,6 +124,10 @@ Menu *g_SettingsMenuList[] = {
 };
 
 Menu *g_SetupMenuList[] = {
+#ifdef NOSETUP_MENU
+  &g_MaxCurrentMenu,
+  &g_RTCMenu,
+#else // !NOSETUP_MENU
 #ifdef DELAYTIMER_MENU
   &g_RTCMenu,
 #endif // DELAYTIMER_MENU
@@ -129,7 +135,6 @@ Menu *g_SetupMenuList[] = {
   &g_BklTypeMenu,
 #endif // RGBLCD
   &g_SvcLevelMenu,
-  &g_MaxCurrentMenu,
   &g_DiodeChkMenu,
   &g_VentReqMenu,
 #ifdef ADVPWR
@@ -142,6 +147,7 @@ Menu *g_SetupMenuList[] = {
 #ifdef TEMPERATURE_MONITORING
   &g_TempOnOffMenu,
 #endif // TEMPERATURE_MONITORING
+#endif // NOSETUP_MENU
   NULL
 };
 
@@ -1205,6 +1211,8 @@ Menu *SetupMenu::Select()
   }
 }
 
+#ifndef NOSETUP_MENU
+
 #if defined(ADVPWR) && defined(AUTOSVCLEVEL)
 #define SVC_LVL_MNU_ITEMCNT 3
 #else
@@ -1323,57 +1331,6 @@ Menu *SvcLevelMenu::Select()
 
   return &g_SetupMenu;
 }
-
-MaxCurrentMenu::MaxCurrentMenu()
-{
-  m_Title = g_psMaxCurrent;
-}
-
-
-void MaxCurrentMenu::Init()
-{
-  uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
-  m_MinCurrent = MIN_CURRENT_CAPACITY_J1772;
-  if (cursvclvl == 1) {
-    m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
-  }
-  else {
-    m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
-  }
-  
-  sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
-  g_OBD.LcdPrint(0,g_sTmp);
-  m_CurIdx = g_EvseController.GetCurrentCapacity();
-  if (m_CurIdx < m_MinCurrent) m_CurIdx = m_MinCurrent;
-  sprintf(g_sTmp,"+%dA",m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
-}
-
-void MaxCurrentMenu::Next()
-{
-  if (++m_CurIdx > m_MaxCurrent) {
-    m_CurIdx = m_MinCurrent;
-  }
-  g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  if (g_EvseController.GetCurrentCapacity() == m_CurIdx) {
-    g_OBD.LcdPrint(g_sPlus);
-  }
-  g_OBD.LcdPrint(m_CurIdx);
-  g_OBD.LcdPrint("A");
-}
-
-Menu *MaxCurrentMenu::Select()
-{
-  g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(m_CurIdx);
-  g_OBD.LcdPrint("A");
-  delay(500);
-  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_CurIdx);  
-  g_EvseController.SetCurrentCapacity(m_CurIdx);
-  return &g_SetupMenu;
-}
-
 
 DiodeChkMenu::DiodeChkMenu()
 {
@@ -1614,6 +1571,59 @@ Menu *RlyChkMenu::Select()
 }
 #endif // ADVPWR
 
+#endif // NOSETUP_MENU
+
+MaxCurrentMenu::MaxCurrentMenu()
+{
+  m_Title = g_psMaxCurrent;
+}
+
+
+void MaxCurrentMenu::Init()
+{
+  uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
+  m_MinCurrent = MIN_CURRENT_CAPACITY_J1772;
+  if (cursvclvl == 1) {
+    m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
+  }
+  else {
+    m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
+  }
+  
+  sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
+  g_OBD.LcdPrint(0,g_sTmp);
+  m_CurIdx = g_EvseController.GetCurrentCapacity();
+  if (m_CurIdx < m_MinCurrent) m_CurIdx = m_MinCurrent;
+  sprintf(g_sTmp,"+%dA",m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void MaxCurrentMenu::Next()
+{
+  if (++m_CurIdx > m_MaxCurrent) {
+    m_CurIdx = m_MinCurrent;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  if (g_EvseController.GetCurrentCapacity() == m_CurIdx) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+  g_OBD.LcdPrint(m_CurIdx);
+  g_OBD.LcdPrint("A");
+}
+
+Menu *MaxCurrentMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(m_CurIdx);
+  g_OBD.LcdPrint("A");
+  delay(500);
+  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_CurIdx);  
+  g_EvseController.SetCurrentCapacity(m_CurIdx);
+  return &g_SetupMenu;
+}
+
+
 ResetMenu::ResetMenu()
 {
   m_Title = g_psReset;
@@ -1634,6 +1644,17 @@ void ResetMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *ResetMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  delay(500);
+  if (m_CurIdx == 0) {
+    g_EvseController.Reboot();
+  }
+  return NULL;
 }
 
 #ifdef DELAYTIMER_MENU
@@ -2120,17 +2141,6 @@ Menu *TimeLimitMenu::Select()
   return m_CurIdx ? NULL : &g_SettingsMenu;
 }
 #endif // TIME_LIMIT
-
-Menu *ResetMenu::Select()
-{
-  g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
-  delay(500);
-  if (m_CurIdx == 0) {
-    g_EvseController.Reboot();
-  }
-  return NULL;
-}
 
 BtnHandler::BtnHandler()
 {

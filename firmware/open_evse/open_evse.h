@@ -229,6 +229,10 @@ extern AutoCurrentCapacityController g_ACCController;
 // When within menus, short press cycles menu items, long press selects and exits current submenu
 #define BTN_MENU
 
+// take out basic setup stuff that the user really shouldn't be changing,
+// which can be set via RAPI/WiFi module.. reclaims a lot of code space
+#define NOSETUP_MENU
+
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // also allows menus to be manipulated even when in State B/C
 #define BTN_ENABLE_TOGGLE
