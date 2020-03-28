@@ -570,7 +570,8 @@ int EvseRapiProcessor::processCmd()
 	u2.i = MAX_CURRENT_CAPACITY_L1;
       }
       u3.i = g_EvseController.GetCurrentCapacity();
-      sprintf(buffer,"%d %d %d",u1.i,u2.i,u3.i);
+      u4.i = g_EvseController.GetMaxCurrentCapacity();
+      sprintf(buffer,"%d %d %d %d",u1.i,u2.i,u3.i,u4.i);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
