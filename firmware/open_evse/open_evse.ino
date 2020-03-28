@@ -2187,6 +2187,8 @@ int8_t BtnHandler::DoShortPress(int8_t infaultstate)
 
 void BtnHandler::ChkBtn()
 {
+  if (!g_EvseController.ButtonIsEnabled()) return;
+
   WDT_RESET();
 
   int8_t infaultstate = g_EvseController.InFaultState();

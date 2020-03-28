@@ -277,6 +277,11 @@ int EvseRapiProcessor::processCmd()
 	if (u1.u8 <= 1) {
 	  rc = 0;
 	  switch(*tokens[1]) {
+#ifdef BTN_MENU
+	  case 'B': // front button enable
+	    g_EvseController.ButtonEnable(u1.u8);
+	    break;
+#endif // BTN_MENU
 	  case 'D': // diode check
 	    g_EvseController.EnableDiodeCheck(u1.u8);
 	    break;

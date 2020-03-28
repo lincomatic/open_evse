@@ -125,6 +125,7 @@ FF - enable/disable feature
  $FF feature_id 0|1
  0|1 0=disable 1=enable
  feature_id:
+  B = disable/enable front panel button
   D = Diode check
   E = command Echo
    use this for interactive terminal sessions with RAPI.
