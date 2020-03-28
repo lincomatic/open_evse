@@ -2419,13 +2419,6 @@ void EvseReset()
 {
   Wire.begin();
 
-#ifdef RTC
-  g_RTC.begin();
-#ifdef DELAYTIMER
-  g_DelayTimer.Init();
-#endif  // DELAYTIMER
-#endif // RTC
-
 #ifdef SERIALCLI
   g_CLI.Init();
 #endif // SERIALCLI
@@ -2437,6 +2430,14 @@ void EvseReset()
 #endif
 
   g_EvseController.Init();
+
+#ifdef RTC
+  g_RTC.begin();
+#ifdef DELAYTIMER
+  g_DelayTimer.Init(); // this *must* run after g_EvseController.Init() because it sets one of the vFlags
+#endif  // DELAYTIMER
+#endif // RTC
+
 
 #ifdef PP_AUTO_AMPACITY
   g_ACCController.AutoSetCurrentCapacity();
