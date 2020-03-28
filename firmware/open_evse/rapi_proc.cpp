@@ -150,7 +150,7 @@ void EvseRapiProcessor::sendBootNotification()
 
 void EvseRapiProcessor::sendEvseState()
 {
-    sprintf(g_sTmp,"%cAT %02x %02x %d %04x",ESRAPI_SOC,g_EvseController.GetState(),g_EvseController.GetPilotState(),g_EvseController.GetMaxCurrentCapacity(),g_EvseController.GetVFlags());
+    sprintf(g_sTmp,"%cAT %02x %02x %d %04x",ESRAPI_SOC,g_EvseController.GetState(),g_EvseController.GetPilotState(),g_EvseController.GetCurrentCapacity(),g_EvseController.GetVFlags());
   appendChk(g_sTmp);
   writeStart();
   write(g_sTmp);
