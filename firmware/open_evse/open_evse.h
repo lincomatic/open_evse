@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D6.2.0"
+#define VERSION "D6.2.1"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer

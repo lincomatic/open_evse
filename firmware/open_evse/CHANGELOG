@@ -1,5 +1,9 @@
 Change Log
 
+D6.2.1 20200327 SCL
+- doPost() - don't compare against hardcoded 900 .. use ThreshAB
+- send $AT during sleep if EV connect/disconnect
+	
 D6.2.0 20200327 SCL
 - fix 1 sec delay in showing current when charging starts
 - make space by taking stuff out of button menu that is still accessible via WiFi NOSETUP_MENU
