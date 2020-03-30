@@ -655,7 +655,9 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint_P(g_psCharging);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is on
+#ifdef AMMETER
       SetAmmeterDirty(1); // force ammeter update code below
+#endif // AMMETER
       break;
     case EVSE_STATE_D: // vent required
       SetGreenLed(0);

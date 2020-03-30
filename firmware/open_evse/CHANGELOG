@@ -1,5 +1,8 @@
 Change Log
 
+20200330 SCL
+- fixed SetAmmeterDirty(1) compile error
+	
 D6.2.1 20200327 SCL
 - doPost() - don't compare against hardcoded 900 .. use ThreshAB
 - send $AT during sleep if EV connect/disconnect
