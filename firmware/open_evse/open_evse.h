@@ -83,7 +83,7 @@
 #define RAPI_SERIAL
 
 // RAPI $WF support
-#define RAPI_WF
+//#define RAPI_WF
 
 // RAPI over I2C
 //#define RAPI_I2C

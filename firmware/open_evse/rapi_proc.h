@@ -193,10 +193,10 @@ SY heartbeatinterval hearbeatcurrentlimit
  Response includes heartbeatinterval hearbeatcurrentlimit hearbeattrigger
  hearbeattrigger: 0 - There has never been a missed pulse, 
  2 - there is a missed pulse, and HS is still in current limit
- 1 - There was a missed pulse once, but it has since been acknkoledged. Ampacity has been successfully restored to max permitted 
+ 1 - There was a missed pulse once, but it has since been acknowledged. Ampacity has been successfully restored to max permitted 
  $SY 100 6  //If no pulse for 100 seconds, set EVE ampacity limit to 6A until missed pulse is acknowledged
  $SY        //This is a heartbeat supervision pulse.  Need one every heartbeatinterval seconds.
- $SY 165    //This is an acknowledgemnt of a missed pulse.  Magic Cookie = 165 (=0XA5)
+ $SY 165    //This is an acknowledgement of a missed pulse.  Magic Cookie = 165 (=0XA5)
  When you send a pulse, an NK response indicates that a previous pulse was missed and has not yet been acked
 
 G0 - get EV connect state
