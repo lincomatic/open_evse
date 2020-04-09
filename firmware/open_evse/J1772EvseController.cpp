@@ -697,7 +697,7 @@ uint8_t J1772EVSEController::doPost()
 #endif //#ifdef SERDBG
 
     m_Pilot.SetState(PILOT_STATE_N12);
-    if (reading > 900) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
+    if (reading >= m_ThreshData.m_ThreshAB) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
 
       // save state with both relays off - for stuck relay state
       RelayOff = ReadACPins();
@@ -1179,6 +1179,9 @@ void J1772EVSEController::Update(uint8_t forcetransition)
       }
 #endif // DELAYTIMER
 	g_OBD.Update(OBD_UPD_FORCE);
+#ifdef RAPI
+	RapiSendEvseState();
+#endif // RAPI	
       }
     }
 

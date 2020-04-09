@@ -125,6 +125,7 @@ FF - enable/disable feature
  $FF feature_id 0|1
  0|1 0=disable 1=enable
  feature_id:
+  B = disable/enable front panel button
   D = Diode check
   E = command Echo
    use this for interactive terminal sessions with RAPI.
@@ -219,11 +220,13 @@ GA - get ammeter settings
  $GA^22
 
 GC - get current capacity info
- response: $OK minamps maxamps pilotamps
+ response: $OK minamps hmaxamps pilotamps cmaxamps
  all values decimal
  minamps - min allowed current capacity
- maxamps - max allowed current capacity
+ hmaxamps - max hardware allowed current capacity MAX_CURRENT_CAPACITY_Ln
  pilotamps - current capacity advertised by pilot
+ cmaxamps - max configured allowed current capacity (saved to EEPROM)
+ n.b. maxamps,emaxamps values are dependent on the active service level (L1/L2)
  $GC^20
 
 GD - get Delay timer
@@ -314,7 +317,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.0.0"
+#define RAPIVER "5.1.0"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1
