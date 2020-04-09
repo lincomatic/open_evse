@@ -80,6 +80,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
 #define ECF_TEMP_CHK_DISABLED  0x0400 // no Temperature Monitoring
+#define ECF_BUTTON_DISABLED    0x8000 // front panel button disabled
 #define ECF_DEFAULT            0x0000
 
 // J1772EVSEController volatile m_wVFlags bits - not saved to EEPROM
@@ -188,6 +189,9 @@ class J1772EVSEController {
   }
   void clrFlags(uint16_t flags) { 
     m_wFlags &= ~flags; 
+  }
+  uint8_t flagIsSet(uint16_t flag) {
+    return (m_wFlags & flag) ? 1 : 0;
   }
   void setVFlags(uint16_t flags) { 
     m_wVFlags |= flags; 
@@ -519,6 +523,14 @@ int GetHearbeatTrigger();
   }
   void SetInMenu() { setVFlags(ECVF_UI_IN_MENU); }
   void ClrInMenu() { clrVFlags(ECVF_UI_IN_MENU); }
+#ifdef BTN_MENU
+  void ButtonEnable(uint8_t tf) {
+    if (!tf) setFlags(ECF_BUTTON_DISABLED); 
+    else clrFlags(ECF_BUTTON_DISABLED);
+    SaveEvseFlags();
+  }
+  uint8_t ButtonIsEnabled() { return flagIsSet(ECF_BUTTON_DISABLED) ? 0 : 1; }
+#endif // BTN_MENU
 };
 
 #ifdef FT_ENDURANCE

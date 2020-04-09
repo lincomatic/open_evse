@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D6.1.3"
+#define VERSION "D6.2.1"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -236,6 +236,10 @@ extern AutoCurrentCapacityController g_ACCController;
 // Long press activates menu
 // When within menus, short press cycles menu items, long press selects and exits current submenu
 #define BTN_MENU
+
+// take out basic setup stuff that the user really shouldn't be changing,
+// which can be set via RAPI/WiFi module.. reclaims a lot of code space
+#define NOSETUP_MENU
 
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // also allows menus to be manipulated even when in State B/C

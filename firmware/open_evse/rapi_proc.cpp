@@ -150,7 +150,7 @@ void EvseRapiProcessor::sendBootNotification()
 
 void EvseRapiProcessor::sendEvseState()
 {
-    sprintf(g_sTmp,"%cAT %02x %02x %d %04x",ESRAPI_SOC,g_EvseController.GetState(),g_EvseController.GetPilotState(),g_EvseController.GetMaxCurrentCapacity(),g_EvseController.GetVFlags());
+    sprintf(g_sTmp,"%cAT %02x %02x %d %04x",ESRAPI_SOC,g_EvseController.GetState(),g_EvseController.GetPilotState(),g_EvseController.GetCurrentCapacity(),g_EvseController.GetVFlags());
   appendChk(g_sTmp);
   writeStart();
   write(g_sTmp);
@@ -277,6 +277,11 @@ int EvseRapiProcessor::processCmd()
 	if (u1.u8 <= 1) {
 	  rc = 0;
 	  switch(*tokens[1]) {
+#ifdef BTN_MENU
+	  case 'B': // front button enable
+	    g_EvseController.ButtonEnable(u1.u8);
+	    break;
+#endif // BTN_MENU
 	  case 'D': // diode check
 	    g_EvseController.EnableDiodeCheck(u1.u8);
 	    break;
@@ -565,7 +570,8 @@ int EvseRapiProcessor::processCmd()
 	u2.i = MAX_CURRENT_CAPACITY_L1;
       }
       u3.i = g_EvseController.GetCurrentCapacity();
-      sprintf(buffer,"%d %d %d",u1.i,u2.i,u3.i);
+      u4.i = g_EvseController.GetMaxCurrentCapacity();
+      sprintf(buffer,"%d %d %d %d",u1.i,u2.i,u3.i,u4.i);
       bufCnt = 1; // flag response text output
       rc = 0;
       break;
