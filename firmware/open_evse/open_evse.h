@@ -53,6 +53,12 @@
 //-- begin features
 
 //#define OCPP
+// V6 hardware
+#define OEV6
+#define V6_CHARGING_PIN  5
+#define V6_CHARGING_PIN2 6
+#define RELAY_PWM
+#define RELAY_HOLD_DELAY_TUNING // enable Z0
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL
@@ -317,8 +323,8 @@ extern AutoCurrentCapacityController g_ACCController;
 // and m_relayHoldPwm below
 //#define RELAY_AUTO_PWM_PIN_TESTING
 #ifndef RELAY_AUTO_PWM_PIN_TESTING
-#define m_relayCloseMs 250UL
-#define m_relayHoldPwm 50 // duty cycle 0-255
+//#define m_relayCloseMs 250UL
+//#define m_relayHoldPwm 50 // duty cycle 0-255
 #endif //RELAY_AUTO_PWM_PIN_TESTING
 
 //-- end features
@@ -552,15 +558,8 @@ extern AutoCurrentCapacityController g_ACCController;
 // Fallback Current in quarter Amperes:
 #define EOFS_HEARTBEAT_SUPERVISION_CURRENT 36 // 1 byte 
 
-//- start TESTING ONLY
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
-#define EOFS_RELAY_HOLD_PWM 512
-#define EOFS_RELAY_CLOSE_MS 513
-#endif //  RELAY_AUTO_PWM_PIN_TESTING
-#ifdef RELAY_HOLD_DELAY_TUNING
-#define EOFS_RELAY_HOLD_DELAY 512
-#endif // RELAY_HOLD_DELAY_TUNING
-//- end TESTING ONLY
+#define EOFS_RELAY_CLOSE_MS 37 // 1 byte
+#define EOFS_RELAY_HOLD_PWM 38 // 1 byte
 
 
 
@@ -578,6 +577,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // for SAMPLE_ACPINS - max number of ms to sample
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
+
+// V6 has PD7 tied to ground
+#define V6_ID_REG D
+#define V6_ID_IDX 7
+
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = PD2, 1 = PD3
 // interrupt number 0 = PD2, 1 = PD3
@@ -588,6 +592,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // pin is supposed to be wrapped around the GFI CT 5+ times
 #define GFITEST_REG &PIND
 #define GFITEST_IDX 6
+// V6 GFI test pin PB0
+#define V6_GFITEST_REG &PINB
+#define V6_GFITEST_IDX 0
+
+
 
 #define GFI_TEST_CYCLES 60
 // GFI pulse should be 50% duty cycle

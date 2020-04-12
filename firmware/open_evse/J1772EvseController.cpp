@@ -266,23 +266,37 @@ void J1772EVSEController::ShowDisabledTests()
 void J1772EVSEController::chargingOn()
 {
   // turn on charging current
-#ifdef RELAY_AUTO_PWM_PIN
-  // turn on charging pin to close relay
-  digitalWrite(RELAY_AUTO_PWM_PIN,HIGH);
-  delay(m_relayCloseMs);
-  // switch to PWM to hold closed
-  analogWrite(RELAY_AUTO_PWM_PIN,m_relayHoldPwm);
-#else // !RELAY_AUTO_PWM_PIN
+#ifdef OEV6
+  if (isV6()) {
+#ifdef RELAY_PWM
+    Serial.print("\nrelayCloseMs: ");Serial.println(m_relayCloseMs);
+    Serial.print("relayHoldPwm: ");Serial.println(m_relayHoldPwm);
+    // turn on charging pin to close relay
+    digitalWrite(V6_CHARGING_PIN,HIGH);
+    digitalWrite(V6_CHARGING_PIN2,HIGH);
+    delay(m_relayCloseMs);
+    // switch to PWM to hold closed
+    analogWrite(V6_CHARGING_PIN,m_relayHoldPwm);
+    analogWrite(V6_CHARGING_PIN2,m_relayHoldPwm);
+#else // !RELAY_PWM
+    digitalWrite(V6_CHARGING_PIN,HIGH);
+    digitalWrite(V6_CHARGING_PIN2,HIGH);
+#endif // RELAY_PWM
+  }
+  else {
+#endif // OEV6
 #ifdef CHARGING_REG
-  pinCharging.write(1);
+    pinCharging.write(1);
 #endif
 #ifdef CHARGING2_REG
-  pinCharging2.write(1);
+    pinCharging2.write(1);
 #endif // CHARGING2_REG
+#ifdef OEV6
+  }
+#endif // OEV6
 #ifdef CHARGINGAC_REG
-  pinChargingAC.write(1);
+    pinChargingAC.write(1);
 #endif
-#endif // RELAY_AUTO_PWM_PIN
 
   setVFlags(ECVF_CHARGING_ON);
   
@@ -301,19 +315,30 @@ void J1772EVSEController::chargingOn()
 void J1772EVSEController::chargingOff()
 {
  // turn off charging current
+#ifdef OEV6
+  if (isV6()) {
 #ifdef RELAY_AUTO_PWM_PIN
   digitalWrite(RELAY_AUTO_PWM_PIN,LOW);
 #else // !RELAY_AUTO_PWM_PIN
+    digitalWrite(V6_CHARGING_PIN,LOW);
+    digitalWrite(V6_CHARGING_PIN2,LOW);
+#endif // RELAY_AUTO_PWM_PIN
+  }
+  else {
+#endif // OEV6
 #ifdef CHARGING_REG
-  pinCharging.write(0);
+    pinCharging.write(0);
 #endif
 #ifdef CHARGING2_REG
-  pinCharging2.write(0);
+    pinCharging2.write(0);
 #endif
+#ifdef OEV6
+  }
+#endif // OEV6
+
 #ifdef CHARGINGAC_REG
   pinChargingAC.write(0);
 #endif
-#endif // RELAY_AUTO_PWM_PIN
 
   clrVFlags(ECVF_CHARGING_ON);
 
@@ -685,9 +710,9 @@ uint8_t J1772EVSEController::doPost()
 #ifdef LCD16X2
     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
 #endif //LCD16x2
-
+    
 #else //!OPENEVSE_2
-
+    
     delay(150); // delay reading for stable pilot before reading
     int reading = adcPilot.read(); //read pilot
 #ifdef SERDBG
@@ -695,39 +720,80 @@ uint8_t J1772EVSEController::doPost()
       Serial.print("Pilot: ");Serial.println((int)reading);
     }
 #endif //#ifdef SERDBG
-
+    
     m_Pilot.SetState(PILOT_STATE_N12);
     if (reading >= m_ThreshData.m_ThreshAB) {  // IF EV is not connected its Okay to open the relay the do the L1/L2 and ground Check
-
+      
       // save state with both relays off - for stuck relay state
       RelayOff = ReadACPins();
-          
+      
       // save state with Relay 1 on 
+#ifdef OEV6
+      if (isV6()) {
+	digitalWrite(V6_CHARGING_PIN,HIGH);
+      }
+      else { // !V6
+#endif // OEV6
 #ifdef CHARGING_REG
-      pinCharging.write(1);
+	pinCharging.write(1);
 #endif
+#ifdef OEV6
+      }
+#endif // OEV6
 #ifdef CHARGINGAC_REG
       pinChargingAC.write(1);
 #endif
+
       delay(RelaySettlingTime);
       Relay1 = ReadACPins();
+
+#ifdef OEV6
+      if (isV6()) {
+	digitalWrite(V6_CHARGING_PIN,LOW);
+      }
+      else { // !V6
+#endif // OEV6
 #ifdef CHARGING_REG
-      pinCharging.write(0);
+	pinCharging.write(0);
 #endif
+#ifdef OEV6
+      }
+#endif // OEV6
 #ifdef CHARGINGAC_REG
       pinChargingAC.write(0);
 #endif
+
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
           
       // save state for Relay 2 on
+#ifdef OEV6
+      if (isV6()) {
+	digitalWrite(V6_CHARGING_PIN2,HIGH);
+      }
+      else { // !V6
+#endif // OEV6
 #ifdef CHARGING2_REG
-      pinCharging2.write(1); 
+	pinCharging2.write(1); 
 #endif
+#ifdef OEV6
+      }
+#endif // OEV6
+
       delay(RelaySettlingTime);
       Relay2 = ReadACPins();
+
+#ifdef OEV6
+      if (isV6()) {
+	digitalWrite(V6_CHARGING_PIN2,LOW);
+      }
+      else { // !V6
+#endif // OEV6
 #ifdef CHARGING2_REG
-      pinCharging2.write(0); 
+	pinCharging2.write(0); 
 #endif
+#ifdef OEV6
+      }
+#endif // OEV6
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
       // decide input power state based on the status read  on L1 and L2
@@ -852,6 +918,13 @@ uint8_t J1772EVSEController::doPost()
 
 void J1772EVSEController::Init()
 {
+#ifdef OEV6
+  DPIN_MODE_INPUT(V6_ID_REG,V6_ID_IDX);
+  if (!DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
+  else m_isV6 = 0;
+  //  Serial.print("isV6: ");Serial.println(isV6());
+#endif
+
 #ifdef MENNEKES_LOCK
   m_MennekesLock.Init();
 #endif // MENNEKES_LOCK
@@ -872,29 +945,34 @@ void J1772EVSEController::Init()
   }
 #endif // RGBLCD
 
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
+#ifdef RELAY_PWM
+  m_relayCloseMs = eeprom_read_byte((uint8_t*)EOFS_RELAY_CLOSE_MS);
   m_relayHoldPwm = eeprom_read_byte((uint8_t*)EOFS_RELAY_HOLD_PWM);
-  m_relayCloseMs = eeprom_read_dword((uint32_t*)EOFS_RELAY_CLOSE_MS);
-  if (m_relayCloseMs > 5000) {
-    m_relayCloseMs = 0;
-    m_relayHoldPwm = 248;
+  if (!m_relayCloseMs || (m_relayCloseMs == 255)) {
+    m_relayCloseMs = 25;
+    m_relayHoldPwm = 70;
   }
   Serial.print("\nrelayCloseMs: ");Serial.println(m_relayCloseMs);
   Serial.print("relayHoldPwm: ");Serial.println(m_relayHoldPwm);
-#endif
+#endif // RELAY_PWM
 
 
-#ifdef RELAY_AUTO_PWM_PIN
-  pinMode(RELAY_AUTO_PWM_PIN,OUTPUT);
-#else // !RELAY_AUTO_PWM_PIN
+#ifdef OEV6
+  if (isV6()) {
+    pinMode(V6_CHARGING_PIN,OUTPUT);
+    pinMode(V6_CHARGING_PIN2,OUTPUT);
+  }
+  else { // !V6
+#endif // OEV6
 #ifdef CHARGING_REG
-  pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
+    pinCharging.init(CHARGING_REG,CHARGING_IDX,DigitalPin::OUT);
 #endif
 #ifdef CHARGING2_REG
-  pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
+    pinCharging2.init(CHARGING2_REG,CHARGING2_IDX,DigitalPin::OUT);
 #endif
-#endif // RELAY_AUTO_PWM_PIN
-
+#ifdef OEV6
+  }
+#endif
 #ifdef CHARGINGAC_REG
   pinChargingAC.init(CHARGINGAC_REG,CHARGINGAC_IDX,DigitalPin::OUT);
 #endif
@@ -916,7 +994,11 @@ void J1772EVSEController::Init()
 #endif // AUTH_LOCK
 
 #ifdef GFI
+#ifdef OEV6
+  m_Gfi.Init(isV6());
+#else
   m_Gfi.Init();
+#endif // OEV6
 #endif // GFI
 
   chargingOff();
@@ -997,9 +1079,6 @@ void J1772EVSEController::Init()
 
   m_NoGndRetryCnt = 0;
   m_NoGndStart = 0;
-#endif // ADVPWR
-
-#ifdef ADVPWR
 
 #ifdef FT_READ_AC_PINS
   while (1) {

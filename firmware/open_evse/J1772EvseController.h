@@ -153,10 +153,10 @@ class J1772EVSEController {
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
 #endif // ADVPWR
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
-  unsigned long m_relayCloseMs; // #ms for DC pulse to close relay
+#ifdef RELAY_PWM
+  uint8_t m_relayCloseMs; // #ms for DC pulse to close relay
   uint8_t m_relayHoldPwm; // PWM duty cycle to hold relay closed
-#endif // RELAY_AUTO_PWM_PIN_TESTING
+#endif // RELAY_PWM
   uint16_t m_wFlags; // ECF_xxx
   uint16_t m_wVFlags; // ECVF_xxx
   THRESH_DATA m_ThreshData;
@@ -184,6 +184,11 @@ class J1772EVSEController {
 #ifdef OVERCURRENT_THRESHOLD
   unsigned long m_OverCurrentStartMs;
 #endif // OVERCURRENT_THRESHOLD
+#ifdef OEV6
+  uint8_t m_isV6;
+#endif
+
+
   void setFlags(uint16_t flags) { 
     m_wFlags |= flags; 
   }
@@ -205,6 +210,10 @@ class J1772EVSEController {
   uint8_t vFlagIsSet(uint16_t flag) {
     return (m_wVFlags & flag) ? 1 : 0;
   }
+
+#ifdef OEV6
+  uint8_t isV6() { return m_isV6; }
+#endif
 
 #ifdef ADVPWR
 // power states for doPost() (active low)
@@ -286,12 +295,12 @@ public:
     return ((m_EvseState >= EVSE_FAULT_STATE_BEGIN) && (m_EvseState <= EVSE_FAULT_STATE_END));
   }
 
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
-  void setPwmPinParms(uint32_t delayms,uint8_t pwm) {
+#ifdef RELAY_PWM
+  void setPwmPinParms(uint8_t delayms,uint8_t pwm) {
     m_relayCloseMs = delayms;
     m_relayHoldPwm = pwm;
   }
-#endif
+#endif // RELAY_PWM
 
   void SetHardFault() { setVFlags(ECVF_HARD_FAULT); }
   void ClrHardFault() { clrVFlags(ECVF_HARD_FAULT); }
