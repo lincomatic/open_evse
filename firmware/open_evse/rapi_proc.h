@@ -161,16 +161,20 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    when auth lock is on, will not transition to State C and a lock icon is
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
-SC amps [V]- set current capacity
+SC amps [V|M]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK ampsset
    if amps > maximum current capacity, will set to maximum and return $NK ampsset
    if in over temperature status, raising current capacity will fail and return $NK ampsset
    otherwise return $OK ampsset
    ampsset: the resultant current capacity
-   default action is to save new current capacity to EEPROM.
+   default action is to save new current capacity to EEPROM for the currently active service level.
    if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot
+   if M is specified, sets maximum L2 current capacity for the unit and writes
+     to EEPROM. subsequent calls the $SC cannot exceed value set bye $SC M
+     the value cannot be changed/erased via RAPI commands. Subsequent calls
+     to $SC M will return $NK
 SH kWh - set cHarge limit to kWh
  NOTES:
   - allowed only when EV connected in State B or C
@@ -317,7 +321,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.1.0"
+#define RAPIVER "5.1.1"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

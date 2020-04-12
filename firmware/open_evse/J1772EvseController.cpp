@@ -620,8 +620,8 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
       }
     }
     else {
-      if (ampacity > MAX_CURRENT_CAPACITY_L2) {
-        ampacity = MAX_CURRENT_CAPACITY_L2;
+      if (ampacity > m_MaxHwCurrentCapacity) {
+        ampacity = m_MaxHwCurrentCapacity;
       }
     }
   }
@@ -1065,6 +1065,11 @@ void J1772EVSEController::Init()
 #endif
 
   m_wVFlags = ECVF_DEFAULT;
+
+  m_MaxHwCurrentCapacity = eeprom_read_byte((uint8_t*)EOFS_MAX_HW_CURRENT_CAPACITY);
+  if (!m_MaxHwCurrentCapacity || (m_MaxHwCurrentCapacity == (uint8_t)0xff)) {
+    m_MaxHwCurrentCapacity = MAX_CURRENT_CAPACITY_L2;
+  }
 
 #ifdef GFI
   m_GfiRetryCnt = 0;
@@ -1949,7 +1954,7 @@ void J1772EVSEController::Calibrate(PCALIB_DATA pcd)
 int J1772EVSEController::SetCurrentCapacity(uint8_t amps,uint8_t updatelcd,uint8_t nosave)
 {
   int rc = 0;
-  uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2;
+  uint8_t maxcurrentcap = (GetCurSvcLevel() == 1) ? MAX_CURRENT_CAPACITY_L1 : m_MaxHwCurrentCapacity;
 
   if (nosave) {
     // temporary amps can't be > max set in EEPROM
@@ -2186,5 +2191,21 @@ void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
 
 }
 #endif // TIME_LIMIT
+
+uint8_t J1772EVSEController::SetMaxHwCurrentCapacity(uint8_t amps)
+{
+  if ((amps >= MIN_CURRENT_CAPACITY_J1772) && (amps <= MAX_CURRENT_CAPACITY_L2)) {
+    uint8_t eamps = eeprom_read_byte((uint8_t*)EOFS_MAX_HW_CURRENT_CAPACITY);
+    if (!eamps || (eamps == (uint8_t)0xff)) {  // never been written
+      eeprom_write_byte((uint8_t*)EOFS_MAX_HW_CURRENT_CAPACITY,amps);
+      m_MaxHwCurrentCapacity = amps;
+      if (m_CurrentCapacity > m_MaxHwCurrentCapacity) {
+	SetCurrentCapacity(amps,1,1);
+      }
+      return 0;
+    }
+  }
+  return 1;
+}
 
 //-- end J1772EVSEController

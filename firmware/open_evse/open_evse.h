@@ -561,6 +561,8 @@ extern AutoCurrentCapacityController g_ACCController;
 #define EOFS_RELAY_CLOSE_MS 37 // 1 byte
 #define EOFS_RELAY_HOLD_PWM 38 // 1 byte
 
+#define EOFS_MAX_HW_CURRENT_CAPACITY 511 // 1 byte
+
 
 
 // must stay within thresh for this time in ms before switching states

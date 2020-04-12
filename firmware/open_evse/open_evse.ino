@@ -1589,7 +1589,7 @@ void MaxCurrentMenu::Init()
     m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
   }
   else {
-    m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
+    m_MaxCurrent = g_EvseController.GetMaxHwCurrentCapacity();
   }
   
   sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
