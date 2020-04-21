@@ -497,23 +497,22 @@ int EvseRapiProcessor::processCmd()
         rc = g_EvseController.HsPulse(); //pet the dog
       }
       else if (tokenCnt == 3) { //This is a full HEARTBEAT_SUPERVISION setpoint command with both parameters
-        u2.u16 = (uint16_t)dtou32(tokens[2]);	// HS Interval in seconds.  0 = disabled
-        u1.u8 = (uint8_t)dtou32(tokens[1]);	// HS fallback current, in amperes  
-        if (u1.u16 != 0) { //Set-up new heartbeat supervision parameters 
-          rc = g_EvseController.HeartbeatSupervision(u1.u16, u2.u8); 
-        }
-        else { // This is the case where we are disabling HEARTBEAT_SUPERVISION  
-          rc = (g_EvseController.HsDeactivate() || g_EvseController.HsRestoreAmpacity());
-        }
+	    rc = 0;
+        u1.u16 = (uint16_t)dtou32(tokens[1]);	// HS Interval in seconds.  0 = disabled
+        u2.u8 = (uint8_t)dtou32(tokens[2]);	// HS fallback current, in amperes 
+		if (u1.u16 == 0) { //Test for deactivation {
+          rc = g_EvseController.HsRestoreAmpacity();
+		}
+		rc |= g_EvseController.HeartbeatSupervision(u1.u16, u2.u8);
       }
-      else if (tokenCnt == 2) { //This is a command to ack a hearbtbeat supervison miss
+      else if (tokenCnt == 2) { //This is a command to ack a heartbeat supervision miss
         u1.u8 = (uint8_t)dtou32(tokens[1]); //Magic cookie
-        g_EvseController.HsAckMissedPulse(u1.u8);
+        rc = g_EvseController.HsAckMissedPulse(u1.u8);
       }
       else { //Invalid number of tokens, return 1
         rc = 1; //Invalid number of tokens
       }
-      sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+      sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatTrigger());
       bufCnt = 1; 
       break;
 #endif //HEARTBEAT_SUPERVISION
@@ -702,8 +701,9 @@ int EvseRapiProcessor::processCmd()
 	  
 #ifdef HEARTBEAT_SUPERVISION
     case 'Y': // HEARTBEAT SUPERVISION
-	  sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+	  sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatTrigger());
       bufCnt = 1; 
+	  rc = 0;
       break;
 #endif //HEARTBEAT_SUPERVISION
 	   
