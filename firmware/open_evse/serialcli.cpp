@@ -82,7 +82,7 @@ void CLI::getInput()
         print_P(PSTR("Min Current Capacity: "));
         Serial.println(MIN_CURRENT_CAPACITY_J1772);
         print_P(PSTR("Max Current Capacity: "));
-        Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? MAX_CURRENT_CAPACITY_L2 : MAX_CURRENT_CAPACITY_L1);
+        Serial.println((g_EvseController.GetCurSvcLevel() == 2) ? g_EvseController.GetMaxHwCurrentCapacity() : MAX_CURRENT_CAPACITY_L1);
 	print_P(PSTR("Vent Required: "));
 	println_P(g_EvseController.VentReqEnabled() ? s_psEnabled : s_psDisabled);
          print_P(PSTR("Diode Check: "));
@@ -224,7 +224,7 @@ void CLI::getInput()
      print_P(PSTR("Enter amps ("));
           Serial.print((g_EvseController.GetCurSvcLevel() == 2) ? MIN_CURRENT_CAPACITY_L2 : MIN_CURRENT_CAPACITY_L1);
      print_P(PSTR("-"));
-     Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : MAX_CURRENT_CAPACITY_L2);
+     Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : g_EvseController.GetMaxHwCurrentCapacity());
      print_P(PSTR("): "));
      amp = getInt();
      Serial.println((int)amp);

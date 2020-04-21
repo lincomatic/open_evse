@@ -36,7 +36,7 @@ public:
 
   Gfi() {}
 
-  void Init();
+  void Init(uint8_t v6=0);
   void Reset();
   void SetFault() { m_GfiFault = 1; }
   uint8_t Fault() { return m_GfiFault; }

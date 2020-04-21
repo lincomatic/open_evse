@@ -54,7 +54,7 @@ public:
 #define _DPIN_SET(reg,idx) {PORT ## reg |= (1<<idx);}
 #define _DPIN_CLR(reg,idx) {PORT ## reg &= ~(1<<idx);}
 #define _DPIN_WRITE(reg,idx,val) {if (val) DPIN_SET(reg,idx); else DPIN_CLR(reg,idx); }
-#define _DPIN_MODE_INPUT(reg,idx) {DDR ## reg &= ~(1<<idx)}
+#define _DPIN_MODE_INPUT(reg,idx) {DDR ## reg &= ~(1<<idx);}
 #define _DPIN_MODE_PULLUP(reg,idx) { DPIN_SET(reg,idx);DPIN_MODE_INPUT(reg,idx);}
 #define _DPIN_MODE_OUTPUT(reg,idx) {DDR ## reg |= (1<<idx);}
 

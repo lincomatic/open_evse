@@ -397,30 +397,35 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER
     case 'C': // current capacity
       if ((tokenCnt == 2) || (tokenCnt == 3)) {
-	if (tokenCnt == 3) {
-	  // just make volatile no matter what character specified
-	  u1.u8 = 1; // nosave = 1
-	}
-	else {
-	  u1.u8 = 0; // nosave = 0
-	}
-#ifdef TEMPERATURE_MONITORING
 	u2.u8 = dtou32(tokens[1]);
-	if (g_TempMonitor.OverTemperature() &&
-	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
-	  // don't allow raising current capacity during
-	  // overtemperature event
-	  rc = 1;
+	if ((tokenCnt == 3) && (*tokens[2] == 'M')) {
+	  rc = g_EvseController.SetMaxHwCurrentCapacity(u2.u8);
+	  sprintf(buffer,"%d",(int)g_EvseController.GetMaxHwCurrentCapacity());
 	}
 	else {
-	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
-	}
+	  if (tokenCnt == 3) {
+	    // just make volatile no matter what character specified
+	    u1.u8 = 1; // nosave = 1
+	  }
+	  else {
+	    u1.u8 = 0; // nosave = 0
+	  }
+#ifdef TEMPERATURE_MONITORING
+	  if (g_TempMonitor.OverTemperature() &&
+	      (u2.u8 > g_EvseController.GetCurrentCapacity())) {
+	    // don't allow raising current capacity during
+	    // overtemperature event
+	    rc = 1;
+	  }
+	  else {
+	    rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	  }
 #else // !TEMPERATURE_MONITORING
-	rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
 #endif // TEMPERATURE_MONITORING
-
-
-	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
+  
+	  sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
+	}
 	bufCnt = 1; // flag response text output
       }
       break;
@@ -563,7 +568,7 @@ int EvseRapiProcessor::processCmd()
     case 'C': // get current capacity range
       u1.i = MIN_CURRENT_CAPACITY_J1772;
       if (g_EvseController.GetCurSvcLevel() == 2) {
-	u2.i = MAX_CURRENT_CAPACITY_L2;
+	u2.i = g_EvseController.GetMaxHwCurrentCapacity();
       }
       else {
 	u2.i = MAX_CURRENT_CAPACITY_L1;
@@ -729,20 +734,22 @@ int EvseRapiProcessor::processCmd()
 #if defined(RELAY_HOLD_DELAY_TUNING)
   case 'Z': // reserved op
     switch(*s) {
-    case '1': // set relayCloseMs
-      if (tokenCnt == 2) {
-	u1.u32 = dtou32(tokens[1]);
-	g_EvseController.setRelayHoldDelay(u1.u32);
-	sprintf(g_sTmp,"\nZ1 %ld",u1.u32);
+    case '0': // set relayCloseMs
+      if (tokenCnt == 3) {
+	u1.u8 = dtou32(tokens[1]);
+	u2.u8 = dtou32(tokens[2]);
+	g_EvseController.setPwmPinParms(u1.u8,u2.u8);
+	sprintf(g_sTmp,"\nZ0 %u %u",(unsigned)u1.u8,(unsigned)u2.u8);
 	Serial.println(g_sTmp);
-	eeprom_write_dword((uint32_t*)EOFS_RELAY_HOLD_DELAY,u1.u32);
+	eeprom_write_byte((uint8_t*)EOFS_RELAY_CLOSE_MS,u1.u8);
+	eeprom_write_byte((uint8_t*)EOFS_RELAY_HOLD_PWM,u2.u8);
       }
       rc = 0;
       break;
 
     }
     break;
-#endif // RELAY_AUTO_PWM_PIN_TESTING
+#endif // RELAY_HOLD_DELAY_TUNING
 
   default:
     ; // do nothing
