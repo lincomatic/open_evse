@@ -1,5 +1,9 @@
 Change Log
 
+D6.3.0 2020420 SCL
+- merge $SC M code from oev6 branch
+- merge PR#120
+	
 20200330 SCL
 - fixed SetAmmeterDirty(1) compile error
 	
