@@ -256,8 +256,8 @@ class J1772EVSEController {
 #ifdef VOLTMETER
   uint16_t m_VoltScaleFactor;
   uint32_t m_VoltOffset;
-  uint32_t m_Voltage; // mV
 #endif // VOLTMETER
+  uint32_t m_Voltage; // mV
 
 #ifdef HEARTBEAT_SUPERVISION
   uint16_t      m_HsInterval;   // Number of seconds HS will wait for a heartbeat before reducing ampacity to m_IFallback.  If 0 disable.
@@ -429,9 +429,6 @@ int GetHearbeatTrigger();
   uint32_t GetVoltOffset() { return m_VoltOffset; }
   void SetVoltmeter(uint16_t scale,uint32_t offset);
   uint32_t ReadVoltmeter();
-  int32_t GetVoltage() { return m_Voltage; }
-#else
-  uint32_t GetVoltage() { return (uint32_t)-1; }
 #endif // VOLTMETER
 #ifdef AMMETER
   int32_t GetChargingCurrent() {
@@ -543,6 +540,11 @@ int GetHearbeatTrigger();
   }
   uint8_t ButtonIsEnabled() { return flagIsSet(ECF_BUTTON_DISABLED) ? 0 : 1; }
 #endif // BTN_MENU
+
+#if defined(KWH_RECORDING) && !defined(VOLTMETER)
+  void SetMV(uint32_t mv) { m_Voltage = mv; }
+#endif
+  int32_t GetVoltage() { return m_Voltage; }
 };
 
 #ifdef FT_ENDURANCE

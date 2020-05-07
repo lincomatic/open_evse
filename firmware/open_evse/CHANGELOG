@@ -1,5 +1,8 @@
 Change Log
 
+20200507 SCL V7.0.1
+- added $SV
+	
 20200507 SCL V7.0.0
 changes 20200411 merged from oev6 branch
 - added OpenEVSE V6 support

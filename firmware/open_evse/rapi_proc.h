@@ -193,6 +193,11 @@ SL 1|2|A  - set service level L1/L2/Auto
 SM voltscalefactor voltoffset - set voltMeter settings
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0^23 - cancel timer
+SV mv - Set Voltage for power calculations to mv millivolts
+ $SV 223576 - set voltage to 223.576
+ NOTES:
+  - only available if VOLTMETER not defined and KWH_RECORDING defined
+  - volatile - value is lost, and replaced with VOLTS_FOR_Lx at boot
 SY heartbeatinterval hearbeatcurrentlimit
  Response includes heartbeatinterval hearbeatcurrentlimit hearbeattrigger
  hearbeattrigger: 0 - There has never been a missed pulse, 
@@ -251,7 +256,6 @@ GF - get fault counters
 GG - get charging current and voltage
  response: $OK milliamps millivolts
  AMMETER must be defined in order to get amps, otherwise returns -1 amps
- VOLTMETER must be defined in order to get voltage, otherwise returns -1 volts
  $GG^24
 
 GH - get cHarge limit
@@ -321,7 +325,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.1.2"
+#define RAPIVER "5.1.3"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

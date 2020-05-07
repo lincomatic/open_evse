@@ -496,6 +496,15 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // DELAYTIMER      
 
+#if defined(KWH_RECORDING) && !defined(VOLTMETER)
+    case 'V': // set voltage
+      if (tokenCnt == 2) {
+        g_EvseController.SetMV(dtou32(tokens[1]));
+	rc = 0;
+      }
+      break;
+#endif //defined(KWH_RECORDING) && !defined(VOLTMETER)
+
 #ifdef HEARTBEAT_SUPERVISION
     case 'Y': // HEARTBEAT SUPERVISION
       if (tokenCnt == 1)  { //This is a heartbeat

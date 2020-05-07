@@ -59,15 +59,11 @@ void EnergyMeter::calcUsage()
   unsigned long dms = curms - m_lastUpdateMs;
   if (dms > KWH_CALC_INTERVAL_MS) {
       uint32_t ma = g_EvseController.GetChargingCurrent();
-#ifdef VOLTMETER
-      m_wattSeconds += ((g_EvseController.GetVoltage()/1000UL) * (ma/1000UL) * dms) / 1000UL;
-#else // !VOLTMETER
 #ifdef THREEPHASE //Multiple L1 current by the square root of 3 to get 3-phase energy
-      m_wattSeconds += (((g_EvseController.GetCurSvcLevel() == 2) ? VOLTS_FOR_L2:VOLTS_FOR_L1) * (ma/1000UL) * dms * 3) / 1000UL;
+      m_wattSeconds += ((g_EvseController.GetVoltage()/1000UL) * (ma/1000UL) * dms * 3) / 1000UL;
 #else // !THREEPHASE
-     m_wattSeconds += (((g_EvseController.GetCurSvcLevel() == 2) ? VOLTS_FOR_L2:VOLTS_FOR_L1) * (ma/1000UL) * dms) / 1000UL;
+      m_wattSeconds += ((g_EvseController.GetVoltage()/1000UL) * (ma/1000UL) * dms) / 1000UL;
 #endif // THREEPHASE
-#endif // VOLTMETER
 
       m_lastUpdateMs = curms;
   }

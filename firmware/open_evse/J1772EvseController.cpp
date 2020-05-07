@@ -581,10 +581,12 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 #endif //#ifdef SERDBG
   if (svclvl == 2) {
     m_wFlags |= ECF_L2; // set to Level 2
+    m_Voltage = MV_FOR_L2;
   }
   else {
     svclvl = 1; // force invalid value to L1
     m_wFlags &= ~ECF_L2; // set to Level 1
+    m_Voltage = MV_FOR_L1;
   }
 
   SaveEvseFlags();

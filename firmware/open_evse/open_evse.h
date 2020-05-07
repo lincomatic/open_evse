@@ -697,12 +697,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor.  Could use a more thorough calibration exercise to nails this down.
 #endif
 
-#ifdef KWH_RECORDING
-#define VOLTS_FOR_L1 120       // conventional for North America
-#define VOLTS_FOR_L2 240       // conventional for North America and Commonwealth countries
-//  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#endif // KWH_RECORDING
-
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
 #define CURRENT_SAMPLE_INTERVAL 35
