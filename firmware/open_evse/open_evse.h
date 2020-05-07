@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D6.2.1"
+#define VERSION "D7.0.0"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -53,12 +53,12 @@
 //-- begin features
 
 //#define OCPP
-// V6 hardware
-#define OEV6
-#define V6_CHARGING_PIN  5
-#define V6_CHARGING_PIN2 6
+// support V6 hardware
+//#define OEV6
+#ifdef OEV6
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
+#endif // OEV6
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL
@@ -316,16 +316,12 @@ extern AutoCurrentCapacityController g_ACCController;
 // switch to m_relayHoldPwm
 // ONLY WORKS PWM-CAPABLE PINS!!!
 // use Arduino pin number PD5 = 5, PD6 = 6
-//#define RELAY_AUTO_PWM_PIN 5
+//#define RELAY_PWM
+#define DEFAULT_RELAY_CLOSE_MS 25
+#define DEFAULT_RELAY_HOLD_PWM 75 // (0-255, where 0=0%, 255=100%
 // enables RAPI $Z0 for tuning PWM (see rapi_proc.h for $Z0 syntax)
 // PWM parameters written to/loaded from EEPROM
-// when done tuning, put hardcoded parameters into m_relayCloseMs
-// and m_relayHoldPwm below
-//#define RELAY_AUTO_PWM_PIN_TESTING
-#ifndef RELAY_AUTO_PWM_PIN_TESTING
-//#define m_relayCloseMs 250UL
-//#define m_relayHoldPwm 50 // duty cycle 0-255
-#endif //RELAY_AUTO_PWM_PIN_TESTING
+//#define RELAY_HOLD_DELAY_TUNING // enable Z0
 
 //-- end features
 
@@ -468,7 +464,9 @@ extern AutoCurrentCapacityController g_ACCController;
 #define ACLINE2_REG &PIND
 #define ACLINE2_IDX 4
 
-#ifndef RELAY_AUTO_PWM_PIN
+#define V6_CHARGING_PIN  5
+#define V6_CHARGING_PIN2 6
+
 // digital Relay trigger pin
 #define CHARGING_REG &PINB
 #define CHARGING_IDX 0
@@ -478,7 +476,6 @@ extern AutoCurrentCapacityController g_ACCController;
 //digital Charging pin for AC relay
 #define CHARGINGAC_REG &PINB
 #define CHARGINGAC_IDX 1
-#endif // !RELAY_AUTO_PWM_PIN
 
 // obsolete LED pin
 //#define RED_LED_REG &PIND

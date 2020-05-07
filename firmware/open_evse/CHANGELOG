@@ -1,5 +1,14 @@
 Change Log
 
+20200507 SCL V7.0.0
+changes 20200411 merged from oev6 branch
+- added OpenEVSE V6 support
+  - detection by looking for PD7 LOW
+  - RELAY_PWM - close relay w/ DC and the switch to PWM for hold
+  - if not V6 hardware detected same behavior as before on charging pin
+- added $SC M to set max hardware current capacity. Can be written only once
+N.B. AUTODETECT OF PRE-V6 HARDWARE IS CURRENTLY BROKEN PENDING NEW SPIN OF V6
+
 D6.3.0 2020420 SCL
 - merge $SC M code from oev6 branch
 - merge PR#120

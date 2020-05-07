@@ -949,8 +949,8 @@ void J1772EVSEController::Init()
   m_relayCloseMs = eeprom_read_byte((uint8_t*)EOFS_RELAY_CLOSE_MS);
   m_relayHoldPwm = eeprom_read_byte((uint8_t*)EOFS_RELAY_HOLD_PWM);
   if (!m_relayCloseMs || (m_relayCloseMs == 255)) {
-    m_relayCloseMs = 25;
-    m_relayHoldPwm = 70;
+    m_relayCloseMs = DEFAULT_RELAY_CLOSE_MS;
+    m_relayHoldPwm = DEFAULT_RELAY_HOLD_PWM;
   }
   Serial.print("\nrelayCloseMs: ");Serial.println(m_relayCloseMs);
   Serial.print("relayHoldPwm: ");Serial.println(m_relayHoldPwm);
