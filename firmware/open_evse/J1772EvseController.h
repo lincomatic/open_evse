@@ -114,7 +114,7 @@ class J1772EVSEController {
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiFaultStartMs;
-  unsigned long m_GfiRetryCnt;
+  uint8_t m_GfiRetryCnt;
   uint8_t m_GfiTripCnt; // contains tripcnt-1
 #endif // GFI
   AdcPin adcPilot;
@@ -148,7 +148,7 @@ class J1772EVSEController {
 #endif
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
-  unsigned long m_NoGndRetryCnt;
+  uint8_t m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt; // contains tripcnt-1
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
