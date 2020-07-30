@@ -42,7 +42,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D6.2.1"
+#define VERSION "D7.0.0"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -61,6 +61,12 @@
 //-- begin features
 
 //#define OCPP
+// support V6 hardware
+//#define OEV6
+#ifdef OEV6
+#define RELAY_PWM
+#define RELAY_HOLD_DELAY_TUNING // enable Z0
+#endif // OEV6
 
 // auto detect L1/L2
 //#define AUTOSVCLEVEL
@@ -91,7 +97,7 @@
 #define RAPI_SERIAL
 
 // RAPI $WF support
-#define RAPI_WF
+//#define RAPI_WF
 
 // RAPI over I2C
 //#define RAPI_I2C
@@ -318,16 +324,12 @@ extern AutoCurrentCapacityController g_ACCController;
 // switch to m_relayHoldPwm
 // ONLY WORKS PWM-CAPABLE PINS!!!
 // use Arduino pin number PD5 = 5, PD6 = 6
-//#define RELAY_AUTO_PWM_PIN 5
+//#define RELAY_PWM
+#define DEFAULT_RELAY_CLOSE_MS 25
+#define DEFAULT_RELAY_HOLD_PWM 75 // (0-255, where 0=0%, 255=100%
 // enables RAPI $Z0 for tuning PWM (see rapi_proc.h for $Z0 syntax)
 // PWM parameters written to/loaded from EEPROM
-// when done tuning, put hardcoded parameters into m_relayCloseMs
-// and m_relayHoldPwm below
-//#define RELAY_AUTO_PWM_PIN_TESTING
-#ifndef RELAY_AUTO_PWM_PIN_TESTING
-#define m_relayCloseMs 250UL
-#define m_relayHoldPwm 50 // duty cycle 0-255
-#endif //RELAY_AUTO_PWM_PIN_TESTING
+//#define RELAY_HOLD_DELAY_TUNING // enable Z0
 
 //-- end features
 
@@ -470,7 +472,9 @@ extern AutoCurrentCapacityController g_ACCController;
 #define ACLINE2_REG &PIND
 #define ACLINE2_IDX 4
 
-#ifndef RELAY_AUTO_PWM_PIN
+#define V6_CHARGING_PIN  5
+#define V6_CHARGING_PIN2 6
+
 // digital Relay trigger pin
 #define CHARGING_REG &PINB
 #define CHARGING_IDX 0
@@ -480,7 +484,6 @@ extern AutoCurrentCapacityController g_ACCController;
 //digital Charging pin for AC relay
 #define CHARGINGAC_REG &PINB
 #define CHARGINGAC_IDX 1
-#endif // !RELAY_AUTO_PWM_PIN
 
 // obsolete LED pin
 //#define RED_LED_REG &PIND
@@ -560,15 +563,10 @@ extern AutoCurrentCapacityController g_ACCController;
 // Fallback Current in quarter Amperes:
 #define EOFS_HEARTBEAT_SUPERVISION_CURRENT 36 // 1 byte 
 
-//- start TESTING ONLY
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
-#define EOFS_RELAY_HOLD_PWM 512
-#define EOFS_RELAY_CLOSE_MS 513
-#endif //  RELAY_AUTO_PWM_PIN_TESTING
-#ifdef RELAY_HOLD_DELAY_TUNING
-#define EOFS_RELAY_HOLD_DELAY 512
-#endif // RELAY_HOLD_DELAY_TUNING
-//- end TESTING ONLY
+#define EOFS_RELAY_CLOSE_MS 37 // 1 byte
+#define EOFS_RELAY_HOLD_PWM 38 // 1 byte
+
+#define EOFS_MAX_HW_CURRENT_CAPACITY 511 // 1 byte
 
 
 
@@ -586,6 +584,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // for SAMPLE_ACPINS - max number of ms to sample
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
+
+// V6 has PD7 tied to ground
+#define V6_ID_REG D
+#define V6_ID_IDX 7
+
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = PD2, 1 = PD3
 // interrupt number 0 = PD2, 1 = PD3
@@ -596,6 +599,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // pin is supposed to be wrapped around the GFI CT 5+ times
 #define GFITEST_REG &PIND
 #define GFITEST_IDX 6
+// V6 GFI test pin PB0
+#define V6_GFITEST_REG &PINB
+#define V6_GFITEST_IDX 0
+
+
 
 #define GFI_TEST_CYCLES 60
 // GFI pulse should be 50% duty cycle
@@ -696,12 +704,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor.  Could use a more thorough calibration exercise to nails this down.
 #endif
-
-#ifdef KWH_RECORDING
-#define VOLTS_FOR_L1 120       // conventional for North America
-#define VOLTS_FOR_L2 240       // conventional for North America and Commonwealth countries
-//  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
