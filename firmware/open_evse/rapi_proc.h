@@ -161,16 +161,20 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    when auth lock is on, will not transition to State C and a lock icon is
    displayed in States A & B.
 SA currentscalefactor currentoffset - set ammeter settings
-SC amps [V]- set current capacity
+SC amps [V|M]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK ampsset
    if amps > maximum current capacity, will set to maximum and return $NK ampsset
    if in over temperature status, raising current capacity will fail and return $NK ampsset
    otherwise return $OK ampsset
    ampsset: the resultant current capacity
-   default action is to save new current capacity to EEPROM.
+   default action is to save new current capacity to EEPROM for the currently active service level.
    if V is specified, then new current capacity is volatile, and will be
      reset to previous value at next reboot
+   if M is specified, sets maximum L2 current capacity for the unit and writes
+     to EEPROM. subsequent calls the $SC cannot exceed value set bye $SC M
+     the value cannot be changed/erased via RAPI commands. Subsequent calls
+     to $SC M will return $NK
 SH kWh - set cHarge limit to kWh
  NOTES:
   - allowed only when EV connected in State B or C
@@ -189,14 +193,19 @@ SL 1|2|A  - set service level L1/L2/Auto
 SM voltscalefactor voltoffset - set voltMeter settings
 ST starthr startmin endhr endmin - set timer
  $ST 0 0 0 0^23 - cancel timer
+SV mv - Set Voltage for power calculations to mv millivolts
+ $SV 223576 - set voltage to 223.576
+ NOTES:
+  - only available if VOLTMETER not defined and KWH_RECORDING defined
+  - volatile - value is lost, and replaced with VOLTS_FOR_Lx at boot
 SY heartbeatinterval hearbeatcurrentlimit
  Response includes heartbeatinterval hearbeatcurrentlimit hearbeattrigger
  hearbeattrigger: 0 - There has never been a missed pulse, 
  2 - there is a missed pulse, and HS is still in current limit
- 1 - There was a missed pulse once, but it has since been acknkoledged. Ampacity has been successfully restored to max permitted 
+ 1 - There was a missed pulse once, but it has since been acknowledged. Ampacity has been successfully restored to max permitted 
  $SY 100 6  //If no pulse for 100 seconds, set EVE ampacity limit to 6A until missed pulse is acknowledged
  $SY        //This is a heartbeat supervision pulse.  Need one every heartbeatinterval seconds.
- $SY 165    //This is an acknowledgemnt of a missed pulse.  Magic Cookie = 165 (=0XA5)
+ $SY 165    //This is an acknowledgement of a missed pulse.  Magic Cookie = 165 (=0XA5)
  When you send a pulse, an NK response indicates that a previous pulse was missed and has not yet been acked
 
 G0 - get EV connect state
@@ -247,7 +256,6 @@ GF - get fault counters
 GG - get charging current and voltage
  response: $OK milliamps millivolts
  AMMETER must be defined in order to get amps, otherwise returns -1 amps
- VOLTMETER must be defined in order to get voltage, otherwise returns -1 volts
  $GG^24
 
 GH - get cHarge limit
@@ -317,7 +325,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.1.0"
+#define RAPIVER "5.1.3"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

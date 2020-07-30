@@ -397,30 +397,35 @@ int EvseRapiProcessor::processCmd()
 #endif // AMMETER
     case 'C': // current capacity
       if ((tokenCnt == 2) || (tokenCnt == 3)) {
-	if (tokenCnt == 3) {
-	  // just make volatile no matter what character specified
-	  u1.u8 = 1; // nosave = 1
-	}
-	else {
-	  u1.u8 = 0; // nosave = 0
-	}
-#ifdef TEMPERATURE_MONITORING
 	u2.u8 = dtou32(tokens[1]);
-	if (g_TempMonitor.OverTemperature() &&
-	    (u2.u8 > g_EvseController.GetCurrentCapacity())) {
-	  // don't allow raising current capacity during
-	  // overtemperature event
-	  rc = 1;
+	if ((tokenCnt == 3) && (*tokens[2] == 'M')) {
+	  rc = g_EvseController.SetMaxHwCurrentCapacity(u2.u8);
+	  sprintf(buffer,"%d",(int)g_EvseController.GetMaxHwCurrentCapacity());
 	}
 	else {
-	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
-	}
+	  if (tokenCnt == 3) {
+	    // just make volatile no matter what character specified
+	    u1.u8 = 1; // nosave = 1
+	  }
+	  else {
+	    u1.u8 = 0; // nosave = 0
+	  }
+#ifdef TEMPERATURE_MONITORING
+	  if (g_TempMonitor.OverTemperature() &&
+	      (u2.u8 > g_EvseController.GetCurrentCapacity())) {
+	    // don't allow raising current capacity during
+	    // overtemperature event
+	    rc = 1;
+	  }
+	  else {
+	    rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	  }
 #else // !TEMPERATURE_MONITORING
-	rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
+	  rc = g_EvseController.SetCurrentCapacity(u2.u8,1,u1.u8);
 #endif // TEMPERATURE_MONITORING
-
-
-	sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
+  
+	  sprintf(buffer,"%d",(int)g_EvseController.GetCurrentCapacity());
+	}
 	bufCnt = 1; // flag response text output
       }
       break;
@@ -491,29 +496,37 @@ int EvseRapiProcessor::processCmd()
       break;
 #endif // DELAYTIMER      
 
+#if defined(KWH_RECORDING) && !defined(VOLTMETER)
+    case 'V': // set voltage
+      if (tokenCnt == 2) {
+        g_EvseController.SetMV(dtou32(tokens[1]));
+	rc = 0;
+      }
+      break;
+#endif //defined(KWH_RECORDING) && !defined(VOLTMETER)
+
 #ifdef HEARTBEAT_SUPERVISION
     case 'Y': // HEARTBEAT SUPERVISION
       if (tokenCnt == 1)  { //This is a heartbeat
         rc = g_EvseController.HsPulse(); //pet the dog
       }
       else if (tokenCnt == 3) { //This is a full HEARTBEAT_SUPERVISION setpoint command with both parameters
-        u2.u16 = (uint16_t)dtou32(tokens[2]);	// HS Interval in seconds.  0 = disabled
-        u1.u8 = (uint8_t)dtou32(tokens[1]);	// HS fallback current, in amperes  
-        if (u1.u16 != 0) { //Set-up new heartbeat supervision parameters 
-          rc = g_EvseController.HeartbeatSupervision(u1.u16, u2.u8); 
-        }
-        else { // This is the case where we are disabling HEARTBEAT_SUPERVISION  
-          rc = (g_EvseController.HsDeactivate() || g_EvseController.HsRestoreAmpacity());
-        }
+	    rc = 0;
+        u1.u16 = (uint16_t)dtou32(tokens[1]);	// HS Interval in seconds.  0 = disabled
+        u2.u8 = (uint8_t)dtou32(tokens[2]);	// HS fallback current, in amperes 
+		if (u1.u16 == 0) { //Test for deactivation {
+          rc = g_EvseController.HsRestoreAmpacity();
+		}
+		rc |= g_EvseController.HeartbeatSupervision(u1.u16, u2.u8);
       }
-      else if (tokenCnt == 2) { //This is a command to ack a hearbtbeat supervison miss
+      else if (tokenCnt == 2) { //This is a command to ack a heartbeat supervision miss
         u1.u8 = (uint8_t)dtou32(tokens[1]); //Magic cookie
-        g_EvseController.HsAckMissedPulse(u1.u8);
+        rc = g_EvseController.HsAckMissedPulse(u1.u8);
       }
       else { //Invalid number of tokens, return 1
         rc = 1; //Invalid number of tokens
       }
-      sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+      sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatTrigger());
       bufCnt = 1; 
       break;
 #endif //HEARTBEAT_SUPERVISION
@@ -564,7 +577,7 @@ int EvseRapiProcessor::processCmd()
     case 'C': // get current capacity range
       u1.i = MIN_CURRENT_CAPACITY_J1772;
       if (g_EvseController.GetCurSvcLevel() == 2) {
-	u2.i = MAX_CURRENT_CAPACITY_L2;
+	u2.i = g_EvseController.GetMaxHwCurrentCapacity();
       }
       else {
 	u2.i = MAX_CURRENT_CAPACITY_L1;
@@ -702,8 +715,9 @@ int EvseRapiProcessor::processCmd()
 	  
 #ifdef HEARTBEAT_SUPERVISION
     case 'Y': // HEARTBEAT SUPERVISION
-	  sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatCurrent());
+	  sprintf(buffer,"%d %d %d", g_EvseController.GetHearbeatInterval(), g_EvseController.GetHearbeatCurrent(), g_EvseController.GetHearbeatTrigger());
       bufCnt = 1; 
+	  rc = 0;
       break;
 #endif //HEARTBEAT_SUPERVISION
 	   
@@ -729,20 +743,22 @@ int EvseRapiProcessor::processCmd()
 #if defined(RELAY_HOLD_DELAY_TUNING)
   case 'Z': // reserved op
     switch(*s) {
-    case '1': // set relayCloseMs
-      if (tokenCnt == 2) {
-	u1.u32 = dtou32(tokens[1]);
-	g_EvseController.setRelayHoldDelay(u1.u32);
-	sprintf(g_sTmp,"\nZ1 %ld",u1.u32);
+    case '0': // set relayCloseMs
+      if (tokenCnt == 3) {
+	u1.u8 = dtou32(tokens[1]);
+	u2.u8 = dtou32(tokens[2]);
+	g_EvseController.setPwmPinParms(u1.u8,u2.u8);
+	sprintf(g_sTmp,"\nZ0 %u %u",(unsigned)u1.u8,(unsigned)u2.u8);
 	Serial.println(g_sTmp);
-	eeprom_write_dword((uint32_t*)EOFS_RELAY_HOLD_DELAY,u1.u32);
+	eeprom_write_byte((uint8_t*)EOFS_RELAY_CLOSE_MS,u1.u8);
+	eeprom_write_byte((uint8_t*)EOFS_RELAY_HOLD_PWM,u2.u8);
       }
       rc = 0;
       break;
 
     }
     break;
-#endif // RELAY_AUTO_PWM_PIN_TESTING
+#endif // RELAY_HOLD_DELAY_TUNING
 
   default:
     ; // do nothing

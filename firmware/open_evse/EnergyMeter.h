@@ -3,9 +3,9 @@
 
 #ifdef KWH_RECORDING
 
-#define VOLTS_FOR_L1 120       // conventional for North America
+#define MV_FOR_L1 120000L       // conventional for North America
 //  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#define VOLTS_FOR_L2 240       // conventional for North America
+#define MV_FOR_L2 240000L       // conventional for North America
 
 
 // m_bFlags
