@@ -251,8 +251,6 @@ char *u2a(unsigned long x,int8_t digits)
   return s;
 }
 
-void EvseReset();
-
 // wdt_init turns off the watchdog timer after we use it
 // to reboot
 
