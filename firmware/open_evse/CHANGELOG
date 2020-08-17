@@ -1,5 +1,12 @@
 Change Log
 
+20200816 SCL V7.0.2
+- get rid of LoadThresholds()/g_DefaultThreshData to save space
+  -> fixes a bug that crept in to DoPost() when I changed hardcoded value to 
+	    if (reading >= m_ThreshData.m_ThreshAB) {
+	-> was testing against m_ThreshData before initializing it, so the code was executing, even when an EV connected
+- fix compiler warning in SetupMenu::Select()
+	
 20200507 SCL V7.0.1
 - added $SV
 	
