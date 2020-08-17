@@ -26,8 +26,8 @@ long g_CycleHalfStart;
 uint8_t g_CycleState;
 #endif 
 
-//                                 A/B B/C C/D D DS
-THRESH_DATA g_DefaultThreshData = {875,780,690,0,260};
+//                                               A/B B/C C/D D DS
+THRESH_DATA J1772EVSEController::m_ThreshData = {875,780,690,0,260};
 
 J1772EVSEController g_EvseController;
 
@@ -567,11 +567,6 @@ void J1772EVSEController::Sleep()
   }
 }
 
-void J1772EVSEController::LoadThresholds()
-{
-  memcpy(&m_ThreshData,&g_DefaultThreshData,sizeof(m_ThreshData));
-}
-
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 {
 #ifdef SERDBG
@@ -593,8 +588,6 @@ void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 
   uint8_t ampacity = GetMaxCurrentCapacity();
 
-
-  LoadThresholds();
 
   SetCurrentCapacity(ampacity,0,1);
 

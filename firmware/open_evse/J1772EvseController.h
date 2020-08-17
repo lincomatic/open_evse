@@ -159,7 +159,7 @@ class J1772EVSEController {
 #endif // RELAY_PWM
   uint16_t m_wFlags; // ECF_xxx
   uint16_t m_wVFlags; // ECVF_xxx
-  THRESH_DATA m_ThreshData;
+  static THRESH_DATA m_ThreshData;
   uint8_t m_EvseState;
   uint8_t m_PrevEvseState;
   uint8_t m_TmpEvseState;
@@ -273,7 +273,6 @@ public:
   void Enable();
   void Disable(); // panic stop - open relays abruptly
   void Sleep(); // graceful stop - e.g. waiting for timer to fire- give the EV time to stop charging first
-  void LoadThresholds();
 
   uint16_t GetFlags() { return m_wFlags; }
   uint16_t GetVFlags() { return m_wVFlags; }
