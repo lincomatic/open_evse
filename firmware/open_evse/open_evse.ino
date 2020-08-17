@@ -1210,6 +1210,7 @@ Menu *SetupMenu::Select()
   else {
     m_CurIdx = 0;
     g_EvseController.Reboot();
+    return &g_SetupMenu;
   }
 }
 
