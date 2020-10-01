@@ -1,13 +1,8 @@
 // -*- C++ -*-
 #pragma once
 
+
 #ifdef KWH_RECORDING
-
-#define MV_FOR_L1 120000L       // conventional for North America
-//  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#define MV_FOR_L2 240000L       // conventional for North America
-
-
 // m_bFlags
 #define EMF_IN_SESSION 0x01 // in a charging session
 #define EMF_EV_CONNECTED 0x02

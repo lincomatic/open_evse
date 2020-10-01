@@ -181,7 +181,14 @@ extern AutoCurrentCapacityController g_ACCController;
 // for OVERCURRENT_TIMEOUT ms
 #define OVERCURRENT_TIMEOUT 5000UL // ms
 
-
+// if there's no accurate voltmeter, hardcode voltages
+#ifndef MV_FOR_L1
+#define MV_FOR_L1 120000L       // conventional for North America
+//  #define VOLTS_FOR_L2 230   // conventional for most of the world
+#endif
+#ifndef MV_FOR_L2
+#define MV_FOR_L2 240000L       // conventional for North America
+#endif
 
 // kWh Recording feature depends upon #AMMETER support
 // comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
