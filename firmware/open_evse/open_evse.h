@@ -184,10 +184,10 @@ extern AutoCurrentCapacityController g_ACCController;
 // if there's no accurate voltmeter, hardcode voltages
 #ifndef MV_FOR_L1
 #define MV_FOR_L1 120000L       // conventional for North America
-//  #define VOLTS_FOR_L2 230   // conventional for most of the world
 #endif
 #ifndef MV_FOR_L2
 #define MV_FOR_L2 240000L       // conventional for North America
+//  #define MV_FOR_L2 230000L   // conventional for most of the world
 #endif
 
 // kWh Recording feature depends upon #AMMETER support
