@@ -1307,10 +1307,8 @@ class DelayTimer {
   uint8_t m_StartTimerMin;
   uint8_t m_StopTimerHour;
   uint8_t m_StopTimerMin;
-  uint8_t m_CurrHour;
-  uint8_t m_CurrMin;
-  unsigned long m_LastCheck;
   uint8_t m_ManualOverride;
+  unsigned long m_LastCheck;
 public:
   DelayTimer(){
     m_LastCheck = - (60ul * 1000ul);
