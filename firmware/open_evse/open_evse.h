@@ -114,7 +114,6 @@
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
-#define PP_TABLE_IEC
 
 #include "AutoCurrentCapacityController.h"
 
