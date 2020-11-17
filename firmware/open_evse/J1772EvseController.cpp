@@ -60,15 +60,17 @@ void J1772EVSEController::readAmmeter()
   WDT_RESET();
 
   unsigned long sum = 0;
-  unsigned int zero_crossings = 0;
+  uint8_t zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
-  long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
+  uint8_t is_first_sample = 1;
+  uint16_t last_sample;
   unsigned int sample_count = 0;
   for(unsigned long start = millis(); ((now_ms = millis()) - start) < CURRENT_SAMPLE_INTERVAL; ) {
-    long sample = (long) adcCurrent.read();
+    // the A/d is 0 to 1023.
+    uint16_t sample = adcCurrent.read();
     // If this isn't the first sample, and if the sign of the value differs from the
     // sign of the previous value, then count that as a zero crossing.
-    if (last_sample != -1 && ((last_sample > 512) != (sample > 512))) {
+    if (!is_first_sample && ((last_sample > 512) != (sample > 512))) {
       // Once we've seen a zero crossing, don't look for one for a little bit.
       // It's possible that a little noise near zero could cause a two-sample
       // inversion.
@@ -77,6 +79,7 @@ void J1772EVSEController::readAmmeter()
         last_zero_crossing_time = now_ms;
       }
     }
+    is_first_sample = 0;
     last_sample = sample;
     switch(zero_crossings) {
     case 0: 
@@ -84,7 +87,7 @@ void J1772EVSEController::readAmmeter()
     case 1:
     case 2:
       // Gather the sum-of-the-squares and count how many samples we've collected.
-      sum += (unsigned long)((sample - 512) * (sample - 512));
+      sum += (unsigned long)(((long)sample - 512) * ((long)sample - 512));
       sample_count++;
       continue;
     case 3:
