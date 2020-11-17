@@ -16,7 +16,6 @@
 
 #ifdef PP_AUTO_AMPACITY
 
-#ifdef PP_TABLE_IEC
 static PP_AMPS s_ppAmps[] = {
   {0,0},
   {93,63},  // 100 = 93
@@ -25,7 +24,6 @@ static PP_AMPS s_ppAmps[] = {
   {615,13}, // 1.5K = 615
   {1023,0}
 };
-#endif //PP_TABLE_IEC
 
 AutoCurrentCapacityController::AutoCurrentCapacityController() :
   adcPP(PP_PIN)
