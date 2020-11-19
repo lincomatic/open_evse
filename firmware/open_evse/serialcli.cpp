@@ -113,18 +113,18 @@ void CLI::getInput()
         Serial.print(g_DelayTimer.GetStopTimerMin(), DEC);
         println_P(PSTR(" min"));
         print_P(PSTR("System Date/Time: "));
-        g_CurrTime = g_RTC.now();
-        Serial.print(g_CurrTime.year(), DEC);
+        DateTime t = g_RTC.now();
+        Serial.print(t.year(), DEC);
         Serial.print('/');
-        Serial.print(g_CurrTime.month(), DEC);
+        Serial.print(t.month(), DEC);
         Serial.print('/');
-        Serial.print(g_CurrTime.day(), DEC);
+        Serial.print(t.day(), DEC);
         Serial.print(' ');
-        Serial.print(g_CurrTime.hour(), DEC);
+        Serial.print(t.hour(), DEC);
         Serial.print(':');
-        Serial.print(g_CurrTime.minute(), DEC);
+        Serial.print(t.minute(), DEC);
         Serial.print(':');
-        Serial.print(g_CurrTime.second(), DEC);
+        Serial.print(t.second(), DEC);
         // End Delay Timer feature - GoldServe
 #endif //#ifdef DELAYTIMER
       } 
@@ -272,18 +272,18 @@ void CLI::getInput()
      }
    }
    else {
-     g_CurrTime = g_RTC.now();
-     Serial.print(g_CurrTime.year(), DEC);
+     DateTime t = g_RTC.now();
+     Serial.print(t.year(), DEC);
      Serial.print('/');
-     Serial.print(g_CurrTime.month(), DEC);
+     Serial.print(t.month(), DEC);
      Serial.print('/');
-     Serial.print(g_CurrTime.day(), DEC);
+     Serial.print(t.day(), DEC);
      Serial.print(' ');
-     Serial.print(g_CurrTime.hour(), DEC);
+     Serial.print(t.hour(), DEC);
      Serial.print(':');
-     Serial.print(g_CurrTime.minute(), DEC);
+     Serial.print(t.minute(), DEC);
      Serial.print(':');
-     Serial.print(g_CurrTime.second(), DEC);
+     Serial.print(t.second(), DEC);
      Serial.println();
      println_P(PSTR("Use 'dt set' to set the system date/time"));
    }
