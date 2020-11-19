@@ -186,7 +186,6 @@ uint8_t g_month;
 uint8_t g_day;
 uint8_t g_hour;
 uint8_t g_min;
-uint8_t sec = 0;
 #endif // DELAYTIMER_MENU
 #endif // DELAYTIMER
 
@@ -2434,13 +2433,9 @@ void EvseReset()
 
   g_EvseController.Init();
 
-#ifdef RTC
-  g_RTC.begin();
 #ifdef DELAYTIMER
   g_DelayTimer.Init(); // this *must* run after g_EvseController.Init() because it sets one of the vFlags
 #endif  // DELAYTIMER
-#endif // RTC
-
 
 #ifdef PP_AUTO_AMPACITY
   g_ACCController.AutoSetCurrentCapacity();
