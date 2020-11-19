@@ -220,19 +220,3 @@ DateTime RTC_DS1307::now() {
 }
 
 #endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-// RTC_Millis implementation
-
-long RTC_Millis::offset = 0;
-
-void RTC_Millis::adjust(const DateTime& dt) {
-    offset = dt.unixtime() - millis() / 1000;
-}
-
-DateTime RTC_Millis::now() {
-  return (uint32_t)(offset + millis() / 1000);
-}
-
-////////////////////////////////////////////////////////////////////////////////
