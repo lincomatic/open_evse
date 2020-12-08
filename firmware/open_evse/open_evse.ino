@@ -2404,9 +2404,6 @@ void ProcessInputs()
 #ifdef RAPI
   RapiDoCmd();
 #endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
 #ifdef BTN_MENU
   g_BtnHandler.ChkBtn();
 #endif
@@ -2419,11 +2416,6 @@ void ProcessInputs()
 void EvseReset()
 {
   Wire.begin();
-
-#ifdef SERIALCLI
-  g_CLI.Init();
-#endif // SERIALCLI
-
   g_OBD.Init();
 
 #ifdef RAPI
