@@ -171,8 +171,6 @@ class J1772EVSEController {
   uint8_t m_CurrentCapacity; // max amps we can output
   unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
   unsigned long m_ChargeOffTimeMS; // millis() when relay last opened
-  time_t m_ChargeOnTime; // unixtime when relay last closed
-  time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
   time_t m_AccumulatedChargeTime;
@@ -320,9 +318,6 @@ public:
   }
   time_t GetElapsedChargeTimePrev() { 
     return m_ElapsedChargeTimePrev; 
-  }
-  time_t GetChargeOffTime() { 
-    return m_ChargeOffTime; 
   }
   void Calibrate(PCALIB_DATA pcd);
   uint8_t GetCurSvcLevel() { 

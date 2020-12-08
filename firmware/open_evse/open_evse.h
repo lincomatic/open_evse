@@ -342,11 +342,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
 
-//If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
-#error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
-#endif
-
 #if defined(RAPI) && defined(SERIALCLI)
 #error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
 #endif

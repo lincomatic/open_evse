@@ -1,7 +1,10 @@
 #include "open_evse.h"
+#include "RTClib.h"
 
 #ifdef SERIALCLI
 CLI g_CLI;
+
+extern RTC_DS1307 g_RTC;
 
 static const char s_psEnabled[] PROGMEM = "enabled";
 static const char s_psDisabled[] PROGMEM = "disabled";
@@ -113,18 +116,18 @@ void CLI::getInput()
         Serial.print(g_DelayTimer.GetStopTimerMin(), DEC);
         println_P(PSTR(" min"));
         print_P(PSTR("System Date/Time: "));
-        g_CurrTime = g_RTC.now();
-        Serial.print(g_CurrTime.year(), DEC);
+        DateTime t = g_RTC.now();
+        Serial.print(t.year(), DEC);
         Serial.print('/');
-        Serial.print(g_CurrTime.month(), DEC);
+        Serial.print(t.month(), DEC);
         Serial.print('/');
-        Serial.print(g_CurrTime.day(), DEC);
+        Serial.print(t.day(), DEC);
         Serial.print(' ');
-        Serial.print(g_CurrTime.hour(), DEC);
+        Serial.print(t.hour(), DEC);
         Serial.print(':');
-        Serial.print(g_CurrTime.minute(), DEC);
+        Serial.print(t.minute(), DEC);
         Serial.print(':');
-        Serial.print(g_CurrTime.second(), DEC);
+        Serial.print(t.second(), DEC);
         // End Delay Timer feature - GoldServe
 #endif //#ifdef DELAYTIMER
       } 
@@ -222,7 +225,7 @@ void CLI::getInput()
      println_P(PSTR("WARNING - Do not set higher than 80% of breaker value"));
      printlnn();
      print_P(PSTR("Enter amps ("));
-          Serial.print((g_EvseController.GetCurSvcLevel() == 2) ? MIN_CURRENT_CAPACITY_L2 : MIN_CURRENT_CAPACITY_L1);
+     Serial.print(MIN_CURRENT_CAPACITY_J1772);
      print_P(PSTR("-"));
      Serial.print((g_EvseController.GetCurSvcLevel()  == 1) ? MAX_CURRENT_CAPACITY_L1 : g_EvseController.GetMaxHwCurrentCapacity());
      print_P(PSTR("): "));
@@ -249,41 +252,41 @@ void CLI::getInput()
      p += 4;
      println_P(PSTR("Set Date/Time (mm/dd/yy hh:mm)"));
      print_P(PSTR("Month (mm): "));
-     g_month = getInt();
-     Serial.println(g_month);
+     uint8_t month = getInt();
+     Serial.println(month);
      print_P(PSTR("Day (dd): "));
-     g_day = getInt();
-     Serial.println(g_day);
+     uint8_t day = getInt();
+     Serial.println(day);
      print_P(PSTR("Year (yy): "));
-     g_year = getInt();
-     Serial.println(g_year);
+     uint8_t year = getInt();
+     Serial.println(year);
      print_P(PSTR("Hour (hh): "));
-     g_hour = getInt();
-     Serial.println(g_hour);
+     uint8_t hour = getInt();
+     Serial.println(hour);
      print_P(PSTR("Minute (mm): "));
-     g_min = getInt();
-     Serial.println(g_min);
-          
-     if (g_month + g_day + g_year + g_hour + g_min) {
-       g_RTC.adjust(DateTime(g_year, g_month, g_day, g_hour, g_min, 0));
+     uint8_t min = getInt();
+     Serial.println(min);
+
+     if (month + day + year + hour + min) {
+       g_RTC.adjust(DateTime(year, month, day, hour, min, 0));
        println_P(PSTR("Date/Time Set"));
      } else {
        println_P(PSTR("Date/Time NOT Set")); 
      }
    }
    else {
-     g_CurrTime = g_RTC.now();
-     Serial.print(g_CurrTime.year(), DEC);
+     DateTime t = g_RTC.now();
+     Serial.print(t.year(), DEC);
      Serial.print('/');
-     Serial.print(g_CurrTime.month(), DEC);
+     Serial.print(t.month(), DEC);
      Serial.print('/');
-     Serial.print(g_CurrTime.day(), DEC);
+     Serial.print(t.day(), DEC);
      Serial.print(' ');
-     Serial.print(g_CurrTime.hour(), DEC);
+     Serial.print(t.hour(), DEC);
      Serial.print(':');
-     Serial.print(g_CurrTime.minute(), DEC);
+     Serial.print(t.minute(), DEC);
      Serial.print(':');
-     Serial.print(g_CurrTime.second(), DEC);
+     Serial.print(t.second(), DEC);
      Serial.println();
      println_P(PSTR("Use 'dt set' to set the system date/time"));
    }
@@ -291,25 +294,26 @@ void CLI::getInput()
  }
  else if (strncmp_P(m_CLIinstr, PSTR("timer"), 5) == 0){ // string compare
    char *p = m_CLIinstr + 6;
+   uint8_t hour, min;
         
    if (strncmp_P(p,PSTR("set start"),9) == 0) {
      println_P(PSTR("Set Start Time (hh:mm)"));
      print_P(PSTR("Hour (hh): "));
-     g_hour = getInt();
-     Serial.println(g_hour);
+     hour = getInt();
+     Serial.println(hour);
      print_P(PSTR("Minute (mm): "));
-     g_min = getInt();
-     Serial.println(g_min);
-     g_DelayTimer.SetStartTimer(g_hour, g_min);
+     min = getInt();
+     Serial.println(min);
+     g_DelayTimer.SetStartTimer(hour, min);
    } else if (strncmp_P(p,PSTR("set stop"),8) == 0) {
      println_P(PSTR("Set Stop Time (hh:mm)"));
      print_P(PSTR("Hour (hh): "));
-     g_hour = getInt();
-     Serial.println(g_hour);
+     hour = getInt();
+     Serial.println(hour);
      print_P(PSTR("Minute (mm): "));
-     g_min = getInt();
-     Serial.println(g_min);
-     g_DelayTimer.SetStopTimer(g_hour, g_min);
+     min = getInt();
+     Serial.println(min);
+     g_DelayTimer.SetStopTimer(hour, min);
    } else if (strncmp_P(p,PSTR("enable"),9) == 0) {
      println_P(PSTR("Delay timer enabled, autostart disabled"));
      g_DelayTimer.Enable();

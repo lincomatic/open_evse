@@ -311,7 +311,6 @@ void J1772EVSEController::chargingOn()
     m_AccumulatedChargeTime += m_ElapsedChargeTime;
   }
 
-  m_ChargeOnTime = now();
   m_ChargeOnTimeMS = millis();
 }
 
@@ -345,7 +344,6 @@ void J1772EVSEController::chargingOff()
 
   clrVFlags(ECVF_CHARGING_ON);
 
-  m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
 
 #ifdef AMMETER
@@ -1818,7 +1816,7 @@ if (TempChkEnabled()) {
 
   if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeOnTime;
+    m_ElapsedChargeTime = (millis() - m_ChargeOnTimeMS) / 1000;
 
 
 #ifdef TEMPERATURE_MONITORING
