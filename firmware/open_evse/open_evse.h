@@ -97,11 +97,6 @@
 // enable sending of RAPI commands
 //#define RAPI_SENDER
 
-// serial port command line
-// For the RTC version, only CLI or LCD can be defined at one time.
-// There is a directive to take care of that if you forget.
-//#define SERIALCLI
-
 // EVSE must call state transition function for permission to change states
 //#define STATE_TRANSITION_REQ_FUNC
 
@@ -342,10 +337,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
 
-#if defined(RAPI) && defined(SERIALCLI)
-#error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
-#endif
-
 #if defined(OPENEVSE_2) && !defined(ADVPWR)
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
@@ -413,13 +404,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
-
-#ifdef SERIALCLI
-#define TMP_BUF_SIZE 64
-#else
 #define TMP_BUF_SIZE ((LCD_MAX_CHARS_PER_LINE+1)*2)
-#endif // SERIALCLI
-
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
@@ -813,8 +798,6 @@ typedef union union4b {
 #define WDT_RESET()
 #define WDT_ENABLE()
 #endif // WATCHDOG
-
-#include "serialcli.h"
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01

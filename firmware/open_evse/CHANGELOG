@@ -1,5 +1,11 @@
 Change Log
 
+202012 toofishes
+- various code size optimizations for a smaller binary
+- recode energy meter usage calculation for better accuracy using integer math
+- remove Time.h and Time.cpp libraries, not needed as we track time in other ways
+- remove SERIALCLI, it hasn't been maintained in years and is replaced by RAPI
+
 20201001 SCL
 - move MV_FOR_xx from EnergyMeter.h to openevse.h, and outside of KWH_RECORDING
 	to fix compile error when KWH_RECORDING not defined
