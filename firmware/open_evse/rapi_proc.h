@@ -83,6 +83,10 @@ $AT evsestate pilotstate currentcapacity vflags
  currentcapacity(decimal): amps
  vflags(hex): m_wVFlags bits
 
+External button press notification - only if RAPI_BTN defined
+When the button is disabled ($FF B 0) send the event via RAPI
+$AN type
+ type: 0 - short press, 1 - long press
 
 Request client WiFi mode - only if RAPI_WF defined
 $WF mode\r
@@ -394,6 +398,7 @@ public:
   void sendEvseState();
   void sendBootNotification();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
+  void sendButtonPress(uint8_t long_press);
   void writeStr(const char *msg) { writeStart();write(msg);writeEnd(); }
 
   virtual void init();
@@ -441,6 +446,7 @@ void RapiInit();
 void RapiDoCmd();
 void RapiSendEvseState(uint8_t nodupe=1);
 void RapiSetWifiMode(uint8_t mode);
+void RapiSendButtonPress(uint8_t long_press);
 void RapiSendBootNotification();
 
 #endif // RAPI

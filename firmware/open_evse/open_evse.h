@@ -90,7 +90,10 @@ typedef unsigned long time_t;
 #define RAPI_SERIAL
 
 // RAPI $WF support
-//#define RAPI_WF
+#define RAPI_WF
+
+// RAPI $AN support
+#define RAPI_BTN
 
 // RAPI over I2C
 //#define RAPI_I2C
