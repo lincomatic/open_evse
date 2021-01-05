@@ -28,7 +28,6 @@
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include "./Wire.h"
-#include "./Time.h"
 #include "avrstuff.h"
 #include "i2caddr.h"
 
@@ -46,6 +45,8 @@
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
+
+typedef unsigned long time_t;
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
