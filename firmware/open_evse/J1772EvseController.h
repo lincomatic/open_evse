@@ -403,7 +403,6 @@ int HsPulse();
 int HsRestoreAmpacity();
 int HsExpirationCheck();
 int HsAckMissedPulse(uint8_t ack);
-int HsDeactivate();
 int GetHearbeatInterval();
 int GetHearbeatCurrent();
 int GetHearbeatTrigger();
