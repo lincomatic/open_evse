@@ -304,6 +304,8 @@ GU - get energy usage (v1.0.3+)
 
 GV - get version
  response: $OK firmware_version protocol_version
+ NOTE: protocol_version is deprecated. too hard to maintain variants.
+ ignore it, and test commands for compatibility, instead.
  $GV^35
 
 T commands for debugging only #define RAPI_T_COMMMANDS
