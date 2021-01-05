@@ -1,5 +1,12 @@
 Change Log
 
+20210105 SCL V7.1.0
+- merge PRs from jeremypoulter & toofishes
+  - Avoid using floating point in heartbeat code
+  - Compile & Platform IO fixes
+  - Added eventing of button presses RAPI $AN
+  - re-enable RAPI_WF by default
+	
 20201209 toofishes
 - various code size optimizations for a smaller binary
 - recode energy meter usage calculation for better accuracy using integer math
