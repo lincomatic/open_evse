@@ -168,6 +168,17 @@ void EvseRapiProcessor::setWifiMode(uint8_t mode)
 }
 #endif // RAPI_WF
 
+#ifdef RAPI_BTN
+void EvseRapiProcessor::sendButtonPress(uint8_t long_press)
+{
+  sprintf(g_sTmp,"%cAN %d", ESRAPI_SOC, long_press);
+  appendChk(g_sTmp);
+  writeStart();
+  write(g_sTmp);
+  writeEnd();
+}
+#endif // RAPI_BTN
+
 int EvseRapiProcessor::tokenize(char *buf)
 {
   tokens[0] = &buf[1];
@@ -1038,6 +1049,18 @@ void RapiSetWifiMode(uint8_t mode)
 #endif
 #ifdef RAPI_I2C
   g_EIRP.setWifiMode(mode);
+#endif
+}
+#endif // RAPI_WF
+
+#ifdef RAPI_BTN
+void RapiSendButtonPress(uint8_t long_press)
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.sendButtonPress(long_press);
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.sendButtonPress(long_press);
 #endif
 }
 #endif // RAPI_WF
