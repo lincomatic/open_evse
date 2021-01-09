@@ -1260,7 +1260,7 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 #endif // DELAYTIMER
 	g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
-	RapiSendEvseState();
+	RapiSendEvseState(0);
 #endif // RAPI	
       }
     }
