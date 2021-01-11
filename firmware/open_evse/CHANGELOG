@@ -1,5 +1,14 @@
 Change Log
 
+20210111 SCL V7.1.1
+- added ECVF_TIME_LIMIT, ECVF_CHARGE_LIMIT
+- move ECVF_AMMETER_CAL to 0x8000
+- revamp RapiSendEvseState()
+  - send if ECVF_CHANGED_TEST bits change
+  - don't send if currently inside a RAPI command, send it after command is completed
+- $FP changes
+  - allow spaces in strings: if 0x01 encountered in a string, print as ' ' on LCD - ignore print request when InHardFault()
+	
 20210105 SCL V7.1.0
 - merge PRs from jeremypoulter & toofishes
   - Avoid using floating point in heartbeat code
