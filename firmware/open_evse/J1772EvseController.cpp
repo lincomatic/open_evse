@@ -928,10 +928,6 @@ void J1772EVSEController::Init()
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
-#ifdef RAPI
-  RapiSendEvseState(0);
-#endif
-
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
@@ -1089,6 +1085,10 @@ void J1772EVSEController::Init()
   }
 #endif // FT_READ_AC_PINS
  
+#ifdef RAPI
+  RapiSendEvseState(1); // force send
+#endif
+
 #ifdef SHOW_DISABLED_TESTS
   ShowDisabledTests();
 #endif
@@ -1111,6 +1111,7 @@ void J1772EVSEController::Init()
       // UL wants EVSE to hard fault until power cycle if POST fails
 #ifdef RAPI
       RapiSendBootNotification();
+      RapiSendEvseState(1);
 #endif
       while (1) { // spin forever
 	  ProcessInputs();
@@ -1707,9 +1708,6 @@ if (TempChkEnabled()) {
       m_Pilot.SetState(PILOT_STATE_P12);
       chargingOff(); // turn off charging current
     }
-#if defined(RAPI) && !defined(AUTH_LOCK)
-    RapiSendEvseState();
-#endif // RAPI && !AUTH_LOCK
 #ifdef SERDBG
     if (SerDbgEnabled()) {
       Serial.print("state: ");
@@ -1733,9 +1731,6 @@ if (TempChkEnabled()) {
 #ifdef AUTH_LOCK
   if ((m_EvseState != prevevsestate) ||
       (m_PilotState != prevpilotstate)) {
-#ifdef RAPI
-    RapiSendEvseState(0);
-#endif // RAPI
     g_OBD.Update(OBD_UPD_FORCE);
   }
 #endif // AUTH_LOCK
@@ -1893,6 +1888,11 @@ if (TempChkEnabled()) {
     }
 #endif // TIME_LIMIT
   }
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
+
 
   return;
 }

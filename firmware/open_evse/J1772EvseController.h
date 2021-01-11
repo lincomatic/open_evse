@@ -104,6 +104,10 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_DEFAULT            ECVF_SESSION_ENDED
 #endif
 
+// used for RapiSendEvseState
+#define ECVF_CHANGED_TEST (ECVF_AUTH_LOCKED|ECVF_EV_CONNECTED|ECVF_TIME_LIMIT|ECVF_CHARGE_LIMIT|ECVF_HARD_FAULT)
+
+
 #define HS_INTERVAL_DEFAULT     0x0000  //By default, on an unformatted EEPROM, Heartbeat Supervision is not activated
 #define HS_IFALLBACK_DEFAULT    0x00    //By default, on an unformatted EEPROM, HS fallback current is 0 Amperes 
 #define HS_ACK_COOKIE           0XA5    //ACK will not work unless it contains this cookie

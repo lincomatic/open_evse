@@ -446,7 +446,7 @@ extern EvseI2cRapiProcessor g_EIRP;
 
 void RapiInit();
 void RapiDoCmd();
-void RapiSendEvseState(uint8_t nodupe=1);
+uint8_t RapiSendEvseState(uint8_t force=0);
 void RapiSetWifiMode(uint8_t mode);
 void RapiSendButtonPress(uint8_t long_press);
 void RapiSendBootNotification();

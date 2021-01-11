@@ -225,8 +225,11 @@ int EvseRapiProcessor::tokenize(char *buf)
   return rc;
 }
 
+uint8_t g_inRapiCommand = 0;
 int EvseRapiProcessor::processCmd()
 {
+  g_inRapiCommand = 1;
+
   UNION4B u1,u2,u3,u4;
   int rc = -1;
 
@@ -234,6 +237,7 @@ int EvseRapiProcessor::processCmd()
   // throw away extraneous responses that we weren't expecting
   // these could be from commands that we already timed out
   if (isRespToken()) {
+    g_inRapiCommand = 0;
     return rc;
   }
 #endif // RAPI_SENDER
@@ -776,10 +780,15 @@ int EvseRapiProcessor::processCmd()
   }
 
   if (bufCnt != -1){
-  response((rc == 0) ? 1 : 0);
+    response((rc == 0) ? 1 : 0);
   }
 
   reset();
+
+  g_inRapiCommand = 0;
+
+  // command might have changed EVSE state
+  RapiSendEvseState();
 
   return rc;
 }
@@ -1015,20 +1024,46 @@ void RapiDoCmd()
 #endif // RAPI_I2C
 }
 
-void RapiSendEvseState(uint8_t nodupe)
+// return: 0=sent 
+//         1=nothing changed, didn't send
+//         2=in processCmd(), didn't send
+uint8_t RapiSendEvseState(uint8_t force)
 {
   static uint8_t evseStateSent = EVSE_STATE_UNKNOWN;
-  uint8_t es = g_EvseController.GetState();
+  static uint8_t pilotStateSent = EVSE_STATE_UNKNOWN;
+  static uint8_t currentCapacitySent = 0;
+  static uint16_t vFlagsSent = 0;
 
-  if (!nodupe || (evseStateSent != es)) {
+  if (!g_inRapiCommand) {
+    uint8_t evseState = g_EvseController.GetState();
+    uint8_t pilotState = g_EvseController.GetPilotState();
+    uint8_t currentCapacity = g_EvseController.GetCurrentCapacity();
+    uint16_t vFlags = g_EvseController.GetVFlags() & ECVF_CHANGED_TEST;
+    if (force ||
+	((evseState != EVSE_STATE_UNKNOWN) && 
+	 !((evseState == EVSE_STATE_A) && (vFlags & ECVF_EV_CONNECTED)) &&
+	 !((evseState == EVSE_STATE_B) && !(vFlags & ECVF_EV_CONNECTED)) &&
+	 !((evseState == EVSE_STATE_C) && !(vFlags & ECVF_EV_CONNECTED)) &&
+	 ((evseStateSent != evseState) ||
+	  (pilotStateSent != pilotState) ||
+	  (currentCapacitySent != currentCapacity) ||
+	  (vFlagsSent != vFlags)))) {
 #ifdef RAPI_SERIAL
-    g_ESRP.sendEvseState();
+      g_ESRP.sendEvseState();
 #endif
 #ifdef RAPI_I2C
-    g_EIRP.sendEvseState();
+      g_EIRP.sendEvseState();
 #endif
-    evseStateSent = es;
+      evseStateSent = evseState;
+      pilotStateSent = pilotState;
+      currentCapacitySent = currentCapacity;
+      vFlagsSent = vFlags;
+      return 0;
+    }
+
+    return 1;
   }
+  else return 2;
 }
 
 void RapiSendBootNotification()
