@@ -330,7 +330,7 @@ int EvseRapiProcessor::processCmd()
       break;
 #ifdef LCD16X2
     case 'P': // print to LCD
-      if (tokenCnt >= 4) {
+      if ((tokenCnt >= 4) && !g_EvseController.InHardFault()) {
 	u1.u = dtou32(tokens[1]); // x
 	u2.u = dtou32(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
