@@ -2203,6 +2203,7 @@ void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
 #ifdef DELAYTIMER
   g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
+    setVFlags(ECVF_CHARGE_LIMIT);
   }
   else {
     ClrChargeLimit();
@@ -2225,6 +2226,7 @@ void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
 #ifdef DELAYTIMER
     g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
+    setVFlags(ECVF_TIME_LIMIT);
   }
   else {
     ClrTimeLimit();

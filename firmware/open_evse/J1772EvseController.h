@@ -88,7 +88,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_HARD_FAULT         0x0002 // in non-autoresettable fault
 #define ECVF_LIMIT_SLEEP        0x0004 // currently sleeping after reaching time/charge limit
 #define ECVF_AUTH_LOCKED        0x0008 // locked pending authentication
-#define ECVF_AMMETER_CAL        0x0010 // ammeter calibration mode
+#define ECVF_TIME_LIMIT         0x0010 // time limit set
 #define ECVF_NOGND_TRIPPED      0x0020 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x0040 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x0080 // gfi has tripped at least once since boot
@@ -96,6 +96,8 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_SESSION_ENDED      0x0200 // used for charging session time calc
 #define ECVF_EV_CONNECTED_PREV  0x0400 // prev EV connected flag
 #define ECVF_UI_IN_MENU         0x0800 // onboard UI currently in a menu
+#define ECVF_CHARGE_LIMIT       0x2000
+#define ECVF_AMMETER_CAL        0x8000
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
 #else
@@ -461,7 +463,11 @@ int GetHearbeatTrigger();
     return m_AmmeterReading / 1000;
   }
 #ifdef CHARGE_LIMIT
-  void ClrChargeLimit() { m_chargeLimitTotWs = 0; m_chargeLimitkWh = 0; }
+  void ClrChargeLimit() {
+    m_chargeLimitTotWs = 0;
+    m_chargeLimitkWh = 0;
+    clrVFlags(ECVF_CHARGE_LIMIT);
+  }
   void SetChargeLimitkWh(uint8_t kwh);
   uint32_t GetChargeLimitTotWs() { return m_chargeLimitTotWs; }
   uint8_t GetChargeLimitkWh() { return m_chargeLimitkWh; }
@@ -473,7 +479,11 @@ int GetHearbeatTrigger();
     return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
   }
 #ifdef TIME_LIMIT
-  void ClrTimeLimit() { m_timeLimitEnd = 0; m_timeLimit15 = 0; }
+  void ClrTimeLimit() {
+    m_timeLimitEnd = 0;
+    m_timeLimit15 = 0;
+    clrVFlags(ECVF_TIME_LIMIT);
+  }
   void SetTimeLimitEnd(time_t limit) { m_timeLimitEnd = limit; }
   void SetTimeLimit15(uint8_t mind15);
   uint8_t GetTimeLimit15() { return m_timeLimit15; }
