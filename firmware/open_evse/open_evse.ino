@@ -2186,9 +2186,11 @@ int8_t BtnHandler::DoShortPress(int8_t infaultstate)
 
 void BtnHandler::ChkBtn()
 {
+  WDT_RESET();
+  m_Btn.read();
+
   if (!g_EvseController.ButtonIsEnabled()) {
 #ifdef RAPI_BTN
-    m_Btn.read();
     if (m_Btn.shortPress()) {
       RapiSendButtonPress(0);
     } else if (m_Btn.longPress()) {
@@ -2198,11 +2200,8 @@ void BtnHandler::ChkBtn()
     return;
   }
 
-  WDT_RESET();
-
   int8_t infaultstate = g_EvseController.InFaultState();
 
-  m_Btn.read();
   if (m_Btn.shortPress()) {
     if (DoShortPress(infaultstate)) {
       goto longpress;

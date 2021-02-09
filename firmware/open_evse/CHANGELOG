@@ -1,5 +1,9 @@
 Change Log
 
+202100208 SCL V7.1.2
+- fix spontaneous reboot caused by PR#134 RAPI_BTN code
+  -> when button disabled, didn't pat the watchdog before m_Btn.read()
+	
 20210111 SCL V7.1.1
 - added ECVF_TIME_LIMIT, ECVF_CHARGE_LIMIT
 - move ECVF_AMMETER_CAL to 0x8000
