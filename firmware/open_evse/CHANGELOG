@@ -3,6 +3,8 @@ Change Log
 202100208 SCL V7.1.2
 - fix spontaneous reboot caused by PR#134 RAPI_BTN code
   -> when button disabled, didn't pat the watchdog before m_Btn.read()
+- change space character for $FP from 0x01 to 0xef so that it doesn't clash
+	with custom characters
 	
 20210111 SCL V7.1.1
 - added ECVF_TIME_LIMIT, ECVF_CHARGE_LIMIT

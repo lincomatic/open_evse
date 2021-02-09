@@ -121,8 +121,8 @@ FD - disable EVSE
 FE - enable EVSE
  $FE*AF
 FP x y text - print text on lcd display
-  substitute character 0x01 for spaces within a string. LCD display code
-  replaces 0x01 with spaces
+  substitute character 0xef for spaces within a string. LCD display code
+  replaces 0xef with spaces
 FR - restart EVSE
  $FR*BC
 FS - sleep EVSE
