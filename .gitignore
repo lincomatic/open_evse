@@ -183,3 +183,6 @@ Platformio
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+
+# build files 
+.hex
