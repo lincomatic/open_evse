@@ -83,6 +83,10 @@ $AT evsestate pilotstate currentcapacity vflags
  currentcapacity(decimal): amps
  vflags(hex): m_wVFlags bits
 
+External button press notification - only if RAPI_BTN defined
+When the button is disabled ($FF B 0) send the event via RAPI
+$AN type
+ type: 0 - short press, 1 - long press
 
 Request client WiFi mode - only if RAPI_WF defined
 $WF mode\r
@@ -117,6 +121,8 @@ FD - disable EVSE
 FE - enable EVSE
  $FE*AF
 FP x y text - print text on lcd display
+  substitute character 0xef for spaces within a string. LCD display code
+  replaces 0xef with spaces
 FR - restart EVSE
  $FR*BC
 FS - sleep EVSE
@@ -300,6 +306,8 @@ GU - get energy usage (v1.0.3+)
 
 GV - get version
  response: $OK firmware_version protocol_version
+ NOTE: protocol_version is deprecated. too hard to maintain variants.
+ ignore it, and test commands for compatibility, instead.
  $GV^35
 
 T commands for debugging only #define RAPI_T_COMMMANDS
@@ -394,6 +402,7 @@ public:
   void sendEvseState();
   void sendBootNotification();
   void setWifiMode(uint8_t mode); // WIFI_MODE_xxx
+  void sendButtonPress(uint8_t long_press);
   void writeStr(const char *msg) { writeStart();write(msg);writeEnd(); }
 
   virtual void init();
@@ -439,8 +448,9 @@ extern EvseI2cRapiProcessor g_EIRP;
 
 void RapiInit();
 void RapiDoCmd();
-void RapiSendEvseState(uint8_t nodupe=1);
+uint8_t RapiSendEvseState(uint8_t force=0);
 void RapiSetWifiMode(uint8_t mode);
+void RapiSendButtonPress(uint8_t long_press);
 void RapiSendBootNotification();
 
 #endif // RAPI

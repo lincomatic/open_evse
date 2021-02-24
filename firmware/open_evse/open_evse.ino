@@ -165,15 +165,14 @@ OnboardDisplay g_OBD;
 // Instantiate RTC and Delay Timer - GoldServe
 #ifdef RTC
 RTC_DS1307 g_RTC;
-DateTime g_CurrTime;
 
 #if defined(RAPI)
 void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s) {
   g_RTC.adjust(DateTime(y,m,d,h,mn,s));
 }
 void GetRTC(char *buf) {
-  g_CurrTime = g_RTC.now();
-  sprintf(buf,"%d %d %d %d %d %d",g_CurrTime.year()-2000,g_CurrTime.month(),g_CurrTime.day(),g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
+  DateTime t = g_RTC.now();
+  sprintf(buf,"%d %d %d %d %d %d",t.year()-2000,t.month(),t.day(),t.hour(),t.minute(),t.second());
 }
 #endif // RAPI
 #endif // RTC
@@ -186,7 +185,6 @@ uint8_t g_month;
 uint8_t g_day;
 uint8_t g_hour;
 uint8_t g_min;
-uint8_t sec = 0;
 #endif // DELAYTIMER_MENU
 #endif // DELAYTIMER
 
@@ -250,8 +248,6 @@ char *u2a(unsigned long x,int8_t digits)
 
   return s;
 }
-
-void EvseReset();
 
 // wdt_init turns off the watchdog timer after we use it
 // to reboot
@@ -824,7 +820,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // GFI
 
 #ifdef RTC
-    g_CurrTime = g_RTC.now();
+    DateTime currentTime = g_RTC.now();
 #endif
 
 #ifdef LCD16X2
@@ -938,7 +934,7 @@ void OnboardDisplay::Update(int8_t updmode)
       g_sTmp[8]=' ';
       g_sTmp[9]=' ';
       g_sTmp[10]=' ';
-      sprintf(g_sTmp+11,g_sHHMMfmt,(int)g_CurrTime.hour(),(int)g_CurrTime.minute());
+      sprintf(g_sTmp+11,g_sHHMMfmt,currentTime.hour(),currentTime.minute());
 #endif //RTC
       LcdPrint(1,g_sTmp);
 #endif // KWH_RECORDING
@@ -957,7 +953,7 @@ void OnboardDisplay::Update(int8_t updmode)
       }
 #endif // AUTH_LOCK
       LcdPrint_P(g_psSleeping);
-      sprintf(g_sTmp,"%02d:%02d:%02d",g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
+      sprintf(g_sTmp,"%02d:%02d:%02d",currentTime.hour(),currentTime.minute(),currentTime.second());
       LcdPrint(0,1,g_sTmp);
       if (g_DelayTimer.IsTimerEnabled()){
 	LcdSetCursor(9,0);
@@ -1721,12 +1717,12 @@ RTCMenuMonth::RTCMenuMonth()
 void RTCMenuMonth::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Month);
-  g_CurrTime = g_RTC.now();
-  g_month = g_CurrTime.month();
-  g_day = g_CurrTime.day();
-  g_year = g_CurrTime.year() - 2000;
-  g_hour = g_CurrTime.hour();
-  g_min = g_CurrTime.minute();
+  DateTime t = g_RTC.now();
+  g_month = t.month();
+  g_day = t.day();
+  g_year = t.year() - 2000;
+  g_hour = t.hour();
+  g_min = t.minute();
   m_CurIdx = g_month;
 
   DtsStrPrint1(g_year,g_month,g_day,g_hour,g_min,0);
@@ -2190,13 +2186,22 @@ int8_t BtnHandler::DoShortPress(int8_t infaultstate)
 
 void BtnHandler::ChkBtn()
 {
-  if (!g_EvseController.ButtonIsEnabled()) return;
-
   WDT_RESET();
+  m_Btn.read();
+
+  if (!g_EvseController.ButtonIsEnabled()) {
+#ifdef RAPI_BTN
+    if (m_Btn.shortPress()) {
+      RapiSendButtonPress(0);
+    } else if (m_Btn.longPress()) {
+      RapiSendButtonPress(1);
+    }
+#endif // RAPI_BTN
+    return;
+  }
 
   int8_t infaultstate = g_EvseController.InFaultState();
 
-  m_Btn.read();
   if (m_Btn.shortPress()) {
     if (DoShortPress(infaultstate)) {
       goto longpress;
@@ -2306,13 +2311,13 @@ uint8_t DelayTimer::IsInAwakeTimeInterval()
   uint8_t inTimeInterval = false;
 
   if (IsTimerEnabled() && IsTimerValid()) {
-    g_CurrTime = g_RTC.now();
-    m_CurrHour = g_CurrTime.hour();
-    m_CurrMin = g_CurrTime.minute();
+    DateTime t = g_RTC.now();
+    uint8_t currHour = t.hour();
+    uint8_t currMin = t.minute();
     
     uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin;
     uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
-    uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
+    uint16_t currTimeMinutes = currHour * 60 + currMin;
 
     if (stopTimerMinutes < startTimerMinutes) { //End time is for next day
       
@@ -2408,9 +2413,6 @@ void ProcessInputs()
 #ifdef RAPI
   RapiDoCmd();
 #endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
 #ifdef BTN_MENU
   g_BtnHandler.ChkBtn();
 #endif
@@ -2423,11 +2425,6 @@ void ProcessInputs()
 void EvseReset()
 {
   Wire.begin();
-
-#ifdef SERIALCLI
-  g_CLI.Init();
-#endif // SERIALCLI
-
   g_OBD.Init();
 
 #ifdef RAPI
@@ -2436,13 +2433,9 @@ void EvseReset()
 
   g_EvseController.Init();
 
-#ifdef RTC
-  g_RTC.begin();
 #ifdef DELAYTIMER
   g_DelayTimer.Init(); // this *must* run after g_EvseController.Init() because it sets one of the vFlags
 #endif  // DELAYTIMER
-#endif // RTC
-
 
 #ifdef PP_AUTO_AMPACITY
   g_ACCController.AutoSetCurrentCapacity();

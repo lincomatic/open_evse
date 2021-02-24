@@ -19,6 +19,14 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+ 
+// UK/EU specific settings (by OpenEnergyMonitor):
+// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
+// - Charging level default to L2
+// - Set MAX_CURRENT_CAPACITY_L2 32 (European Limit)
+// - Add '.EU' to version number
+// - Enable LCD Re-draw every couple of min (required for EMC/CE)
+
 #pragma once
 
 #define OPEN_EVSE
@@ -28,7 +36,6 @@
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include "./Wire.h"
-#include "./Time.h"
 #include "avrstuff.h"
 #include "i2caddr.h"
 
@@ -42,18 +49,12 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D7.0.2"
+#define VERSION "D7.1.2"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
 
-// UK/EU specific settings (by OpenEnergyMonitor):
-// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
-// - Charging level default to L2
-// - Set MAX_CURRENT_CAPACITY_L2 32 (recomended limit for single-phase charging in UK/EU)
-// - Add '.EU' to version number
-// - Enable LCD Redra every couple of min (required for EMC/CE)
-
+typedef unsigned long time_t;
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
@@ -97,18 +98,16 @@
 #define RAPI_SERIAL
 
 // RAPI $WF support
-//#define RAPI_WF
+#define RAPI_WF
+
+// RAPI $AN support
+#define RAPI_BTN
 
 // RAPI over I2C
 //#define RAPI_I2C
 
 // enable sending of RAPI commands
 //#define RAPI_SENDER
-
-// serial port command line
-// For the RTC version, only CLI or LCD can be defined at one time.
-// There is a directive to take care of that if you forget.
-//#define SERIALCLI
 
 // EVSE must call state transition function for permission to change states
 //#define STATE_TRANSITION_REQ_FUNC
@@ -122,7 +121,6 @@
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
-#define PP_TABLE_IEC
 
 #include "AutoCurrentCapacityController.h"
 
@@ -189,7 +187,14 @@ extern AutoCurrentCapacityController g_ACCController;
 // for OVERCURRENT_TIMEOUT ms
 #define OVERCURRENT_TIMEOUT 5000UL // ms
 
-
+// if there's no accurate voltmeter, hardcode voltages
+#ifndef MV_FOR_L1
+#define MV_FOR_L1 120000L       // conventional for North America
+#endif
+#ifndef MV_FOR_L2
+#define MV_FOR_L2 240000L       // conventional for North America
+//  #define MV_FOR_L2 230000L   // conventional for most of the world
+#endif
 
 // kWh Recording feature depends upon #AMMETER support
 // comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
@@ -344,15 +349,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
 
-//If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
-#error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
-#endif
-
-#if defined(RAPI) && defined(SERIALCLI)
-#error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
-#endif
-
 #if defined(OPENEVSE_2) && !defined(ADVPWR)
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
 #endif
@@ -420,13 +416,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
-
-#ifdef SERIALCLI
-#define TMP_BUF_SIZE 64
-#else
 #define TMP_BUF_SIZE ((LCD_MAX_CHARS_PER_LINE+1)*2)
-#endif // SERIALCLI
-
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
@@ -820,8 +810,6 @@ typedef union union4b {
 #define WDT_RESET()
 #define WDT_ENABLE()
 #endif // WATCHDOG
-
-#include "serialcli.h"
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
@@ -1308,10 +1296,8 @@ class DelayTimer {
   uint8_t m_StartTimerMin;
   uint8_t m_StopTimerHour;
   uint8_t m_StopTimerMin;
-  uint8_t m_CurrHour;
-  uint8_t m_CurrMin;
-  unsigned long m_LastCheck;
   uint8_t m_ManualOverride;
+  unsigned long m_LastCheck;
 public:
   DelayTimer(){
     m_LastCheck = - (60ul * 1000ul);

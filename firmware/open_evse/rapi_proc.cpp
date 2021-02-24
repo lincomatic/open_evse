@@ -168,6 +168,17 @@ void EvseRapiProcessor::setWifiMode(uint8_t mode)
 }
 #endif // RAPI_WF
 
+#ifdef RAPI_BTN
+void EvseRapiProcessor::sendButtonPress(uint8_t long_press)
+{
+  sprintf(g_sTmp,"%cAN %d", ESRAPI_SOC, long_press);
+  appendChk(g_sTmp);
+  writeStart();
+  write(g_sTmp);
+  writeEnd();
+}
+#endif // RAPI_BTN
+
 int EvseRapiProcessor::tokenize(char *buf)
 {
   tokens[0] = &buf[1];
@@ -214,8 +225,11 @@ int EvseRapiProcessor::tokenize(char *buf)
   return rc;
 }
 
+uint8_t g_inRapiCommand = 0;
 int EvseRapiProcessor::processCmd()
 {
+  g_inRapiCommand = 1;
+
   UNION4B u1,u2,u3,u4;
   int rc = -1;
 
@@ -223,6 +237,7 @@ int EvseRapiProcessor::processCmd()
   // throw away extraneous responses that we weren't expecting
   // these could be from commands that we already timed out
   if (isRespToken()) {
+    g_inRapiCommand = 0;
     return rc;
   }
 #endif // RAPI_SENDER
@@ -315,12 +330,19 @@ int EvseRapiProcessor::processCmd()
       break;
 #ifdef LCD16X2
     case 'P': // print to LCD
-      if (tokenCnt >= 4) {
+      if ((tokenCnt >= 4) && !g_EvseController.InHardFault()) {
 	u1.u = dtou32(tokens[1]); // x
 	u2.u = dtou32(tokens[2]); // y
 	// now restore the spaces that were replaced w/ nulls by tokenizing
 	for (u3.i=4;u3.i < tokenCnt;u3.i++) {
 	  *(tokens[u3.i]-1) = ' ';
+	}
+	// spaces encoded as 0x01 - restore
+	char *s = tokens[3];
+	u4.i = strlen(s);
+	for (u3.i=0;u3.i < u4.i;u3.i++) {
+	  if (*s == 0xef) *s = ' ';
+	  s++;
 	}
 	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
 	rc = 0;
@@ -765,10 +787,15 @@ int EvseRapiProcessor::processCmd()
   }
 
   if (bufCnt != -1){
-  response((rc == 0) ? 1 : 0);
+    response((rc == 0) ? 1 : 0);
   }
 
   reset();
+
+  g_inRapiCommand = 0;
+
+  // command might have changed EVSE state
+  RapiSendEvseState();
 
   return rc;
 }
@@ -1004,20 +1031,46 @@ void RapiDoCmd()
 #endif // RAPI_I2C
 }
 
-void RapiSendEvseState(uint8_t nodupe)
+// return: 0=sent 
+//         1=nothing changed, didn't send
+//         2=in processCmd(), didn't send
+uint8_t RapiSendEvseState(uint8_t force)
 {
   static uint8_t evseStateSent = EVSE_STATE_UNKNOWN;
-  uint8_t es = g_EvseController.GetState();
+  static uint8_t pilotStateSent = EVSE_STATE_UNKNOWN;
+  static uint8_t currentCapacitySent = 0;
+  static uint16_t vFlagsSent = 0;
 
-  if (!nodupe || (evseStateSent != es)) {
+  if (!g_inRapiCommand) {
+    uint8_t evseState = g_EvseController.GetState();
+    uint8_t pilotState = g_EvseController.GetPilotState();
+    uint8_t currentCapacity = g_EvseController.GetCurrentCapacity();
+    uint16_t vFlags = g_EvseController.GetVFlags() & ECVF_CHANGED_TEST;
+    if (force ||
+	((evseState != EVSE_STATE_UNKNOWN) && 
+	 !((evseState == EVSE_STATE_A) && (vFlags & ECVF_EV_CONNECTED)) &&
+	 !((evseState == EVSE_STATE_B) && !(vFlags & ECVF_EV_CONNECTED)) &&
+	 !((evseState == EVSE_STATE_C) && !(vFlags & ECVF_EV_CONNECTED)) &&
+	 ((evseStateSent != evseState) ||
+	  (pilotStateSent != pilotState) ||
+	  (currentCapacitySent != currentCapacity) ||
+	  (vFlagsSent != vFlags)))) {
 #ifdef RAPI_SERIAL
-    g_ESRP.sendEvseState();
+      g_ESRP.sendEvseState();
 #endif
 #ifdef RAPI_I2C
-    g_EIRP.sendEvseState();
+      g_EIRP.sendEvseState();
 #endif
-    evseStateSent = es;
+      evseStateSent = evseState;
+      pilotStateSent = pilotState;
+      currentCapacitySent = currentCapacity;
+      vFlagsSent = vFlags;
+      return 0;
+    }
+
+    return 1;
   }
+  else return 2;
 }
 
 void RapiSendBootNotification()
@@ -1038,6 +1091,18 @@ void RapiSetWifiMode(uint8_t mode)
 #endif
 #ifdef RAPI_I2C
   g_EIRP.setWifiMode(mode);
+#endif
+}
+#endif // RAPI_WF
+
+#ifdef RAPI_BTN
+void RapiSendButtonPress(uint8_t long_press)
+{
+#ifdef RAPI_SERIAL
+  g_ESRP.sendButtonPress(long_press);
+#endif
+#ifdef RAPI_I2C
+  g_EIRP.sendButtonPress(long_press);
 #endif
 }
 #endif // RAPI_WF

@@ -60,15 +60,17 @@ void J1772EVSEController::readAmmeter()
   WDT_RESET();
 
   unsigned long sum = 0;
-  unsigned int zero_crossings = 0;
+  uint8_t zero_crossings = 0;
   unsigned long last_zero_crossing_time = 0, now_ms;
-  long last_sample = -1; // should be impossible - the A/d is 0 to 1023.
+  uint8_t is_first_sample = 1;
+  uint16_t last_sample;
   unsigned int sample_count = 0;
   for(unsigned long start = millis(); ((now_ms = millis()) - start) < CURRENT_SAMPLE_INTERVAL; ) {
-    long sample = (long) adcCurrent.read();
+    // the A/d is 0 to 1023.
+    uint16_t sample = adcCurrent.read();
     // If this isn't the first sample, and if the sign of the value differs from the
     // sign of the previous value, then count that as a zero crossing.
-    if (last_sample != -1 && ((last_sample > 512) != (sample > 512))) {
+    if (!is_first_sample && ((last_sample > 512) != (sample > 512))) {
       // Once we've seen a zero crossing, don't look for one for a little bit.
       // It's possible that a little noise near zero could cause a two-sample
       // inversion.
@@ -77,6 +79,7 @@ void J1772EVSEController::readAmmeter()
         last_zero_crossing_time = now_ms;
       }
     }
+    is_first_sample = 0;
     last_sample = sample;
     switch(zero_crossings) {
     case 0:
@@ -84,7 +87,7 @@ void J1772EVSEController::readAmmeter()
     case 1:
     case 2:
       // Gather the sum-of-the-squares and count how many samples we've collected.
-      sum += (unsigned long)((sample - 512) * (sample - 512));
+      sum += (unsigned long)(((long)sample - 512) * ((long)sample - 512));
       sample_count++;
       continue;
     case 3:
@@ -308,7 +311,6 @@ void J1772EVSEController::chargingOn()
     m_AccumulatedChargeTime += m_ElapsedChargeTime;
   }
 
-  m_ChargeOnTime = now();
   m_ChargeOnTimeMS = millis();
 }
 
@@ -342,7 +344,6 @@ void J1772EVSEController::chargingOff()
 
   clrVFlags(ECVF_CHARGING_ON);
 
-  m_ChargeOffTime = now();
   m_ChargeOffTimeMS = millis();
 
 #ifdef AMMETER
@@ -927,10 +928,6 @@ void J1772EVSEController::Init()
   m_EvseState = EVSE_STATE_UNKNOWN;
   m_PrevEvseState = EVSE_STATE_UNKNOWN;
 
-#ifdef RAPI
-  RapiSendEvseState(0);
-#endif
-
   // read settings from EEPROM
   uint16_t rflgs = eeprom_read_word((uint16_t*)EOFS_FLAGS);
 
@@ -1088,6 +1085,10 @@ void J1772EVSEController::Init()
   }
 #endif // FT_READ_AC_PINS
  
+#ifdef RAPI
+  RapiSendEvseState(1); // force send
+#endif
+
 #ifdef SHOW_DISABLED_TESTS
   ShowDisabledTests();
 #endif
@@ -1110,6 +1111,7 @@ void J1772EVSEController::Init()
       // UL wants EVSE to hard fault until power cycle if POST fails
 #ifdef RAPI
       RapiSendBootNotification();
+      RapiSendEvseState(1);
 #endif
       while (1) { // spin forever
 	  ProcessInputs();
@@ -1706,9 +1708,6 @@ if (TempChkEnabled()) {
       m_Pilot.SetState(PILOT_STATE_P12);
       chargingOff(); // turn off charging current
     }
-#if defined(RAPI) && !defined(AUTH_LOCK)
-    RapiSendEvseState();
-#endif // RAPI && !AUTH_LOCK
 #ifdef SERDBG
     if (SerDbgEnabled()) {
       Serial.print("state: ");
@@ -1732,9 +1731,6 @@ if (TempChkEnabled()) {
 #ifdef AUTH_LOCK
   if ((m_EvseState != prevevsestate) ||
       (m_PilotState != prevpilotstate)) {
-#ifdef RAPI
-    RapiSendEvseState(0);
-#endif // RAPI
     g_OBD.Update(OBD_UPD_FORCE);
   }
 #endif // AUTH_LOCK
@@ -1815,7 +1811,7 @@ if (TempChkEnabled()) {
 
   if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
-    m_ElapsedChargeTime = now() - m_ChargeOnTime;
+    m_ElapsedChargeTime = (millis() - m_ChargeOnTimeMS) / 1000;
 
 
 #ifdef TEMPERATURE_MONITORING
@@ -1892,6 +1888,11 @@ if (TempChkEnabled()) {
     }
 #endif // TIME_LIMIT
   }
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
+
 
   return;
 }
@@ -2038,7 +2039,7 @@ int J1772EVSEController::HsPulse() {
   int rc = 1;
   #ifdef DEBUG_HS
 	Serial.print(F("HsPulse called.  Time interval before reset: "));
-	Serial.println((unsigned long)((millis() - m_HsLastPulse)/1000.0));
+	Serial.println((millis() - m_HsLastPulse)/1000);
   #endif
   if ((m_HsTriggered == HS_MISSEDPULSE_NOACK)) { //We were in a state of missed pulse 
     rc = 1; //We have been triggered but have not been acknowledged.  Therfore respond with NK.
@@ -2049,13 +2050,12 @@ int J1772EVSEController::HsPulse() {
   m_HsLastPulse = millis(); //We just had a heartbeat so reset the HEARTBEAT SUPERVISION timeout interval;
   #ifdef DEBUG_HS
 	Serial.print(F("                 Time interval  after reset: "));
-	Serial.println((unsigned long)((millis() - m_HsLastPulse)/1000.0));
+	Serial.println((millis() - m_HsLastPulse)/1000);
   #endif
   return rc;
 }
 
 int J1772EVSEController::HsRestoreAmpacity() {
-  UNION4B u1,u2,u3,u4;
   #ifdef DEBUG_HS
 	Serial.println(F("HsRestoreAmpacity called"));
   #endif
@@ -2064,14 +2064,14 @@ int J1772EVSEController::HsRestoreAmpacity() {
     #ifdef DEBUG_HS
 	  Serial.println(F("HEARTBEAT_SUPERVISION was previously triggered - checking if OK to restore ampacity"));
     #endif
-    u3.u8 = g_EvseController.GetMaxCurrentCapacity();  //We get the ceiling for how high we can set ampacity
+    uint8_t maxCapacity = g_EvseController.GetMaxCurrentCapacity();  //We get the ceiling for how high we can set ampacity
     #ifdef TEMPERATURE_MONITORING
       if (!g_TempMonitor.OverTemperature()) { //We need to ensure that OverTemperature is not active before we raise current capacity
 	    #ifdef DEBUG_HS
 	      Serial.print(F("Not over temp - OK to restore ampacity to: "));
-		  Serial.println(u3.u8);
+		  Serial.println(maxCapacity);
         #endif
-        rc = g_EvseController.SetCurrentCapacity(u3.u8,1,1);  //We are not writing EEPROM, but we are setting current to maximum capacity
+        rc = g_EvseController.SetCurrentCapacity(maxCapacity,1,1);  //We are not writing EEPROM, but we are setting current to maximum capacity
       }
       else {
         #ifdef DEBUG_HS
@@ -2080,7 +2080,7 @@ int J1772EVSEController::HsRestoreAmpacity() {
         rc = 1;  //Fail.  Cannnot restore ampacity, as TEMPERATURE_MONITORING OverTemperature() is still in force 
       }
     #else // !TEMPERATURE_MONITORING
-      rc = g_EvseController.SetCurrentCapacity(u3.u8,1,1);   //Do not write this value to EEPROM
+      rc = g_EvseController.SetCurrentCapacity(maxCapacity,1,1);   //Do not write this value to EEPROM
     #endif // TEMPERATURE_MONITORING
   }
   else {
@@ -2090,9 +2090,9 @@ int J1772EVSEController::HsRestoreAmpacity() {
 }
 
 int J1772EVSEController::HsExpirationCheck() {
-  unsigned long sinceLastPulse = (unsigned long)((millis() - m_HsLastPulse)/1000.0); //convert ms to seconds
+  unsigned long sinceLastPulse = millis() - m_HsLastPulse;
   int rc=1;
-  if ((m_HsInterval != 0) && (sinceLastPulse > m_HsInterval)) { //HEARTBEAT_SUPERVISION is currently active and the Heartbeat interval has timed out
+  if (m_HsInterval != 0 && sinceLastPulse > (m_HsInterval * 1000)) { //HEARTBEAT_SUPERVISION is currently active and the Heartbeat interval has timed out
   	#ifdef DEBUG_HS
 	  Serial.println(F("HsExpirationCheck: Heartbeat timer expired account late or no pulse"));
 	#endif
@@ -2102,7 +2102,7 @@ int J1772EVSEController::HsExpirationCheck() {
 	  #endif
       rc=SetCurrentCapacity(m_IFallback,1,1);  //Drop the current, update the display, and do not write it to EEPROM 	  
     }
-	//m_HsInterval timed out, and as a result we may have to perturb the system ampacity setting.
+    //m_HsInterval timed out, and as a result we may have to perturb the system ampacity setting.
     //We flag that here by setting m_HsTriggered = HS_MISSEDPULSE_NOACK
     m_HsTriggered = HS_MISSEDPULSE_NOACK; //Flag the fact that HEARTBEAT_SUPERVISION had a missed pulse and report same when pulsed (via nack), until acknowledged
 	m_HsLastPulse = millis(); //Reset the timer so we don't check again until the next interval
@@ -2141,17 +2141,6 @@ int J1772EVSEController::HsAckMissedPulse(uint8_t ack) {
   else {
 	  //HsAckMissedPulse was called with incorrect cookie  RC alread set to 1
   }
-  return rc;
-}
-
-int J1772EVSEController::HsDeactivate() {   
-//DEPRECATED USE HeartbeatSupervision set to 0 interval instead so update EEPROM!
-  #ifdef DEBUG_HS
-    Serial.println(F("HsDeactivate called - BUT I AM DEPRECATED!"));
-  #endif
-  int rc=1;
-  m_HsInterval = 0;
-  rc=(int)m_HsInterval;
   return rc;
 }
 
@@ -2214,6 +2203,7 @@ void J1772EVSEController::SetChargeLimitkWh(uint8_t kwh)
 #ifdef DELAYTIMER
   g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
+    setVFlags(ECVF_CHARGE_LIMIT);
   }
   else {
     ClrChargeLimit();
@@ -2236,6 +2226,7 @@ void J1772EVSEController::SetTimeLimit15(uint8_t mind15)
 #ifdef DELAYTIMER
     g_DelayTimer.SetManualOverride();
 #endif // DELAYTIMER
+    setVFlags(ECVF_TIME_LIMIT);
   }
   else {
     ClrTimeLimit();

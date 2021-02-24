@@ -1,5 +1,38 @@
 Change Log
 
+202100208 SCL V7.1.2
+- fix spontaneous reboot caused by PR#134 RAPI_BTN code
+  -> when button disabled, didn't pat the watchdog before m_Btn.read()
+- change space character for $FP from 0x01 to 0xef so that it doesn't clash
+	with custom characters
+	
+20210111 SCL V7.1.1
+- added ECVF_TIME_LIMIT, ECVF_CHARGE_LIMIT
+- move ECVF_AMMETER_CAL to 0x8000
+- revamp RapiSendEvseState()
+  - send if ECVF_CHANGED_TEST bits change
+  - don't send if currently inside a RAPI command, send it after command is completed
+- $FP changes
+  - allow spaces in strings: if 0x01 encountered in a string, print as ' ' on LCD - ignore print request when InHardFault()
+	
+20210105 SCL V7.1.0
+- merge PRs from jeremypoulter & toofishes
+  - Avoid using floating point in heartbeat code
+  - Compile & Platform IO fixes
+  - Added eventing of button presses RAPI $AN
+  - re-enable RAPI_WF by default
+	
+20201209 toofishes
+- various code size optimizations for a smaller binary
+- recode energy meter usage calculation for better accuracy using integer math
+- remove Time.h and Time.cpp libraries, not needed as we track time in other ways
+- remove SERIALCLI, it hasn't been maintained in years and is replaced by RAPI
+- avoid using floating point in heartbeat code to save 600+ bytes of Flash
+
+20201001 SCL
+- move MV_FOR_xx from EnergyMeter.h to openevse.h, and outside of KWH_RECORDING
+	to fix compile error when KWH_RECORDING not defined
+
 20200816 SCL V7.0.2
 - get rid of LoadThresholds()/g_DefaultThreshData to save space
   -> fixes a bug that crept in to DoPost() when I changed hardcoded value to 

@@ -88,7 +88,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_HARD_FAULT         0x0002 // in non-autoresettable fault
 #define ECVF_LIMIT_SLEEP        0x0004 // currently sleeping after reaching time/charge limit
 #define ECVF_AUTH_LOCKED        0x0008 // locked pending authentication
-#define ECVF_AMMETER_CAL        0x0010 // ammeter calibration mode
+#define ECVF_TIME_LIMIT         0x0010 // time limit set
 #define ECVF_NOGND_TRIPPED      0x0020 // no ground has tripped at least once
 #define ECVF_CHARGING_ON        0x0040 // charging relay is closed
 #define ECVF_GFI_TRIPPED        0x0080 // gfi has tripped at least once since boot
@@ -96,11 +96,17 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_SESSION_ENDED      0x0200 // used for charging session time calc
 #define ECVF_EV_CONNECTED_PREV  0x0400 // prev EV connected flag
 #define ECVF_UI_IN_MENU         0x0800 // onboard UI currently in a menu
+#define ECVF_CHARGE_LIMIT       0x2000
+#define ECVF_AMMETER_CAL        0x8000
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
 #else
 #define ECVF_DEFAULT            ECVF_SESSION_ENDED
 #endif
+
+// used for RapiSendEvseState
+#define ECVF_CHANGED_TEST (ECVF_AUTH_LOCKED|ECVF_EV_CONNECTED|ECVF_TIME_LIMIT|ECVF_CHARGE_LIMIT|ECVF_HARD_FAULT)
+
 
 #define HS_INTERVAL_DEFAULT     0x0000  //By default, on an unformatted EEPROM, Heartbeat Supervision is not activated
 #define HS_IFALLBACK_DEFAULT    0x00    //By default, on an unformatted EEPROM, HS fallback current is 0 Amperes 
@@ -114,7 +120,7 @@ class J1772EVSEController {
 #ifdef GFI
   Gfi m_Gfi;
   unsigned long m_GfiFaultStartMs;
-  unsigned long m_GfiRetryCnt;
+  uint8_t m_GfiRetryCnt;
   uint8_t m_GfiTripCnt; // contains tripcnt-1
 #endif // GFI
   AdcPin adcPilot;
@@ -148,7 +154,7 @@ class J1772EVSEController {
 #endif
 #ifdef ADVPWR
   unsigned long m_NoGndStart;
-  unsigned long m_NoGndRetryCnt;
+  uint8_t m_NoGndRetryCnt;
   uint8_t m_NoGndTripCnt; // contains tripcnt-1
   unsigned long m_StuckRelayStartTimeMS;
   uint8_t m_StuckRelayTripCnt; // contains tripcnt-1
@@ -171,8 +177,6 @@ class J1772EVSEController {
   uint8_t m_CurrentCapacity; // max amps we can output
   unsigned long m_ChargeOnTimeMS; // millis() when relay last closed
   unsigned long m_ChargeOffTimeMS; // millis() when relay last opened
-  time_t m_ChargeOnTime; // unixtime when relay last closed
-  time_t m_ChargeOffTime;   // unixtime when relay last opened
   time_t m_ElapsedChargeTime;
   time_t m_ElapsedChargeTimePrev;
   time_t m_AccumulatedChargeTime;
@@ -321,9 +325,6 @@ public:
   time_t GetElapsedChargeTimePrev() { 
     return m_ElapsedChargeTimePrev; 
   }
-  time_t GetChargeOffTime() { 
-    return m_ChargeOffTime; 
-  }
   void Calibrate(PCALIB_DATA pcd);
   uint8_t GetCurSvcLevel() { 
     return (m_wFlags & ECF_L2) ? 2 : 1; 
@@ -408,7 +409,6 @@ int HsPulse();
 int HsRestoreAmpacity();
 int HsExpirationCheck();
 int HsAckMissedPulse(uint8_t ack);
-int HsDeactivate();
 int GetHearbeatInterval();
 int GetHearbeatCurrent();
 int GetHearbeatTrigger();
@@ -467,7 +467,11 @@ int GetHearbeatTrigger();
     return m_AmmeterReading / 1000;
   }
 #ifdef CHARGE_LIMIT
-  void ClrChargeLimit() { m_chargeLimitTotWs = 0; m_chargeLimitkWh = 0; }
+  void ClrChargeLimit() {
+    m_chargeLimitTotWs = 0;
+    m_chargeLimitkWh = 0;
+    clrVFlags(ECVF_CHARGE_LIMIT);
+  }
   void SetChargeLimitkWh(uint8_t kwh);
   uint32_t GetChargeLimitTotWs() { return m_chargeLimitTotWs; }
   uint8_t GetChargeLimitkWh() { return m_chargeLimitkWh; }
@@ -479,7 +483,11 @@ int GetHearbeatTrigger();
     return ((GetState() == EVSE_STATE_B) || (GetState() == EVSE_STATE_C)) ? 1 : 0;
   }
 #ifdef TIME_LIMIT
-  void ClrTimeLimit() { m_timeLimitEnd = 0; m_timeLimit15 = 0; }
+  void ClrTimeLimit() {
+    m_timeLimitEnd = 0;
+    m_timeLimit15 = 0;
+    clrVFlags(ECVF_TIME_LIMIT);
+  }
   void SetTimeLimitEnd(time_t limit) { m_timeLimitEnd = limit; }
   void SetTimeLimit15(uint8_t mind15);
   uint8_t GetTimeLimit15() { return m_timeLimit15; }
