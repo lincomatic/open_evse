@@ -63,7 +63,7 @@ typedef unsigned long time_t;
 
 //#define OCPP
 // support V6 hardware
-//#define OEV6
+#define OEV6
 #ifdef OEV6
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
