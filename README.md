@@ -22,8 +22,8 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 
 ## API Documentation 
 
-WIFI API: http://github.com/openevse/ESP32_WiFi_V3.x/
-RAPI API: https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h
+- WIFI API: http://github.com/openevse/ESP32_WiFi_V3.x/
+- RAPI API: https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h
 
 ## Resources
 
