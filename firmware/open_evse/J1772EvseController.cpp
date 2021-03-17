@@ -916,7 +916,7 @@ void J1772EVSEController::Init()
 {
 #ifdef OEV6
   DPIN_MODE_INPUT(V6_ID_REG,V6_ID_IDX);
-  if (!DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
+  if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
   else m_isV6 = 0;
   //  Serial.print("isV6: ");Serial.println(isV6());
 #endif
