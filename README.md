@@ -1,7 +1,7 @@
 
 Firmware for OpenEVSE controller used in OpenEnergyMonitor EmonEVSE units solde in (UK/EU) via the OpenEnergyMonitor store. In collaboration with OpenEVSE.
 
-https://shop.openenergymonitor.com/ev-charging/
+https://shop.openenergymonitor.com/evse/
 
 Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
@@ -20,7 +20,10 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 - `PP_AUTO_AMPACITY`enabled to set max current based on non-tethered cable connected
 - Three-phase option with `THREEPHASE`enabled to calculate three-phase energy
 
+## API Documentation 
 
+WIFI API: http://github.com/openevse/ESP32_WiFi_V3.x/
+RAPI API: https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h
 
 ## Resources
 
