@@ -48,7 +48,7 @@ NOTES:
 
 ## Falsh pre-compiled using avrdude:
 
-`$ avrdude -p atmega328p -c usbasp -P usb -e -U flash:w:firmware.hex`
+`$ avrdude -p atmega328p -B5 -c usbasp -P usb -e -U flash:w:firmware.hex`
 
 ISP programmer required
 
