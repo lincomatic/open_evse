@@ -54,7 +54,7 @@ ISP programmer required
 
 This only needs to be done once in the factory 
 
-`avrdude -c USBasp -p m328p -U lfuse:w:0xFF:m -U hfuse:w:0xDF:m -U efuse:w:0x05:m -B6`
+`avrdude -c USBasp -p m328p -U lfuse:w:0xFF:m -U hfuse:w:0xDF:m -U efuse:w:0xFD:m -B6`
 
 If writing eFuse fails ISBasp may need a [firmware update](https://www.vishnumaiea.in/articles/electronics/how-to-solve-usbasp-avr-efuse-write-problem-on-progisp)
 
