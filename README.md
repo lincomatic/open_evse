@@ -42,15 +42,21 @@ Firmware compile & upload help: [firmware/open_evse/LoadingFirmware.md](firmware
 
 NOTES:
 - Working versions of the required libraries are included with the firmware code. This avoids potential issues related to using the wrong versions of the libraries.
-- Platform IO/Arduino 1.6.x or newer is STRONGLY RECOMMENDED for compiling OpenEVSE. Older versions of Arduino will build sketches which are too big to fit into OpenEVSE, unless features are disabled.
-- Current official build tools version is Arduino AVR Boards by Arduino v1.6.15. You can install any version of the GUI, but make sure to use that version of the build tools, as it was used for UL certification. WITH LATEST CHANGES, v1.6.15 results in a sketch that's too big (>32768). MUST DISABLE FEATURES TO BUILD A COMPATIBLE SKETCH.. disabling RAPI_WF does the trick.
-->  Currently testing v1.6.23, which builds a sketch that fits, even when all options enabled. FOR DEVELOPMENT ONLY UNTIL FURTHER TESTING IS DONE
+- Highly recomend using the tested pre-compiled firmware (see releases page) 
 
 ## Falsh pre-compiled using avrdude:
 
-`$ avrdude -p atmega328p -c usbasp -P usb -e -U flash:w:firmware.hex`
+`$ avrdude -p atmega328p -B6 -c usbasp -P usb -e -U flash:w:firmware.hex`
 
 ISP programmer required
+
+### Set AVR fuses
+
+This only needs to be done once in the factory 
+
+`avrdude -c USBasp -p m328p -U lfuse:w:0xFF:m -U hfuse:w:0xDF:m -U efuse:w:0xFD:m -B6`
+
+If writing eFuse fails ISBasp may need a [firmware update](https://www.vishnumaiea.in/articles/electronics/how-to-solve-usbasp-avr-efuse-write-problem-on-progisp)
 
 ***
 
