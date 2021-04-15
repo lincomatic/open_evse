@@ -1,0 +1,180 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C5F80730-F44F-4478-BDAE-6634EFC2CA88}</ProjectGuid>
+    <RootNamespace>
+    </RootNamespace>
+    <ProjectName>open_evse</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>
+    </PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>
+    </PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\open_evse;$(ProjectDir)..\..\..\..\hacking\arduino\arduino-1.8.3\libraries;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\libraries;$(ProjectDir)..\..\..\..\Geek\Google Drive\arduino\sketchbook\libraries;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\variants\standard;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\4.9.2-atmel3.5.3-arduino2\avr\include\;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\4.9.2-atmel3.5.3-arduino2\avr\include\avr\;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\4.9.2-atmel3.5.3-arduino2\lib\gcc\avr\4.8.1\include;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\4.9.2-atmel3.5.3-arduino2\lib\gcc\avr\4.9.2\include;C:\Users\Geek\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\4.9.2-atmel3.5.3-arduino2\lib\gcc\avr\4.9.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ProjectDir)__vm\.open_evse.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
+      <PreprocessorDefinitions>__AVR_ATmega328p__;__AVR_ATmega328P__;_VMDEBUG=1;F_CPU=16000000L;ARDUINO=10803;ARDUINO_AVR_UNO;ARDUINO_ARCH_AVR;__cplusplus=201103L;_VMICRO_INTELLISENSE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="VisualMicro" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="open_evse.ino">
+      <FileType>CppCode</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Adafruit_TMP007.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="AutoCurrentCapacityController.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="avrstuff.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="EnergyMeter.h" />
+    <ClInclude Include="Gfi.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="i2caddr.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="I2CIO.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="J1772EvseController.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="J1772Pilot.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="Language_default.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="LCD.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="LiquidCrystal_I2C.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="LiquidTWI2.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="MCP9808.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="MennekesLock.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="open_evse.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="rapi_proc.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="RTClib.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="serialcli.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="strings.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="Time.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="twi.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="Wire.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="__vm\.open_evse.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Adafruit_TMP007.cpp" />
+    <ClCompile Include="AutoCurrentCapacityController.cpp" />
+    <ClCompile Include="avrstuff.cpp" />
+    <ClCompile Include="EnergyMeter.cpp" />
+    <ClCompile Include="Gfi.cpp" />
+    <ClCompile Include="I2CIO.cpp" />
+    <ClCompile Include="J1772EvseController.cpp" />
+    <ClCompile Include="J1772Pilot.cpp" />
+    <ClCompile Include="LCD.cpp" />
+    <ClCompile Include="LiquidCrystal_I2C.cpp" />
+    <ClCompile Include="LiquidTWI2.cpp" />
+    <ClCompile Include="MCP9808.cpp" />
+    <ClCompile Include="MennekesLock.cpp" />
+    <ClCompile Include="rapi_proc.cpp" />
+    <ClCompile Include="RTClib.cpp" />
+    <ClCompile Include="serialcli.cpp" />
+    <ClCompile Include="strings.cpp" />
+    <ClCompile Include="Time.cpp" />
+    <ClCompile Include="twi.c" />
+    <ClCompile Include="Wire.cpp" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

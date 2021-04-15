@@ -1,6 +1,8 @@
 /*
  * This file is part of Open EVSE.
-
+ *
+ * Copyright (c) 2011-2019 Sam C. Lin
+ *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3, or (at your option)
@@ -26,14 +28,22 @@ void gfi_isr()
 }
 
 
-void Gfi::Init()
+void Gfi::Init(uint8_t v6)
 {
   pin.init(GFI_REG,GFI_IDX,DigitalPin::INP);
   // GFI triggers on rising edge
   attachInterrupt(GFI_INTERRUPT,gfi_isr,RISING);
 
 #ifdef GFI_SELFTEST
-  pinTest.init(GFITEST_REG,GFITEST_IDX,DigitalPin::OUT);
+  volatile uint8_t *reg = GFITEST_REG;
+  volatile uint8_t idx  = GFITEST_IDX;
+#ifdef OEV6
+  if (v6) {
+    reg = V6_GFITEST_REG;
+    idx  = V6_GFITEST_IDX;
+  }
+#endif // OEV6
+  pinTest.init(reg,idx,DigitalPin::OUT);
 #endif
 
   Reset();

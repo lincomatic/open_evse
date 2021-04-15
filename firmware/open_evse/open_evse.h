@@ -28,7 +28,6 @@
 #include <avr/eeprom.h>
 #include <pins_arduino.h>
 #include "./Wire.h"
-#include "./Time.h"
 #include "avrstuff.h"
 #include "i2caddr.h"
 
@@ -41,14 +40,26 @@
 #define setBits(flags,bits) (flags |= (bits))
 #define clrBits(flags,bits) (flags &= ~(bits))
 
-#define VERSION "5.0.1"
+#ifndef VERSION
+#define VERSION "7.1.3"
+#endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
+
+typedef unsigned long time_t;
 
 //Language preferences: Add your custom languagefile here. See Language_default.h for more info.
 //#include "Language_norwegian.h"
 
 //-- begin features
+
+//#define OCPP
+// support V6 hardware
+#define OEV6
+#ifdef OEV6
+#define RELAY_PWM
+#define RELAY_HOLD_DELAY_TUNING // enable Z0
+#endif // OEV6
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL
@@ -67,7 +78,10 @@
 //  to enable/disable charging function
 // if AUTH_LOCK_REG/IDX are also defined (see below), then a hardware pin is
 //  used to control access, rather than RAPI
-//#define AUTH_LOCK
+// defining AUTH_LOCK enables locking functionality
+// AUTH_LOCK = 1 -> default to locked, automatically lock whenever transition to state A
+// AUTH_LOCK = 0 -> only locks when RAPI command sent to lock
+//#define AUTH_LOCK 1
 
 // serial remote api
 #define RAPI
@@ -75,28 +89,17 @@
 // RAPI over serial
 #define RAPI_SERIAL
 
-// RAPI $FF command
-#define RAPI_FF
+// RAPI $WF support
+#define RAPI_WF
 
-#ifdef RAPI_FF
-// force on RAPI_SEQUENCE_ID and RAPI_RESPONSE_CHK when RAPI_FF on
-// optional sequence id can be inserted as last parameter to commands/responses
-#define RAPI_SEQUENCE_ID
-
-// add checksum to RAPI responses RAPI v2.0.0+
-#define RAPI_RESPONSE_CHK
-#endif // RAPI_FF
+// RAPI $AN support
+#define RAPI_BTN
 
 // RAPI over I2C
 //#define RAPI_I2C
 
 // enable sending of RAPI commands
 //#define RAPI_SENDER
-
-// serial port command line
-// For the RTC version, only CLI or LCD can be defined at one time.
-// There is a directive to take care of that if you forget.
-//#define SERIALCLI
 
 // EVSE must call state transition function for permission to change states
 //#define STATE_TRANSITION_REQ_FUNC
@@ -110,7 +113,6 @@
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
-#define PP_TABLE_IEC
 
 #include "AutoCurrentCapacityController.h"
 
@@ -134,11 +136,11 @@ extern AutoCurrentCapacityController g_ACCController;
 #define VOLTMETER_POLL_INTERVAL (35)
 // This is just a wild guess
 // #define VOLTMETER_SCALE_FACTOR (266)     // original guess
-#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
-//#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
+//#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
+#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
 // #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
-#define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
-//#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
+//#define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // OPENEVSE_2
 
 // GFI support
@@ -164,7 +166,8 @@ extern AutoCurrentCapacityController g_ACCController;
 #endif //UL_COMPLIANT
 
 #define TEMPERATURE_MONITORING  // Temperature monitoring support
-// not yet #define TEMPERATURE_MONITORING_NY
+
+//#define HEARTBEAT_SUPERVISION // Heartbeat Supervision support
 
 #ifdef AMMETER
 
@@ -176,7 +179,14 @@ extern AutoCurrentCapacityController g_ACCController;
 // for OVERCURRENT_TIMEOUT ms
 #define OVERCURRENT_TIMEOUT 5000UL // ms
 
-
+// if there's no accurate voltmeter, hardcode voltages
+#ifndef MV_FOR_L1
+#define MV_FOR_L1 120000L       // conventional for North America
+#endif
+#ifndef MV_FOR_L2
+#define MV_FOR_L2 240000L       // conventional for North America
+//  #define MV_FOR_L2 230000L   // conventional for most of the world
+#endif
 
 // kWh Recording feature depends upon #AMMETER support
 // comment out KWH_RECORDING to have the elapsed time and time of day displayed on the second line of the LCD
@@ -206,9 +216,15 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // Adafruit LCD backpack in I2C mode (MCP23008)
 //#define I2CLCD
+
 // Support PCF8574* based I2C backpack using F. Malpartida's library
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
+// *requires* I2CLCD enabled and RGBLCD disabled
 //#define I2CLCD_PCF8574
+#ifdef I2CLCD_PCF8574
+#define I2CLCD
+#undef RGBLCD
+#endif // I2CLCD_PCF8574
 
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
@@ -217,12 +233,16 @@ extern AutoCurrentCapacityController g_ACCController;
 // half cycle (for ground check on both legs)
 #define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
-// connect an SPST-NO button between BTN_PIN and GND or enable ADAFRUIT_BTN to use the
+// connect an SPST-NO button between pin defined by BTN_REG/BTN_IDX and GND or enable ADAFRUIT_BTN to use the
 // select button of the Adafruit RGB LCD
 // How to use 1-button menu
 // Long press activates menu
 // When within menus, short press cycles menu items, long press selects and exits current submenu
 #define BTN_MENU
+
+// take out basic setup stuff that the user really shouldn't be changing,
+// which can be set via RAPI/WiFi module.. reclaims a lot of code space
+#define NOSETUP_MENU
 
 // When not in menus, short press instantly stops the EVSE - another short press resumes.  Long press activates menus
 // also allows menus to be manipulated even when in State B/C
@@ -244,7 +264,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DELAYTIMER
 
 #if defined(DELAYTIMER) && defined(BTN_MENU)
-#define DELAYTIMER_MENU
+//#define DELAYTIMER_MENU
 #endif
 
 #else // !RTC
@@ -264,6 +284,12 @@ extern AutoCurrentCapacityController g_ACCController;
 ////        (subreg:QI (reg/f:HI 1065) 1)) C:\Users\Geek\AppData\Local\Temp\arduino_build_853681\sketch\rapi_proc.cpp:418 1 {pushqi1}
 #define GPPBUGKLUDGE
 #endif // RTC
+
+#ifdef OCPP
+#define AUTH_LOCK 1
+#define RAPI_SERIAL
+#endif // OCPP
+
 
 // if defined, this pin goes HIGH when the EVSE is sleeping, and LOW otherwise
 //#define SLEEP_STATUS_REG &PINB
@@ -295,16 +321,12 @@ extern AutoCurrentCapacityController g_ACCController;
 // switch to m_relayHoldPwm
 // ONLY WORKS PWM-CAPABLE PINS!!!
 // use Arduino pin number PD5 = 5, PD6 = 6
-//#define RELAY_AUTO_PWM_PIN 5
+#define RELAY_PWM
+#define DEFAULT_RELAY_CLOSE_MS 100
+#define DEFAULT_RELAY_HOLD_PWM 75 // (0-255, where 0=0%, 255=100%
 // enables RAPI $Z0 for tuning PWM (see rapi_proc.h for $Z0 syntax)
 // PWM parameters written to/loaded from EEPROM
-// when done tuning, put hardcoded parameters into m_relayCloseMs
-// and m_relayHoldPwm below
-//#define RELAY_AUTO_PWM_PIN_TESTING
-#ifndef RELAY_AUTO_PWM_PIN_TESTING
-#define m_relayCloseMs 250UL
-#define m_relayHoldPwm 50 // duty cycle 0-255
-#endif //RELAY_AUTO_PWM_PIN_TESTING
+#define RELAY_HOLD_DELAY_TUNING // enable Z0
 
 //-- end features
 
@@ -318,19 +340,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #undef BTN_MENU
 #endif // RGBLCD || I2CLCD
-
-#ifndef I2CLCD
-#undef I2CLCD_PCF8574
-#endif
-
-//If LCD and RTC is defined, un-define CLI so we can save ram space.
-#if defined(SERIALCLI) && defined(DELAYTIMER_MENU)
-#error INVALID CONFIG - CANNOT enable SERIALCLI with DELAYTIMER_MENU together - too big
-#endif
-
-#if defined(RAPI) && defined(SERIALCLI)
-#error INVALID CONFIG - CANNOT DEFINE SERIALCLI AND RAPI TOGETHER SINCE THEY BOTH USE THE SERIAL PORT
-#endif
 
 #if defined(OPENEVSE_2) && !defined(ADVPWR)
 #error INVALID CONFIG - OPENEVSE_2 implies/requires ADVPWR
@@ -399,13 +408,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
-
-#ifdef SERIALCLI
-#define TMP_BUF_SIZE 64
-#else
 #define TMP_BUF_SIZE ((LCD_MAX_CHARS_PER_LINE+1)*2)
-#endif // SERIALCLI
-
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
@@ -413,13 +416,13 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // current capacity in amps
 #define DEFAULT_CURRENT_CAPACITY_L1 12
-#define DEFAULT_CURRENT_CAPACITY_L2 16
+#define DEFAULT_CURRENT_CAPACITY_L2 24
 
 // minimum allowable current in amps
 #define MIN_CURRENT_CAPACITY_J1772 6
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
+#define MAX_CURRENT_CAPACITY_L1 24 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
 #define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
 
 //J1772EVSEController
@@ -451,7 +454,9 @@ extern AutoCurrentCapacityController g_ACCController;
 #define ACLINE2_REG &PIND
 #define ACLINE2_IDX 4
 
-#ifndef RELAY_AUTO_PWM_PIN
+#define V6_CHARGING_PIN  5
+#define V6_CHARGING_PIN2 6
+
 // digital Relay trigger pin
 #define CHARGING_REG &PINB
 #define CHARGING_IDX 0
@@ -461,7 +466,6 @@ extern AutoCurrentCapacityController g_ACCController;
 //digital Charging pin for AC relay
 #define CHARGINGAC_REG &PINB
 #define CHARGINGAC_IDX 1
-#endif // !RELAY_AUTO_PWM_PIN
 
 // obsolete LED pin
 //#define RED_LED_REG &PIND
@@ -533,16 +537,18 @@ extern AutoCurrentCapacityController g_ACCController;
 // non-volatile flags
 #define EOFS_DUO_NVFLAGS 32 // 1 byte
 #define EOFS_DUO_SHARED_AMPS 33 // 1 byte
+//
+// Reserved for HEARTBEAT_SUPERVISION (3 Bytes)
+//
+// Duration in seconds:
+#define EOFS_HEARTBEAT_SUPERVISION_INTERVAL 34 // 2 bytes (zero if infinite)
+// Fallback Current in quarter Amperes:
+#define EOFS_HEARTBEAT_SUPERVISION_CURRENT 36 // 1 byte 
 
-//- start TESTING ONLY
-#ifdef RELAY_AUTO_PWM_PIN_TESTING
-#define EOFS_RELAY_HOLD_PWM 512
-#define EOFS_RELAY_CLOSE_MS 513
-#endif //  RELAY_AUTO_PWM_PIN_TESTING
-#ifdef RELAY_HOLD_DELAY_TUNING
-#define EOFS_RELAY_HOLD_DELAY 512
-#endif // RELAY_HOLD_DELAY_TUNING
-//- end TESTING ONLY
+#define EOFS_RELAY_CLOSE_MS 37 // 1 byte
+#define EOFS_RELAY_HOLD_PWM 38 // 1 byte
+
+#define EOFS_MAX_HW_CURRENT_CAPACITY 511 // 1 byte
 
 
 
@@ -560,6 +566,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // for SAMPLE_ACPINS - max number of ms to sample
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
+
+// V6 has PD7 tied to ground
+#define V6_ID_REG D
+#define V6_ID_IDX 7
+
 #ifdef GFI
 #define GFI_INTERRUPT 0 // interrupt number 0 = PD2, 1 = PD3
 // interrupt number 0 = PD2, 1 = PD3
@@ -570,6 +581,11 @@ extern AutoCurrentCapacityController g_ACCController;
 // pin is supposed to be wrapped around the GFI CT 5+ times
 #define GFITEST_REG &PIND
 #define GFITEST_IDX 6
+// V6 GFI test pin PB0
+#define V6_GFITEST_REG &PINB
+#define V6_GFITEST_IDX 0
+
+
 
 #define GFI_TEST_CYCLES 60
 // GFI pulse should be 50% duty cycle
@@ -670,12 +686,6 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #define DEFAULT_AMMETER_CURRENT_OFFSET 0   // OpenEVSE v2.5 and v3 with a 22 Ohm burden resistor.  Could use a more thorough calibration exercise to nails this down.
 #endif
-
-#ifdef KWH_RECORDING
-#define VOLTS_FOR_L1 120       // conventional for North America
-#define VOLTS_FOR_L2 240       // conventional for North America and Commonwealth countries
-//  #define VOLTS_FOR_L2 230   // conventional for most of the world
-#endif // KWH_RECORDING
 
 // The maximum number of milliseconds to sample an ammeter pin in order to find three zero-crossings.
 // one and a half cycles at 50 Hz is 30 ms.
@@ -792,8 +802,6 @@ typedef union union4b {
 #define WDT_RESET()
 #define WDT_ENABLE()
 #endif // WATCHDOG
-
-#include "serialcli.h"
 
 // OnboardDisplay.m_bFlags
 #define OBDF_MONO_BACKLIGHT 0x01
@@ -1265,7 +1273,6 @@ public:
   BtnHandler();
   void init() { m_Btn.init(); }
   void ChkBtn();
-  uint8_t InMenu() { return (m_CurMenu == NULL) ? 0 : 1; }
   uint8_t GetSavedLcdMode() { return m_SavedLcdMode; }
   void SetSavedLcdMode(uint8_t mode ) { m_SavedLcdMode = mode; }
   int8_t DoShortPress(int8_t infaultstate);
@@ -1281,10 +1288,8 @@ class DelayTimer {
   uint8_t m_StartTimerMin;
   uint8_t m_StopTimerHour;
   uint8_t m_StopTimerMin;
-  uint8_t m_CurrHour;
-  uint8_t m_CurrMin;
-  unsigned long m_LastCheck;
   uint8_t m_ManualOverride;
+  unsigned long m_LastCheck;
 public:
   DelayTimer(){
     m_LastCheck = - (60ul * 1000ul);
@@ -1385,9 +1390,9 @@ extern unsigned long g_WattSeconds;
 extern TempMonitor g_TempMonitor;
 #endif // TEMPERATURE_MONITORING
 
+char *GetFirmwareVersion(char *str);
 void wdt_delay(uint32_t ms);
 
 
 #include "strings.h"
 #include "rapi_proc.h"
-

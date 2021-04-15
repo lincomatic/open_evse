@@ -2,12 +2,13 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2015 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2011-2019 Sam C. Lin
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
  * portions Copyright (c) 2015 William McBrine
+ * portions Copyright (c) 2019 Tim Kuechler BowElectric at gmail
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -21,6 +22,7 @@
  10/25/14      Craig K         add smoothing to the Amperage readout
  3/1/15        Craig K         add TEMPERATURE_MONITORING
  3/7/15        Craig K         add KWH_RECORDING
+ 10/28/2019    Tim Kuechler    add HEARTBEAT_SUPERVISION
   
  * This file is part of Open EVSE.
 
@@ -63,8 +65,9 @@
 #ifdef BTN_MENU
 SettingsMenu g_SettingsMenu;
 SetupMenu g_SetupMenu;
-SvcLevelMenu g_SvcLevelMenu;
 MaxCurrentMenu g_MaxCurrentMenu;
+#ifndef NOSETUP_MENU
+SvcLevelMenu g_SvcLevelMenu;
 DiodeChkMenu g_DiodeChkMenu;
 #ifdef RGBLCD
 BklTypeMenu g_BklTypeMenu;
@@ -80,6 +83,7 @@ VentReqMenu g_VentReqMenu;
 GndChkMenu g_GndChkMenu;
 RlyChkMenu g_RlyChkMenu;
 #endif // ADVPWR
+#endif // NOSETUP_MENU
 ResetMenu g_ResetMenu;
 // Instantiate additional Menus - GoldServe
 #if defined(DELAYTIMER_MENU)
@@ -120,6 +124,10 @@ Menu *g_SettingsMenuList[] = {
 };
 
 Menu *g_SetupMenuList[] = {
+#ifdef NOSETUP_MENU
+  &g_MaxCurrentMenu,
+//  &g_RTCMenu,
+#else // !NOSETUP_MENU
 #ifdef DELAYTIMER_MENU
   &g_RTCMenu,
 #endif // DELAYTIMER_MENU
@@ -127,7 +135,6 @@ Menu *g_SetupMenuList[] = {
   &g_BklTypeMenu,
 #endif // RGBLCD
   &g_SvcLevelMenu,
-  &g_MaxCurrentMenu,
   &g_DiodeChkMenu,
   &g_VentReqMenu,
 #ifdef ADVPWR
@@ -140,6 +147,7 @@ Menu *g_SetupMenuList[] = {
 #ifdef TEMPERATURE_MONITORING
   &g_TempOnOffMenu,
 #endif // TEMPERATURE_MONITORING
+#endif // NOSETUP_MENU
   NULL
 };
 
@@ -157,15 +165,14 @@ OnboardDisplay g_OBD;
 // Instantiate RTC and Delay Timer - GoldServe
 #ifdef RTC
 RTC_DS1307 g_RTC;
-DateTime g_CurrTime;
 
 #if defined(RAPI)
 void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s) {
   g_RTC.adjust(DateTime(y,m,d,h,mn,s));
 }
 void GetRTC(char *buf) {
-  g_CurrTime = g_RTC.now();
-  sprintf(buf,"%d %d %d %d %d %d",g_CurrTime.year()-2000,g_CurrTime.month(),g_CurrTime.day(),g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
+  DateTime t = g_RTC.now();
+  sprintf(buf,"%d %d %d %d %d %d",t.year()-2000,t.month(),t.day(),t.hour(),t.minute(),t.second());
 }
 #endif // RAPI
 #endif // RTC
@@ -178,7 +185,6 @@ uint8_t g_month;
 uint8_t g_day;
 uint8_t g_hour;
 uint8_t g_min;
-uint8_t sec = 0;
 #endif // DELAYTIMER_MENU
 #endif // DELAYTIMER
 
@@ -242,8 +248,6 @@ char *u2a(unsigned long x,int8_t digits)
 
   return s;
 }
-
-void EvseReset();
 
 // wdt_init turns off the watchdog timer after we use it
 // to reboot
@@ -324,18 +328,23 @@ void TempMonitor::Read()
     Wire.beginTransmission(DS1307_ADDRESS);
     wiresend(uint8_t(0x11));
     Wire.endTransmission();
-      
-    Wire.requestFrom(DS1307_ADDRESS, 2);
-    m_DS3231_temperature = (((int16_t)wirerecv()) << 2) | (wirerecv() >> 6);
-    if (m_DS3231_temperature == 0x3FF) {
-      // assume chip not present
+	  
+    if(Wire.requestFrom(DS1307_ADDRESS, 2)) {                           // detect presence of DS3231 on I2C while addressing to read from it
+    m_DS3231_temperature = (((int16_t)wirerecv()) << 8) | (wirerecv()); // read upper and lower byte
+    m_DS3231_temperature = m_DS3231_temperature >> 6;                   // lower 6 bits always zero, ignore them
+    if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00;  // sign extend if a negative number since we shifted over by 6 bits
+    m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;             // handle this as 0.25C resolution
+                                                                        // Note that the device's sign bit only pertains to the device's upper byte.
+                                                                        // The small side effect is that -0.25, -0.5, and -0.75C actual temperatues
+                                                                        // will be read from the device without negative sign, thus appearing as +0.25C...
+                                                                        // There is no software workaround to this small hardware shortcoming.
+                                                                        // Temperatures outside of these values work perfectly with 1/4 degree resolution.
+                                                                        // I wrote this note so nobody wastes time trying to "fix" this in software
+                                                                        // since fundamentally it is a hardware limitaion of the DS3231.
+      }                                                                    
+    else                                                                    
       m_DS3231_temperature = TEMPERATURE_NOT_INSTALLED;
-    }
-    else {
-      if (m_DS3231_temperature & 0x0200) m_DS3231_temperature |= 0xFE00; // sign extend negative number
-      // convert from .25C to .1C
-      m_DS3231_temperature = (m_DS3231_temperature * 10) / 4;
-    }
+    
 #endif // OPENEVSE_2
 #endif // RTC
 
@@ -642,6 +651,9 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdPrint_P(g_psCharging);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is on
+#ifdef AMMETER
+      SetAmmeterDirty(1); // force ammeter update code below
+#endif // AMMETER
       break;
     case EVSE_STATE_D: // vent required
       SetGreenLed(0);
@@ -730,6 +742,11 @@ void OnboardDisplay::Update(int8_t updmode)
       LcdSetBacklightColor(VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psDisabled);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
@@ -744,13 +761,18 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
       break;
 #endif // GFI_SELFTEST
-	case EVSE_STATE_SLEEPING:
+    case EVSE_STATE_SLEEPING:
       SetGreenLed(1);
       SetRedLed(1);
 #ifdef LCD16X2
       LcdSetBacklightColor(g_EvseController.EvConnected() ? WHITE : VIOLET);
       LcdClear();
       LcdSetCursor(0,0);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psSleeping);
       LcdPrint(10,0,g_sTmp);
 #endif // LCD16X2
@@ -767,7 +789,9 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif
       SetGreenLed(0);
       SetRedLed(1);
+#ifdef LCD16X2
       LcdPrint_P(0,g_psHighTemp);
+#endif
     }
 #endif // TEMPERATURE_MONITORING
   }
@@ -796,7 +820,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // GFI
 
 #ifdef RTC
-    g_CurrTime = g_RTC.now();
+    DateTime currentTime = g_RTC.now();
 #endif
 
 #ifdef LCD16X2
@@ -910,7 +934,7 @@ void OnboardDisplay::Update(int8_t updmode)
       g_sTmp[8]=' ';
       g_sTmp[9]=' ';
       g_sTmp[10]=' ';
-      sprintf(g_sTmp+11,g_sHHMMfmt,(int)g_CurrTime.hour(),(int)g_CurrTime.minute());
+      sprintf(g_sTmp+11,g_sHHMMfmt,currentTime.hour(),currentTime.minute());
 #endif //RTC
       LcdPrint(1,g_sTmp);
 #endif // KWH_RECORDING
@@ -923,9 +947,13 @@ void OnboardDisplay::Update(int8_t updmode)
     else if (curstate == EVSE_STATE_SLEEPING) {
       LcdSetCursor(0,0);
       g_DelayTimer.PrintTimerIcon();
-      //     LcdPrint_P(g_DelayTimer.IsTimerEnabled() ? g_psWaiting : g_psSleeping);
+#ifdef AUTH_LOCK
+      if (g_EvseController.AuthLockIsOn()) {
+	LcdWrite(4); 
+      }
+#endif // AUTH_LOCK
       LcdPrint_P(g_psSleeping);
-      sprintf(g_sTmp,"%02d:%02d:%02d",g_CurrTime.hour(),g_CurrTime.minute(),g_CurrTime.second());
+      sprintf(g_sTmp,"%02d:%02d:%02d",currentTime.hour(),currentTime.minute(),currentTime.second());
       LcdPrint(0,1,g_sTmp);
       if (g_DelayTimer.IsTimerEnabled()){
 	LcdSetCursor(9,0);
@@ -1007,14 +1035,14 @@ void Btn::read()
       lastDebounceTime = 0;
     }
   }
-#ifdef RAPI
+#ifdef RAPI_WF
   else if (sample && vlongDebounceTime && (buttonState == BTN_STATE_LONG)) {
     if ((millis() - vlongDebounceTime) >= BTN_PRESS_VERYLONG) {
       vlongDebounceTime = 0;
       RapiSetWifiMode(WIFI_MODE_AP_DEFAULT);
     }
   }
-#endif // RAPI
+#endif // RAPI_WF
 }
 
 uint8_t Btn::shortPress()
@@ -1177,9 +1205,12 @@ Menu *SetupMenu::Select()
   }
   else {
     m_CurIdx = 0;
-    return NULL;
+    g_EvseController.Reboot();
+    return &g_SetupMenu;
   }
 }
+
+#ifndef NOSETUP_MENU
 
 #if defined(ADVPWR) && defined(AUTOSVCLEVEL)
 #define SVC_LVL_MNU_ITEMCNT 3
@@ -1299,57 +1330,6 @@ Menu *SvcLevelMenu::Select()
 
   return &g_SetupMenu;
 }
-
-MaxCurrentMenu::MaxCurrentMenu()
-{
-  m_Title = g_psMaxCurrent;
-}
-
-
-void MaxCurrentMenu::Init()
-{
-  uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
-  m_MinCurrent = MIN_CURRENT_CAPACITY_J1772;
-  if (cursvclvl == 1) {
-    m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
-  }
-  else {
-    m_MaxCurrent = MAX_CURRENT_CAPACITY_L2;
-  }
-  
-  sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
-  g_OBD.LcdPrint(0,g_sTmp);
-  m_CurIdx = g_EvseController.GetCurrentCapacity();
-  if (m_CurIdx < m_MinCurrent) m_CurIdx = m_MinCurrent;
-  sprintf(g_sTmp,"+%dA",m_CurIdx);
-  g_OBD.LcdPrint(1,g_sTmp);
-}
-
-void MaxCurrentMenu::Next()
-{
-  if (++m_CurIdx > m_MaxCurrent) {
-    m_CurIdx = m_MinCurrent;
-  }
-  g_OBD.LcdClearLine(1);
-  g_OBD.LcdSetCursor(0,1);
-  if (g_EvseController.GetCurrentCapacity() == m_CurIdx) {
-    g_OBD.LcdPrint(g_sPlus);
-  }
-  g_OBD.LcdPrint(m_CurIdx);
-  g_OBD.LcdPrint("A");
-}
-
-Menu *MaxCurrentMenu::Select()
-{
-  g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(m_CurIdx);
-  g_OBD.LcdPrint("A");
-  delay(500);
-  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_CurIdx);  
-  g_EvseController.SetCurrentCapacity(m_CurIdx);
-  return &g_SetupMenu;
-}
-
 
 DiodeChkMenu::DiodeChkMenu()
 {
@@ -1590,6 +1570,59 @@ Menu *RlyChkMenu::Select()
 }
 #endif // ADVPWR
 
+#endif // NOSETUP_MENU
+
+MaxCurrentMenu::MaxCurrentMenu()
+{
+  m_Title = g_psMaxCurrent;
+}
+
+
+void MaxCurrentMenu::Init()
+{
+  uint8_t cursvclvl = g_EvseController.GetCurSvcLevel();
+  m_MinCurrent = MIN_CURRENT_CAPACITY_J1772;
+  if (cursvclvl == 1) {
+    m_MaxCurrent = MAX_CURRENT_CAPACITY_L1;
+  }
+  else {
+    m_MaxCurrent = g_EvseController.GetMaxHwCurrentCapacity();
+  }
+  
+  sprintf(g_sTmp,g_sMaxCurrentFmt,(cursvclvl == 1) ? "L1" : "L2");
+  g_OBD.LcdPrint(0,g_sTmp);
+  m_CurIdx = g_EvseController.GetCurrentCapacity();
+  if (m_CurIdx < m_MinCurrent) m_CurIdx = m_MinCurrent;
+  sprintf(g_sTmp,"+%dA",m_CurIdx);
+  g_OBD.LcdPrint(1,g_sTmp);
+}
+
+void MaxCurrentMenu::Next()
+{
+  if (++m_CurIdx > m_MaxCurrent) {
+    m_CurIdx = m_MinCurrent;
+  }
+  g_OBD.LcdClearLine(1);
+  g_OBD.LcdSetCursor(0,1);
+  if (g_EvseController.GetCurrentCapacity() == m_CurIdx) {
+    g_OBD.LcdPrint(g_sPlus);
+  }
+  g_OBD.LcdPrint(m_CurIdx);
+  g_OBD.LcdPrint("A");
+}
+
+Menu *MaxCurrentMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(m_CurIdx);
+  g_OBD.LcdPrint("A");
+  delay(500);
+  eeprom_write_byte((uint8_t*)((g_EvseController.GetCurSvcLevel() == 1) ? EOFS_CURRENT_CAPACITY_L1 : EOFS_CURRENT_CAPACITY_L2),m_CurIdx);  
+  g_EvseController.SetCurrentCapacity(m_CurIdx);
+  return &g_SetupMenu;
+}
+
+
 ResetMenu::ResetMenu()
 {
   m_Title = g_psReset;
@@ -1610,6 +1643,17 @@ void ResetMenu::Next()
   }
   g_OBD.LcdClearLine(1);
   g_OBD.LcdPrint(0,1,g_YesNoMenuItems[m_CurIdx]);
+}
+
+Menu *ResetMenu::Select()
+{
+  g_OBD.LcdPrint(0,1,g_sPlus);
+  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
+  delay(500);
+  if (m_CurIdx == 0) {
+    g_EvseController.Reboot();
+  }
+  return NULL;
 }
 
 #ifdef DELAYTIMER_MENU
@@ -1673,12 +1717,12 @@ RTCMenuMonth::RTCMenuMonth()
 void RTCMenuMonth::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Month);
-  g_CurrTime = g_RTC.now();
-  g_month = g_CurrTime.month();
-  g_day = g_CurrTime.day();
-  g_year = g_CurrTime.year() - 2000;
-  g_hour = g_CurrTime.hour();
-  g_min = g_CurrTime.minute();
+  DateTime t = g_RTC.now();
+  g_month = t.month();
+  g_day = t.day();
+  g_year = t.year() - 2000;
+  g_hour = t.hour();
+  g_min = t.minute();
   m_CurIdx = g_month;
 
   DtsStrPrint1(g_year,g_month,g_day,g_hour,g_min,0);
@@ -2097,17 +2141,6 @@ Menu *TimeLimitMenu::Select()
 }
 #endif // TIME_LIMIT
 
-Menu *ResetMenu::Select()
-{
-  g_OBD.LcdPrint(0,1,g_sPlus);
-  g_OBD.LcdPrint(g_YesNoMenuItems[m_CurIdx]);
-  delay(500);
-  if (m_CurIdx == 0) {
-    g_EvseController.Reboot();
-  }
-  return NULL;
-}
-
 BtnHandler::BtnHandler()
 {
   m_CurMenu = NULL;
@@ -2154,10 +2187,21 @@ int8_t BtnHandler::DoShortPress(int8_t infaultstate)
 void BtnHandler::ChkBtn()
 {
   WDT_RESET();
+  m_Btn.read();
+
+  if (!g_EvseController.ButtonIsEnabled()) {
+#ifdef RAPI_BTN
+    if (m_Btn.shortPress()) {
+      RapiSendButtonPress(0);
+    } else if (m_Btn.longPress()) {
+      RapiSendButtonPress(1);
+    }
+#endif // RAPI_BTN
+    return;
+  }
 
   int8_t infaultstate = g_EvseController.InFaultState();
 
-  m_Btn.read();
   if (m_Btn.shortPress()) {
     if (DoShortPress(infaultstate)) {
       goto longpress;
@@ -2186,18 +2230,15 @@ void BtnHandler::ChkBtn()
 
       }
       else { // exit
-	if (infaultstate) {
-	  g_EvseController.Reboot();
-	}
-	else {
-	  g_EvseController.Enable();
-	  g_OBD.DisableUpdate(0);
-	  g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
-	  g_OBD.Update(OBD_UPD_FORCE);
-	}
+	g_EvseController.Enable();
+	g_OBD.DisableUpdate(0);
+	g_OBD.LcdSetBacklightType(m_SavedLcdMode); // exiting menus - restore LCD mode
+	g_OBD.Update(OBD_UPD_FORCE);
+	g_EvseController.ClrInMenu();
       }
     }
     else {
+      g_EvseController.SetInMenu();
 #if defined(CHARGE_LIMIT) || defined(TIME_LIMIT)
       g_SettingsMenu.CheckSkipLimits();
 #endif // CHARGE_LIMIT
@@ -2270,13 +2311,13 @@ uint8_t DelayTimer::IsInAwakeTimeInterval()
   uint8_t inTimeInterval = false;
 
   if (IsTimerEnabled() && IsTimerValid()) {
-    g_CurrTime = g_RTC.now();
-    m_CurrHour = g_CurrTime.hour();
-    m_CurrMin = g_CurrTime.minute();
+    DateTime t = g_RTC.now();
+    uint8_t currHour = t.hour();
+    uint8_t currMin = t.minute();
     
     uint16_t startTimerMinutes = m_StartTimerHour * 60 + m_StartTimerMin; 
     uint16_t stopTimerMinutes = m_StopTimerHour * 60 + m_StopTimerMin;
-    uint16_t currTimeMinutes = m_CurrHour * 60 + m_CurrMin;
+    uint16_t currTimeMinutes = currHour * 60 + currMin;
 
     if (stopTimerMinutes < startTimerMinutes) { //End time is for next day 
       
@@ -2372,9 +2413,6 @@ void ProcessInputs()
 #ifdef RAPI
   RapiDoCmd();
 #endif
-#ifdef SERIALCLI
-  g_CLI.getInput();
-#endif // SERIALCLI
 #ifdef BTN_MENU
   g_BtnHandler.ChkBtn();
 #endif
@@ -2387,18 +2425,6 @@ void ProcessInputs()
 void EvseReset()
 {
   Wire.begin();
-
-#ifdef RTC
-  g_RTC.begin();
-#ifdef DELAYTIMER
-  g_DelayTimer.Init();
-#endif  // DELAYTIMER
-#endif // RTC
-
-#ifdef SERIALCLI
-  g_CLI.Init();
-#endif // SERIALCLI
-
   g_OBD.Init();
 
 #ifdef RAPI
@@ -2406,6 +2432,10 @@ void EvseReset()
 #endif
 
   g_EvseController.Init();
+
+#ifdef DELAYTIMER
+  g_DelayTimer.Init(); // this *must* run after g_EvseController.Init() because it sets one of the vFlags
+#endif  // DELAYTIMER
 
 #ifdef PP_AUTO_AMPACITY
   g_ACCController.AutoSetCurrentCapacity();

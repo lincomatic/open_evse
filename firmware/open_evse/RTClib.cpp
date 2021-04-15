@@ -16,11 +16,9 @@
  #include <WProgram.h>
 #endif
 
-int i = 0; //The new wire library needs to take an int when you are sending for the zero register
-////////////////////////////////////////////////////////////////////////////////
 // utility code, some of this could be exposed in the DateTime API if needed
 
-const uint8_t daysInMonth [] PROGMEM = { 31,28,31,30,31,30,31,31,30,31,30,31 }; //has to be const or compiler compaints
+static const uint8_t daysInMonth [] PROGMEM = { 31,28,31,30,31,30,31,31,30,31,30,31 }; // has to be const or compiler complains
 
 // number of days since 2000/01/01, valid for 2001..2099
 static uint16_t date2days(uint16_t y, uint8_t m, uint8_t d) {
@@ -95,7 +93,7 @@ DateTime::DateTime (const char* date, const char* time) {
     yOff = conv2d(date + 9);
     // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 
     switch (date[0]) {
-    case 'J': m = (date[1] == 'a') ? 1 : ((date[2] == 'n') ? 6 : 7); break;
+        case 'J': m = (date[1] == 'a') ? 1 : ((date[2] == 'n') ? 6 : 7); break;
         case 'F': m = 2; break;
         case 'A': m = date[2] == 'r' ? 4 : 8; break;
         case 'M': m = date[2] == 'r' ? 3 : 5; break;
@@ -130,16 +128,11 @@ uint32_t DateTime::unixtime(void) const {
 static uint8_t bcd2bin (uint8_t val) { return val - 6 * (val >> 4); }
 static uint8_t bin2bcd (uint8_t val) { return val + 6 * (val / 10); }
 
-uint8_t RTC_DS1307::begin(void) {
-  return 1;
-}
-
-
 #if (ARDUINO >= 100)
 
 uint8_t RTC_DS1307::isrunning(void) {
   Wire.beginTransmission(DS1307_ADDRESS);
-  Wire.write(i);	
+  Wire.write(0);
   Wire.endTransmission();
 
   Wire.requestFrom(DS1307_ADDRESS, 1);
@@ -149,7 +142,7 @@ uint8_t RTC_DS1307::isrunning(void) {
 
 void RTC_DS1307::adjust(const DateTime& dt) {
     Wire.beginTransmission(DS1307_ADDRESS);
-    Wire.write(i);
+    Wire.write(0);
     Wire.write(bin2bcd(dt.second()));
     Wire.write(bin2bcd(dt.minute()));
     Wire.write(bin2bcd(dt.hour()));
@@ -157,13 +150,13 @@ void RTC_DS1307::adjust(const DateTime& dt) {
     Wire.write(bin2bcd(dt.day()));
     Wire.write(bin2bcd(dt.month()));
     Wire.write(bin2bcd(dt.year() - 2000));
-    Wire.write(i);
+    Wire.write(0);
     Wire.endTransmission();
 }
 
 DateTime RTC_DS1307::now() {
   Wire.beginTransmission(DS1307_ADDRESS);
-  Wire.write(i);	
+  Wire.write(0);
   Wire.endTransmission();
   
   Wire.requestFrom(DS1307_ADDRESS, 7);
@@ -182,7 +175,7 @@ DateTime RTC_DS1307::now() {
 
 uint8_t RTC_DS1307::isrunning(void) {
   Wire.beginTransmission(DS1307_ADDRESS);
-  Wire.send(i);	
+  Wire.send(0);
   Wire.endTransmission();
 
   Wire.requestFrom(DS1307_ADDRESS, 1);
@@ -192,7 +185,7 @@ uint8_t RTC_DS1307::isrunning(void) {
 
 void RTC_DS1307::adjust(const DateTime& dt) {
     Wire.beginTransmission(DS1307_ADDRESS);
-    Wire.send(i);
+    Wire.send(0);
     Wire.send(bin2bcd(dt.second()));
     Wire.send(bin2bcd(dt.minute()));
     Wire.send(bin2bcd(dt.hour()));
@@ -200,13 +193,13 @@ void RTC_DS1307::adjust(const DateTime& dt) {
     Wire.send(bin2bcd(dt.day()));
     Wire.send(bin2bcd(dt.month()));
     Wire.send(bin2bcd(dt.year() - 2000));
-    Wire.send(i);
+    Wire.send(0);
     Wire.endTransmission();
 }
 
 DateTime RTC_DS1307::now() {
   Wire.beginTransmission(DS1307_ADDRESS);
-  Wire.send(i);	
+  Wire.send(0);
   Wire.endTransmission();
   
   Wire.requestFrom(DS1307_ADDRESS, 7);
@@ -222,19 +215,3 @@ DateTime RTC_DS1307::now() {
 }
 
 #endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-// RTC_Millis implementation
-
-long RTC_Millis::offset = 0;
-
-void RTC_Millis::adjust(const DateTime& dt) {
-    offset = dt.unixtime() - millis() / 1000;
-}
-
-DateTime RTC_Millis::now() {
-  return (uint32_t)(offset + millis() / 1000);
-}
-
-////////////////////////////////////////////////////////////////////////////////

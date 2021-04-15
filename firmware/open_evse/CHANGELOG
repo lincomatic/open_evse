@@ -1,5 +1,137 @@
 Change Log
 
+202100311 SCL V7.1.3
+- flip polarity of V6 detection .. HIGH = V6
+	
+202100208 SCL V7.1.2
+- fix spontaneous reboot caused by PR#134 RAPI_BTN code
+  -> when button disabled, didn't pat the watchdog before m_Btn.read()
+- change space character for $FP from 0x01 to 0xef so that it doesn't clash
+	with custom characters
+	
+20210111 SCL V7.1.1
+- added ECVF_TIME_LIMIT, ECVF_CHARGE_LIMIT
+- move ECVF_AMMETER_CAL to 0x8000
+- revamp RapiSendEvseState()
+  - send if ECVF_CHANGED_TEST bits change
+  - don't send if currently inside a RAPI command, send it after command is completed
+- $FP changes
+  - allow spaces in strings: if 0x01 encountered in a string, print as ' ' on LCD - ignore print request when InHardFault()
+	
+20210105 SCL V7.1.0
+- merge PRs from jeremypoulter & toofishes
+  - Avoid using floating point in heartbeat code
+  - Compile & Platform IO fixes
+  - Added eventing of button presses RAPI $AN
+  - re-enable RAPI_WF by default
+	
+20201209 toofishes
+- various code size optimizations for a smaller binary
+- recode energy meter usage calculation for better accuracy using integer math
+- remove Time.h and Time.cpp libraries, not needed as we track time in other ways
+- remove SERIALCLI, it hasn't been maintained in years and is replaced by RAPI
+- avoid using floating point in heartbeat code to save 600+ bytes of Flash
+
+20201001 SCL
+- move MV_FOR_xx from EnergyMeter.h to openevse.h, and outside of KWH_RECORDING
+	to fix compile error when KWH_RECORDING not defined
+
+20200816 SCL V7.0.2
+- get rid of LoadThresholds()/g_DefaultThreshData to save space
+  -> fixes a bug that crept in to DoPost() when I changed hardcoded value to 
+	    if (reading >= m_ThreshData.m_ThreshAB) {
+	-> was testing against m_ThreshData before initializing it, so the code was executing, even when an EV connected
+- fix compiler warning in SetupMenu::Select()
+	
+20200507 SCL V7.0.1
+- added $SV
+	
+20200507 SCL V7.0.0
+changes 20200411 merged from oev6 branch
+- added OpenEVSE V6 support
+  - detection by looking for PD7 LOW
+  - RELAY_PWM - close relay w/ DC and the switch to PWM for hold
+  - if not V6 hardware detected same behavior as before on charging pin
+- added $SC M to set max hardware current capacity. Can be written only once
+N.B. AUTODETECT OF PRE-V6 HARDWARE IS CURRENTLY BROKEN PENDING NEW SPIN OF V6
+
+D6.3.0 2020420 SCL
+- merge $SC M code from oev6 branch
+- merge PR#120
+	
+20200330 SCL
+- fixed SetAmmeterDirty(1) compile error
+	
+D6.2.1 20200327 SCL
+- doPost() - don't compare against hardcoded 900 .. use ThreshAB
+- send $AT during sleep if EV connect/disconnect
+	
+D6.2.0 20200327 SCL
+- fix 1 sec delay in showing current when charging starts
+- make space by taking stuff out of button menu that is still accessible via WiFi NOSETUP_MENU
+- add RAPI $FF B to enable/disable front button
+- fix bug in $AT.. was supposed to send GetCurrentCapacity(), not GetMaxCurrentCapacity()
+- change $GC .. new 4th returned parameter is max current capacity
+- bump RAPIVER to 5.1.0.
+  -> n.b. shouldn't really be using RAPIVER.. should just test for working
+	commands and # returned parameters
+
+D6.1.3 20191217 SCL
+- fix bug in displaying lock icon in SLEEP
+- update EVSE status after receiving $S4 command
+- merge PR109 HEARTBEAT_SUPERVISION code by Tim Kuechler
+	
+D6.1.2 20191216 SCL
+- fix bug in relay opening delay code for SLEEP state - wasn't reading/comparing charging current correctly.. was always reading too low, so would instantly open the contactor 
+- change SLEEP delay threshold current from 3A -> 1A
+
+20191215 SCL
+- added #ifndef VERSION around #define VERSION
+	
+D6.1.1 20191215 SCL
+- display auth lock status on LCD in disabled & sleeping states
+	
+D6.1.0 20191003 SCL
+- if AUTH_LOCK != 0 or using hardware lock pin, always lock automatically in
+	State A
+	
+20190822 SCL
+- for consistency/safety sake, force reboot after exiting Setup menu
+	
+20190709 SCL
+- turn on RAPI_WF -> makes sketch too big for AVR build tools 1.6.15
+  -> testing v1.6.23, which builds sketch 32574 bytes and uses RAM 1570 (2 bytes less than 1.6.15)
+- turn off OCPP by default
+- N.B.: With current default settings, sketch is too big when built with AVR build tools v1.6.15. Can turn off RAPI_WF to reduce size, or use v1.6.23, which builds a sketch that fits - FOR TESTING ONLY
+	
+20190703 SCL
+- change OEII voltage defaults to lincomatic's from CraigK's
+	
+D6.0.0 20190626 SCL
+- added code to facilitate OCPP support
+- RAPI changes that may render code incompatible w/ existing clients
+  -> see $AB, $AT, $GS
+     -> $AB async notification sent at boot
+     -> $AT replaces $ST async notification
+     -> $GS has new extra parameters, and first parameter, state,
+	is now HEX instead of DEC, for consistency with $AT
+  -> sequence ID always enabled
+  -> $FF command always enabled, deprecating old redundant commands
+  -> $WF enabled only if RAPI_WF defined
+  -> get rid of RAPI_RESPONSE_CHK define.. always enabled
+- J1772EvseController -> expand m_bVFlags to m_wVFlags, get rid of m_bVFlags2,
+	clean up flag setting/clearing/testing code
+  -> added ECVF_UI_IN_MENU... flag is set/unset when in/out of UI menus..
+	$AT is sent on transition
+  -> bump RAPIVER to 5.0.0
+	
+D5.2.0 20190329 SCL
+- change $GS to return state(hex) elapsed(dec) pilotstate(hex)
+- get rid of async notification $ST - always send $AT	
+
+D5.1.0 20181109 SCL
+- change session time & charge limits to be absolute instead of extending the current session. e.g. already charged 2kWh.. set limit to 3kWh ... stop @ 3kWh instead of 5kWh
+	
 D5.0.1 20181018 SCL
 - fix Issue #94. Overcurrent caused lockup. Merge fixes from test1 branch 
 

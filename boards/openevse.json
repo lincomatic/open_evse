@@ -1,0 +1,25 @@
+{
+  "build": {
+    "core": "arduino", 
+    "extra_flags": "-DARDUINO_ARCH_AVR -DAVR_OPENEVSE", 
+    "f_cpu": "16000000L", 
+    "mcu": "atmega328p", 
+    "variant": "standard"
+  }, 
+  "frameworks": [
+    "arduino"
+  ], 
+  "fuses": {
+    "efuse": "0x05", 
+    "hfuse": "0xDF", 
+    "lfuse": "0xFF", 
+    "lock": "0x3F"
+  }, 
+  "name": "OpenEVSE", 
+  "upload": {
+    "maximum_ram_size": 2048, 
+    "maximum_size": 32768
+  }, 
+  "url": "https://www.openevse.com/", 
+  "vendor": "OpenEVSE"
+}
