@@ -1,5 +1,5 @@
 
-Firmware for OpenEVSE controller used in OpenEnergyMonitor EmonEVSE units solde in (UK/EU) via the OpenEnergyMonitor store. In collaboration with OpenEVSE.
+Firmware for OpenEVSE controller used in OpenEnergyMonitor EmonEVSE units sold in (UK/EU) via the OpenEnergyMonitor store. In collaboration with OpenEVSE.
 
 https://shop.openenergymonitor.com/evse/
 
@@ -42,9 +42,9 @@ Firmware compile & upload help: [firmware/open_evse/LoadingFirmware.md](firmware
 
 NOTES:
 - Working versions of the required libraries are included with the firmware code. This avoids potential issues related to using the wrong versions of the libraries.
-- Highly recomend using the tested pre-compiled firmware (see releases page) 
+- Highly recommend using the tested pre-compiled firmware (see releases page) 
 
-## Falsh pre-compiled using avrdude:
+## Flash pre-compiled using avrdude:
 
 `$ avrdude -p atmega328p -B6 -c usbasp -P usb -e -U flash:w:firmware.hex`
 
