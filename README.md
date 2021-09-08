@@ -48,7 +48,7 @@ NOTES:
 
 `$ avrdude -p atmega328p -B6 -c usbasp -P usb -e -U flash:w:firmware.hex`
 
-ISP programmer required
+ISP programmer required e.g [USBASP](https://www.amazon.co.uk/Hobby-Components-USBASP-Programmer-Adapter/dp/B06XYV162N)
 
 ### Set AVR fuses
 
