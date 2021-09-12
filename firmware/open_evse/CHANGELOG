@@ -1,11 +1,5 @@
 Change Log
 
-20210911 SCL V7.1.4
-- fixed minor bug.. temperature checking was only being done in STATE C. So
-  if temperature dropped below the restore threshold after transition out of
-  STATE C, the current capacity wasn't restored until the next transition into
-  STATE C. Didn't affect actual charging current, but just looked strange to users
-	
 202100311 SCL V7.1.3
 - flip polarity of V6 detection .. HIGH = V6
 	
