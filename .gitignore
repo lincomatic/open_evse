@@ -177,3 +177,6 @@ pip-log.txt
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+
+# VS Code
+.vscode
