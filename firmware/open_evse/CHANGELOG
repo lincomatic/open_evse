@@ -191,13 +191,13 @@ D4.13.0 20180403 SCL
 - added PERIODIC_LCD_REFRESH_MS code for Glyn Hudson, currently disabled
   -> redraw of LCD at periodic intervals, in case it gets corrupted
   -> was needed for him to get past CE EMC testing
-	
+
 20180313 SCL
 - merge PR#83 THREEPHASE from Glyn Hudson
 - related code cleanup
 	
 D4.12.3 20180209 SCL
-- display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault 
+- display HIGH TEMP and turn LCD red during over temp event and keep display that way until button press or EV disconnected. No change to display during overtemp panic, which causes hard fault
 	
 D4.12.2 20180206 SCL
 - revamp time limit code to base on seconds instead of millis(). time limit
@@ -260,12 +260,12 @@ D4.10.2 20171027 SCL
 - get rid of MIN_CURRENT_L2/L1 -> use MIN_CURRENT_J1772
 	
 	
-20171010 SCL	
+20171010 SCL
 - $SC remove bad code (*tokens[2] = 'N') ( should have been ==, not =)..
 	was working properly, anyway, but didn't care what character was
 	specified. just remove the clause altogether, and allow any 3rd
 	arg to make current capacity volatile
-- change $SC doc to [V] (volatile) instead of [N] for not saving to EEPROM 
+- change $SC doc to [V] (volatile) instead of [N] for not saving to EEPROM
 
 20170922 SCL
 - change "Resetting..." to "Restarting..."
@@ -282,7 +282,7 @@ vD4.10.0 20170817 SCL
 	-> bump up RAPI version to 4.0.1
 - when sleeping, and EV connected, set LCD backlight to white instead of violet
 - platformio compatibility - all code in open_evse.ino moved to open_evse.cpp to avoid bug in platformio's .ino munger that causes phantom compiler warnings (SVC_LVL_MNU_CNT redefined)
-	-> I wonder if this really works to avoid bugs.. doesn't pio still 
+	-> I wonder if this really works to avoid bugs.. doesn't pio still
 	munge the CPP files, as well?
 
 vD4.9.1 20170811 SCL
@@ -342,7 +342,7 @@ vD4.5.1 20161213 SCL
 - fix compile errors when AUTH_LOCK && !RAPI
 - protect some AMMETER code
 	
-vD4.5.0 20161209 SCL	
+vD4.5.0 20161209 SCL
 - added STATE_TRANSITION_REQ_FUNC #ifdef
 - added AUTOSVCLEVEL #ifdef
 - heavily revamped RAPI code
@@ -354,9 +354,9 @@ vD4.5.0 20161209 SCL
 	RAPI response - makes it possible to detect RAPI commands that weren't
 	received by the target
 
-vD4.4.0 20161209 SCL	
+vD4.4.0 20161209 SCL
 - minor code cleanup. also fix some compile errors when certain features disabled
-- added AUTH_LOCK code	
+- added AUTH_LOCK code
  charging access control for RFID readers, etc
  if AUTH_LOCK defined, enables RAPI G4/S4 commands
   to enable/disable charging function
@@ -479,7 +479,7 @@ vD3.10.0 SCL 20151017
 - fix compile error caused by include for LiquidCrystal_I2C.h
 	
 vD3.10.0 SCL 20151012
-- fix bug introduced by diode check state oscillation fix in D3.9.9 - if 
+- fix bug introduced by diode check state oscillation fix in D3.9.9 - if
   transition to sleep while charging, on sleep exit would go into VENT REQ error
   -> if pilot voltage in State C range, but PWM off, go to State B
      this is an added safety feature, because State C should never be allowed
@@ -497,7 +497,7 @@ vD3.9.9 CWK/SCL 20150914
 - code cleanup of temperature monitoring to save 62 bytes
 	
 vD3.9.8 CWK 20150912
-- fix Temperature Monitoring, broken by accident in D3.9.5 
+- fix Temperature Monitoring, broken by accident in D3.9.5
       The original users amperage level is restored properly after an event.
 
 vD3.9.7 SCL 20150905
@@ -518,7 +518,7 @@ vD3.9.5 SCL 20150722
 	-> so that temperature is still monitored when EVSE disabled/sleeping
 	3. ProcessInputs() removed from J1772EVSEController
 	4. added TEMPERATURE_MONITORING_NY (not yet) code .. currently disabled
-	-> $GO/$SO RAPI 
+	-> $GO/$SO RAPI
 	-> added ambient/ir_thresh support
 	
 vD3.9.4 SCL 20150611
@@ -741,7 +741,7 @@ vD3.5.0 SCL 20150216
 
 vD3.4.3 SCL 20150213
 - don't do GFI self test in doPost() if other fault already found
-- when in menus, lock out all other functions until exit 
+- when in menus, lock out all other functions until exit
 - do stuck relay chk in POST even if EV is plugged in and AutoSvcLevel()
 - for safety, set to L1 if AutoSvcLevel and car is plugged in during POST,
   because we can't auto detect level.
@@ -901,5 +901,5 @@ v0.3.0
 GFI code debugged and working.
 Now compiles with Arduino 1.0
 
-v.0.2.0	
+v.0.2.0
 Firmware for use with Arduino-0022. Tested as working.

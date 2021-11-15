@@ -19,6 +19,14 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+ 
+// UK/EU specific settings (by OpenEnergyMonitor):
+// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
+// - Charging level default to L2
+// - Set MAX_CURRENT_CAPACITY_L2 32 (European Limit)
+// - Add '.EU' to version number
+// - Enable LCD Re-draw every couple of min (required for EMC/CE)
+
 #pragma once
 
 #define OPEN_EVSE
@@ -55,14 +63,14 @@ typedef unsigned long time_t;
 
 //#define OCPP
 // support V6 hardware
-//#define OEV6
+#define OEV6
 #ifdef OEV6
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
 
 // auto detect L1/L2
-#define AUTOSVCLEVEL
+//#define AUTOSVCLEVEL
 
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
@@ -109,7 +117,7 @@ typedef unsigned long time_t;
 #define WATCHDOG
 
 // auto detect ampacity by PP pin resistor
-//#define PP_AUTO_AMPACITY
+// #define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
@@ -123,7 +131,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-//#define MENNEKES_LOCK
+// #define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -315,7 +323,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // glynhudson reports that LCD gets corrupted by EMC testing during CE
 // certification.. redraw display periodically when enabled
-//#define PERIODIC_LCD_REFRESH_MS 120000UL
+#define PERIODIC_LCD_REFRESH_MS 120000UL
 
 // when closing DC relay set to HIGH for m_relayCloseMs, then
 // switch to m_relayHoldPwm
@@ -416,14 +424,14 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // current capacity in amps
 #define DEFAULT_CURRENT_CAPACITY_L1 12
-#define DEFAULT_CURRENT_CAPACITY_L2 16
+#define DEFAULT_CURRENT_CAPACITY_L2 32
 
 // minimum allowable current in amps
 #define MIN_CURRENT_CAPACITY_J1772 6
 
 // maximum allowable current in amps
 #define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
-#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
+#define MAX_CURRENT_CAPACITY_L2 32 // J1772 Max for L2 = 80
 
 //J1772EVSEController
 
@@ -733,7 +741,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #define TEMPERATURE_AMBIENT_SHUTDOWN 680
 #endif
-                                                  
+
 //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
 //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
 //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
@@ -1013,7 +1021,7 @@ class Btn {
   uint8_t buttonState;
   unsigned long lastDebounceTime;  // the last time the output pin was toggled
   unsigned long vlongDebounceTime;  // for verylong press
-  
+
 public:
   Btn();
   void init();
@@ -1028,7 +1036,7 @@ class Menu {
 public:
   PGM_P m_Title;
   uint8_t m_CurIdx;
-  
+
   void init(const char *firstitem);
 
   Menu();
@@ -1306,7 +1314,7 @@ public:
   }
   void ClrManualOverride() { m_ManualOverride = 0; }
   uint8_t ManualOverrideIsSet() { return m_ManualOverride; }
-  
+
   uint8_t IsTimerEnabled(){
     return m_DelayTimerEnabled;
   };
@@ -1336,7 +1344,7 @@ public:
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     //    g_EvseController.SaveSettings();
   };
-  uint8_t IsInAwakeTimeInterval(); // 
+  uint8_t IsInAwakeTimeInterval(); //
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time

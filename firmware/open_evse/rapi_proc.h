@@ -113,7 +113,7 @@ colors:
  TEAL 6
  BLUE 4
  VIOLET 5
- WHITE 7 
+ WHITE 7
 
  $FB 7*03 - set backlight to white
 FD - disable EVSE

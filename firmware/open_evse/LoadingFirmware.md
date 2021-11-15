@@ -45,8 +45,6 @@ In the Arduino Software you can simply select the Arduino UNO in the Tools - Boa
 
 Optional - To add a custom board to Arduino IDE, copy the "boards.txt" to the folder ~\Arduino\hardware\openevse\avr.
 
-BLAHBLAHBLAH NEED SPECIFIC VERSION OF BOARD
-
 
 ```
 #
