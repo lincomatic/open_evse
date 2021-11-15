@@ -63,14 +63,15 @@ typedef unsigned long time_t;
 
 //#define OCPP
 // support V6 hardware
-#define OEV6
 #ifdef OEV6
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
 
 // auto detect L1/L2
-//#define AUTOSVCLEVEL
+#ifndef NO_AUTOSVCLEVEL
+#define AUTOSVCLEVEL
+#endif
 
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
@@ -323,7 +324,7 @@ extern AutoCurrentCapacityController g_ACCController;
 
 // glynhudson reports that LCD gets corrupted by EMC testing during CE
 // certification.. redraw display periodically when enabled
-#define PERIODIC_LCD_REFRESH_MS 120000UL
+//#define PERIODIC_LCD_REFRESH_MS 120000UL
 
 // when closing DC relay set to HIGH for m_relayCloseMs, then
 // switch to m_relayHoldPwm
@@ -420,18 +421,30 @@ extern AutoCurrentCapacityController g_ACCController;
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
+#ifndef DEFAULT_SERVICE_LEVEL
 #define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
+#endif
 
 // current capacity in amps
+#ifndef DEFAULT_CURRENT_CAPACITY_L1
 #define DEFAULT_CURRENT_CAPACITY_L1 12
-#define DEFAULT_CURRENT_CAPACITY_L2 32
+#endif
+#ifndef DEFAULT_CURRENT_CAPACITY_L2
+#define DEFAULT_CURRENT_CAPACITY_L2 16
+#endif
 
 // minimum allowable current in amps
+#ifndef MIN_CURRENT_CAPACITY_J1772
 #define MIN_CURRENT_CAPACITY_J1772 6
+#endif
 
 // maximum allowable current in amps
+#ifndef MAX_CURRENT_CAPACITY_L1
 #define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
-#define MAX_CURRENT_CAPACITY_L2 32 // J1772 Max for L2 = 80
+#endif
+#ifndef MAX_CURRENT_CAPACITY_L2
+#define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
+#endif
 
 //J1772EVSEController
 
