@@ -91,6 +91,8 @@ jobs:
         GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
         HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
 
+        ls -l ~/.platformio/packages/
+
         echo
         echo "Arduino AVR Version: $ARDUINO_VERSION"
         echo "GCC Version: $GCC_VERSION"
@@ -121,7 +123,7 @@ jobs:
           dir=$(dirname "${image}")
           board=$(basename "${dir}")
           echo mv "$image" "$board.hex"
-          mv "$image" "$board"
+          mv "$image" "$board.hex"
         done
 
     - name: Upload assets to latest release
