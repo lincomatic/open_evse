@@ -9,6 +9,14 @@ on:
   pull_request:
 
 jobs:
+  info:
+    name: Get event information
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump context
+        uses: crazy-max/ghaction-dump-context@v1
+
+
   build_platform_io:
     name: Build using PlatformIO
     runs-on: ubuntu-latest
