@@ -75,7 +75,7 @@ jobs:
       run: |
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
         AVR_CORE_DIR=~/.platformio/packages/framework-arduinoavr
-        ELF=.pio/build/${{ matrix.env }}/firmware.elf
+        ELF=.pio/build/${{ matrix.env }}/firmware.hex
         HEX=.pio/build/${{ matrix.env }}/firmware.hex
 
         ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
@@ -93,7 +93,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.env }}.bin
-        path: .pio/build/${{ matrix.env }}/firmware.bin
+        path: .pio/build/${{ matrix.env }}/firmware.hex
 
   release:
     runs-on: ubuntu-latest
@@ -108,7 +108,7 @@ jobs:
 
     - name: Rename images to something more sensible
       run: |
-        find artifacts -name 'firmware.bin' | while read -r image; do
+        find artifacts -name 'firmware.hex' | while read -r image; do
           dir=$(dirname "${image}")
           board=$(basename "${dir}")
           echo mv "$image" "$board"
@@ -123,5 +123,5 @@ jobs:
         prerelease: true
         title: "Development Build"
         files: |
-          *.bin
+          *.hex
  
