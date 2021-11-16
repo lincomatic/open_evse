@@ -83,7 +83,7 @@ jobs:
     - name: Get compiler and output info
       run: |
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
-        AVR_CORE_DIR=~/.platformio/packages/framework-arduinoavr
+        AVR_CORE_DIR=~/.platformio/packages/framework-arduino*avr
         ELF=.pio/build/${{ matrix.env }}/firmware.hex
         HEX=.pio/build/${{ matrix.env }}/firmware.hex
 
