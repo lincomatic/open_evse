@@ -9,19 +9,20 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build_platform_io:
+    name: Build using PlatformIO
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - env: openevse_1-6-14
-            python: 2.x
-            platformio: 4.3.4
-          - env: openevse_1-6-17
-            python: 2.x
-            platformio: 4.3.4
+#          - env: openevse_1-6-14
+#            python: 2.x
+#            platformio: 4.3.4
+#          - env: openevse_1-6-17
+#            python: 2.x
+#            platformio: 4.3.4
           - env: openevse_1-6-23
             python: 3.x
             platformio: 5.2.3
@@ -92,12 +93,12 @@ jobs:
     - name: Upload output to GitHub
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ matrix.env }}.bin
+        name: ${{ matrix.env }}
         path: .pio/build/${{ matrix.env }}/firmware.hex
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: build_platform_io
     if: github.ref == 'refs/heads/ci_updates'
 
     steps:
@@ -111,7 +112,7 @@ jobs:
         find artifacts -name 'firmware.hex' | while read -r image; do
           dir=$(dirname "${image}")
           board=$(basename "${dir}")
-          echo mv "$image" "$board"
+          echo mv "$image" "$board.hex"
           mv "$image" "$board"
         done
 
