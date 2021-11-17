@@ -156,6 +156,9 @@ jobs:
 
       - name: Get compiler and output info
         run: |
+          find -name *.hex
+          find -name *.elf
+
           ARDUINO_DIR=~/.arduino15/packages/arduino
           AVR_CORE_VERSION=${{ matrix.version }}
           AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
