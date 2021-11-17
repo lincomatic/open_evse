@@ -164,8 +164,8 @@ jobs:
           GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)
           TOOLCHAIN=$ARDUINO_DIR/tools/avr-gcc/$GCC_PACKAGE
 
-          ELF=firmware/open_evse/open_evse.arduino.avr.openevse.elf
-          HEX=firmware/open_evse/open_evse.arduino.avr.openevse.hex
+          ELF=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.elf
+          HEX=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
 
           ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
           GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
@@ -184,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.name }}
-          path: firmware/open_evse/open_evse.arduino.avr.openevse.hex
+          path: firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
 
   release:
     runs-on: ubuntu-latest
