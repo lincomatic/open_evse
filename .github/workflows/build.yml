@@ -57,15 +57,15 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-${{ matrix.env }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-${{ matrix.env }}-pip-
 
     - name: Cache PlatformIO
       uses: actions/cache@v2
       with:
         path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+        key: ${{ runner.os }}-${{ matrix.env }}-${{ hashFiles('**/lockfiles') }}
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -132,9 +132,9 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.arduino15
-          key: ${{ runner.os }}-arduino-15-${{ hashFiles('**/packages.txt') }}
+          key: ${{ runner.os }}-${{ matrix.name }}-arduino-15-${{ hashFiles('**/packages.txt') }}
           restore-keys: |
-            ${{ runner.os }}-arduino-15-
+            ${{ runner.os }}-${{ matrix.name }}-arduino-15-
 
       - uses: actions/checkout@v2
 
