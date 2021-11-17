@@ -150,34 +150,31 @@ jobs:
           cp arduino/1.6.15/programmers.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
 
       - name: Compile Sketch
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} --export-binaries firmware/open_evse
+        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} --export-binaries --verbose firmware/open_evse
 
       - name: Get compiler and output info
         run: |
-          find -name *.hex
-          find -name *.elf
+          ARDUINO_DIR=~/.arduino15/packages/arduino
+          AVR_CORE_VERSION=${{ matrix.version }}
+          AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
 
-#          ARDUINO_DIR=~/.arduino15/packages/arduino
-#          AVR_CORE_VERSION=${{ matrix.version }}
-#          AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
-#
-#          # EVIL, should use `jq`
-#          GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)
-#          TOOLCHAIN=$ARDUINO_DIR/tools/avr-gcc/$GCC_PACKAGE
-#
-#          ELF=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.elf
-#          HEX=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
-#
-#          ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
-#          GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
-#          HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
-#
-#          echo
-#          echo "Arduino AVR Version: $ARDUINO_VERSION"
-#          echo "GCC Version: $GCC_VERSION"
-#          echo "Binary Size: $HEX_SIZE"
-#          echo
-#          $TOOLCHAIN/bin/avr-size $ELF
+          # EVIL, should use `jq`
+          GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)
+          TOOLCHAIN=$ARDUINO_DIR/tools/avr-gcc/$GCC_PACKAGE
+
+          ELF=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.elf
+          HEX=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
+
+          ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
+          GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
+          HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
+
+          echo
+          echo "Arduino AVR Version: $ARDUINO_VERSION"
+          echo "GCC Version: $GCC_VERSION"
+          echo "Binary Size: $HEX_SIZE"
+          echo
+          $TOOLCHAIN/bin/avr-size $ELF
 
       - name: Upload output to GitHub
         uses: actions/upload-artifact@v2
