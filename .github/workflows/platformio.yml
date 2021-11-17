@@ -25,12 +25,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - env: openevse_1-6-14
-#            python: 2.x
-#            platformio: 4.3.4
-#          - env: openevse_1-6-17
-#            python: 2.x
-#            platformio: 4.3.4
+          #- env: openevse_1-6-14
+          #  python: 2.x
+          #  platformio: 4.3.4
+          #- env: openevse_1-6-17
+          #  python: 2.x
+          #  platformio: 4.3.4
           - env: openevse_1-6-23
             python: 3.x
             platformio: 5.2.3
