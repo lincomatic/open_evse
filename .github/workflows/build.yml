@@ -150,7 +150,7 @@ jobs:
           cp arduino/1.6.15/programmers.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
 
       - name: Compile Sketch
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} firmware/open_evse
+        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} --export-binaries firmware/open_evse
 
       - name: Get compiler and output info
         run: |
