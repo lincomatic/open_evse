@@ -269,6 +269,15 @@ GH - get cHarge limit
  kWh = 0 = no charge limit
  $GH^2B
 
+GI - get MCU ID - requires MCU_ID_LEN to be defined
+ response: $OK mcuid
+ mcuid: AVR serial number
+        mcuid is 6 ASCII characters followed by 4 hex digits
+        first hex digit = FF for 328P
+  WARNING: mcuid is guaranteed to be unique only for the 328PB. Uniqueness is
+	unknown in 328P. The first 6 characters are ASCII, and the rest are
+	hexadecimal.
+
 GM - get voltMeter settings
  response: $OK voltcalefactor voltoffset
  $GM^2E
@@ -333,7 +342,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.1.3"
+#define RAPIVER "5.1.4"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

@@ -41,7 +41,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D7.1.3"
+#define VERSION "D7.1.5"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -60,6 +60,9 @@ typedef unsigned long time_t;
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
+
+// enable $GI
+#define MCU_ID_LEN 10
 
 // auto detect L1/L2
 #define AUTOSVCLEVEL

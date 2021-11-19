@@ -33,6 +33,18 @@
 const char RAPI_VER[] PROGMEM = RAPIVER;
 
 
+#ifdef MCU_ID_LEN
+// mcuid *must* be of size MCU_ID_LEN
+#include <avr/boot.h>
+void getMcuId(uint8_t *mcuid)
+{
+  for (int i=0;i < MCU_ID_LEN;i++) {
+    mcuid[i] = boot_signature_byte_get(0x0E + i);
+  }
+}
+#endif // MCU_ID_LEN
+
+
 // convert 2-digit hex string to uint8_t
 uint8_t htou8(const char *s)
 {
@@ -462,6 +474,25 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // CHARGE_LIMIT
+#ifdef MCU_ID_LEN
+    case 'I': // get MCU ID
+      {
+        uint8_t mcuid[MCU_ID_LEN];
+        getMcuId(mcuid);
+        char *s = buffer + strlen(buffer);
+        *(s++) = ' ';
+        for (int i=0;i < 6;i++) {
+          *(s++) = mcuid[i];
+        }
+        for (int i=6;i < MCU_ID_LEN;i++) {
+          sprintf(s,"%02X",mcuid[i]);
+          s += 2;
+        }
+        bufCnt = 1; // flag response text output
+        rc = 0;
+      }
+      break;
+#endif // MCU_ID_LEN
 #ifdef KWH_RECORDING
     case 'K': // set accumulated kwh
       g_EnergyMeter.SetTotkWh(dtou32(tokens[1]));

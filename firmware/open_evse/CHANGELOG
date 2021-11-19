@@ -1,5 +1,8 @@
 Change Log
 
+2021119 SCL V7.1.5
+- added RAPI $GI command to get AVR serial number. enable with MCU_ID_LEN
+
 20210911 SCL V7.1.4
 - fixed minor bug.. temperature checking was only being done in STATE C. So
   if temperature dropped below the restore threshold after transition out of
