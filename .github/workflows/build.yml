@@ -18,115 +18,19 @@ jobs:
 
 
   build_platform_io:
+    name: Build using PlatformIO
     uses: jeremypoulter/open_evse/.github/workflows/build_platformio.yml@ci_updates
 
   build_arduino:
     name: Build using Arduino
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: openevse_arduino_1-6-15
-            arduino-platform: "arduino:avr"
-            version: 1.6.15
-            fqbn: "arduino:avr:openevse"
-          - name: openevse_arduino_1-6-23
-            arduino-platform: "arduino:avr"
-            version: 1.6.23
-            fqbn: "arduino:avr:openevse"
-          - name: openevse_arduino_1-8-3
-            arduino-platform: "arduino:avr"
-            version: 1.8.3
-            fqbn: "arduino:avr:openevse"
-
-    steps:
-      - name: Cache Arduino
-        uses: actions/cache@v2
-        with:
-          path: ~/.arduino15
-          key: ${{ runner.os }}-${{ matrix.name }}-arduino-15-${{ hashFiles('**/packages.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.name }}-arduino-15-
-
-      - uses: actions/checkout@v2
-
-      - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1
-
-      - name: Install platform
-        run: |
-          arduino-cli core update-index
-          arduino-cli core install ${{ matrix.arduino-platform }}@${{ matrix.version }}
-
-      - name: Copy support files
-        run: |
-          cp arduino/1.6.15/boards.local.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
-          cp arduino/1.6.15/programmers.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
-
-      - name: Compile Sketch
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} --export-binaries --verbose firmware/open_evse
-
-      - name: Get compiler and output info
-        run: |
-          ARDUINO_DIR=~/.arduino15/packages/arduino
-          AVR_CORE_VERSION=${{ matrix.version }}
-          AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
-
-          # EVIL, should use `jq`
-          GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)
-          TOOLCHAIN=$ARDUINO_DIR/tools/avr-gcc/$GCC_PACKAGE
-
-          ELF=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.elf
-          HEX=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
-
-          ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
-          GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
-          HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
-
-          echo
-          echo "Arduino AVR Version: $ARDUINO_VERSION"
-          echo "GCC Version: $GCC_VERSION"
-          echo "Binary Size: $HEX_SIZE"
-          echo
-          $TOOLCHAIN/bin/avr-size $ELF
-
-      - name: Upload output to GitHub
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.name }}
-          path: firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
+    uses: jeremypoulter/open_evse/.github/workflows/build_arduino.yml@ci_updates
 
   release:
-    runs-on: ubuntu-latest
+    name: Create pre-release
+
     needs:
       - build_platform_io
       - build_arduino
     if: github.ref == 'refs/heads/ci_updates'
 
-    steps:
-    - name: Download the built assets
-      uses: actions/download-artifact@v2
-      with:
-        path: artifacts
-
-    - name: Rename images to something more sensible
-      run: |
-        find artifacts -name '*.hex' | while read -r image; do
-          dir=$(dirname "${image}")
-          board=$(basename "${dir}")
-          echo mv "$image" "$board.hex"
-          mv "$image" "$board.hex"
-        done
-
-    - name: Upload assets to latest release
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        prerelease: true
-        title: "Development Build"
-        files: |
-          *.hex
- 
+    uses: jeremypoulter/open_evse/.github/workflows/release.yml@ci_updates

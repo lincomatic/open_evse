@@ -5,8 +5,7 @@ on:
   workflow_call:
 
 jobs:
-  build_platform_io:
-    name: Build using PlatformIO
+  build:
     runs-on: ubuntu-latest
 
     strategy:
