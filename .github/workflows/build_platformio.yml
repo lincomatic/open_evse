@@ -77,6 +77,9 @@ jobs:
         ELF=.pio/build/${{ matrix.env }}/firmware.elf
         HEX=.pio/build/${{ matrix.env }}/firmware.hex
 
+        ls -l ~/.platformio/packages
+        find -name avrdude ~/.platformio/packages
+
         source ci/info_common.sh info.json
 
     - name: Upload output to GitHub
