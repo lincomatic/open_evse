@@ -71,22 +71,16 @@ jobs:
       run: |
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
         AVR_CORE_DIR=~/.platformio/packages/framework-arduino*avr
+        AVRDUDE=~/.platformio/packages/tool-avrdude/avrdude
         ELF=.pio/build/${{ matrix.env }}/firmware.elf
         HEX=.pio/build/${{ matrix.env }}/firmware.hex
 
-        ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
-        GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
-        HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
-
-        echo
-        echo "Arduino AVR Version: $ARDUINO_VERSION"
-        echo "GCC Version: $GCC_VERSION"
-        echo "Binary Size: $HEX_SIZE"
-        echo
-        $TOOLCHAIN/bin/avr-size $ELF
+        source ci/info_common.sh info.json
 
     - name: Upload output to GitHub
       uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.env }}
-        path: .pio/build/${{ matrix.env }}/firmware.hex
+        path: |
+          .pio/build/${{ matrix.env }}/firmware.hex
+          info.json
