@@ -69,6 +69,8 @@ jobs:
 
     - name: Get compiler and output info
       run: |
+        set -o xtrace
+
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
         AVR_CORE_DIR=~/.platformio/packages/framework-arduino*avr
         AVRDUDE=~/.platformio/packages/tool-avrdude/avrdude
