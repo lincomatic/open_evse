@@ -1,7 +1,6 @@
 #!/bin/sh
 
 ARDUINO_VERSION=$(grep version= $AVR_CORE_DIR/platform.txt | cut -f2 -d=)
-AVRDUDE_VERSION=$($AVRDUDE -? 2>&1 | tail -n1 | grep -o -E [0-9]+\.[.0-9]+)
 GCC_VERSION=$($TOOLCHAIN/bin/avr-gcc --version | head -n 1)
 HEX_SIZE=$(ls -l $HEX | awk '{ print $5 }')
 BIN_STATS=$($TOOLCHAIN/bin/avr-size $ELF | tail -n 1)
@@ -13,7 +12,6 @@ TOTAL_SIZE=$(awk '{ print $4 }' <<< "$BIN_STATS")
 echo
 echo "Arduino AVR Version: $ARDUINO_VERSION"
 echo "GCC Version: $GCC_VERSION"
-echo "avrdude Version: $AVRDUDE_VERSION"
 echo "firmware.hex Size: $HEX_SIZE"
 echo "Text Size: $TEXT_SIZE"
 echo "Data Size: $DATA_SIZE"
@@ -26,7 +24,6 @@ if [ $1 ]; then
 {
   "arduino_version": "$ARDUINO_VERSION",
   "gcc_version": "$GCC_VERSION",
-  "avrdude_version": "$AVRDUDE_VERSION",
   "hex_size": $HEX_SIZE,
   "text_size": $TEXT_SIZE,
   "data_size": $DATA_SIZE,

@@ -57,7 +57,6 @@ jobs:
           ARDUINO_DIR=~/.arduino15/packages/arduino
           AVR_CORE_VERSION=${{ matrix.version }}
           AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
-          AVRDUDE=$ARDUINO_DIR/tools/avrdude/*/bin/avrdude
 
           # EVIL, should use `jq`
           GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)

@@ -73,12 +73,8 @@ jobs:
 
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
         AVR_CORE_DIR=~/.platformio/packages/framework-arduino*avr
-        AVRDUDE=~/.platformio/packages/tool-avrdude/avrdude
         ELF=.pio/build/${{ matrix.env }}/firmware.elf
         HEX=.pio/build/${{ matrix.env }}/firmware.hex
-
-        ls -l ~/.platformio/packages
-        find -name avrdude ~/.platformio/packages
 
         source ci/info_common.sh info.json
 
