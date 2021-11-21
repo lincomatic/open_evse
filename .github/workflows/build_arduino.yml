@@ -54,6 +54,8 @@ jobs:
 
       - name: Get compiler and output info
         run: |
+          NAME=${{ matrix.name }}
+          BUILT_TOOL=Arduino
           ARDUINO_DIR=~/.arduino15/packages/arduino
           AVR_CORE_VERSION=${{ matrix.version }}
           AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION

@@ -69,8 +69,8 @@ jobs:
 
     - name: Get compiler and output info
       run: |
-        set -o xtrace
-
+        NAME=${{ matrix.env }}
+        BUILT_TOOL=Platform IO
         TOOLCHAIN=~/.platformio/packages/toolchain-atmelavr
         AVR_CORE_DIR=~/.platformio/packages/framework-arduino*avr
         ELF=.pio/build/${{ matrix.env }}/firmware.elf

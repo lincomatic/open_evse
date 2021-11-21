@@ -8,6 +8,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+    - name: Install jq
+      run: |
+        sudo apt-get install jq -y
+
     - name: Download the built assets
       uses: actions/download-artifact@v2
       with:
@@ -21,6 +25,7 @@ jobs:
           echo mv "$image" "$board.hex"
           mv "$image" "$board.hex"
         done
+        jq -s . $(find -name info.json) > build_info.json
 
     - name: Upload assets to latest release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -31,4 +36,4 @@ jobs:
         title: "Development Build"
         files: |
           *.hex
- 
+          build_info.json

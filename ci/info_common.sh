@@ -22,6 +22,8 @@ echo
 if [ $1 ]; then
   cat <<EOF >$1
 {
+  "name": "$NAME",
+  "built_tool": "$BUILT_TOOL",
   "arduino_version": "$ARDUINO_VERSION",
   "gcc_version": "$GCC_VERSION",
   "hex_size": $HEX_SIZE,
