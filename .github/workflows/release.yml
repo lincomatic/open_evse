@@ -26,6 +26,7 @@ jobs:
           mv "$image" "$board.hex"
         done
         jq -s . $(find -name info.json) > build_info.json
+        jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' build_info.json > build_info.csv
 
     - name: Upload assets to latest release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -37,3 +38,4 @@ jobs:
         files: |
           *.hex
           build_info.json
+          build_info.csv
