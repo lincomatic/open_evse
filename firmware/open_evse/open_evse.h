@@ -41,7 +41,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D7.1.5"
+#define VERSION "D7.1.6"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -55,7 +55,7 @@ typedef unsigned long time_t;
 
 //#define OCPP
 // support V6 hardware
-//#define OEV6
+#define OEV6
 #ifdef OEV6
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0

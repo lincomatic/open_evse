@@ -474,25 +474,6 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // CHARGE_LIMIT
-#ifdef MCU_ID_LEN
-    case 'I': // get MCU ID
-      {
-        uint8_t mcuid[MCU_ID_LEN];
-        getMcuId(mcuid);
-        char *s = buffer + strlen(buffer);
-        *(s++) = ' ';
-        for (int i=0;i < 6;i++) {
-          *(s++) = mcuid[i];
-        }
-        for (int i=6;i < MCU_ID_LEN;i++) {
-          sprintf(s,"%02X",mcuid[i]);
-          s += 2;
-        }
-        bufCnt = 1; // flag response text output
-        rc = 0;
-      }
-      break;
-#endif // MCU_ID_LEN
 #ifdef KWH_RECORDING
     case 'K': // set accumulated kwh
       g_EnergyMeter.SetTotkWh(dtou32(tokens[1]));
@@ -701,6 +682,25 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // CHARGE_LIMIT
+#ifdef MCU_ID_LEN
+    case 'I': // get MCU ID
+      {
+        uint8_t mcuid[MCU_ID_LEN];
+        getMcuId(mcuid);
+        char *s = buffer + strlen(buffer);
+        *(s++) = ' ';
+        for (int i=0;i < 6;i++) {
+          *(s++) = mcuid[i];
+        }
+        for (int i=6;i < MCU_ID_LEN;i++) {
+          sprintf(s,"%02X",mcuid[i]);
+          s += 2;
+        }
+        bufCnt = 1; // flag response text output
+        rc = 0;
+      }
+      break;
+#endif // MCU_ID_LEN
 #ifdef VOLTMETER
     case 'M':
       u1.i = g_EvseController.GetVoltScaleFactor();
