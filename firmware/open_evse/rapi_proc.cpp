@@ -687,7 +687,7 @@ int EvseRapiProcessor::processCmd()
       {
         uint8_t mcuid[MCU_ID_LEN];
         getMcuId(mcuid);
-        char *s = buffer + strlen(buffer);
+        char *s = buffer;
         *(s++) = ' ';
         for (int i=0;i < 6;i++) {
           *(s++) = mcuid[i];
