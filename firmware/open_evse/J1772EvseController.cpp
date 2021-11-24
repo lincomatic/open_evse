@@ -1,7 +1,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -912,8 +912,13 @@ void J1772EVSEController::Init()
 {
 #ifdef OEV6
   DPIN_MODE_INPUT(V6_ID_REG,V6_ID_IDX);
+#ifdef INVERT_V6_DETECTION
+  if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 0;
+  else m_isV6 = 1;
+#else
   if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
   else m_isV6 = 0;
+#endif
   //  Serial.print("isV6: ");Serial.println(isV6());
 #endif
 
