@@ -232,9 +232,6 @@ extern AutoCurrentCapacityController g_ACCController;
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
-// valid only if ADVPWR defined - for rectified MID400 chips which block
-// half cycle (for ground check on both legs)
-#define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
 // connect an SPST-NO button between pin defined by BTN_REG/BTN_IDX and GND or enable ADAFRUIT_BTN to use the
 // select button of the Adafruit RGB LCD
@@ -566,7 +563,9 @@ extern AutoCurrentCapacityController g_ACCController;
 #define STUCK_RELAY_DELAY 1000 // delay after charging opened to test, ms
 #define RelaySettlingTime  250 // time for relay to settle in post, ms
 
-// for SAMPLE_ACPINS - max number of ms to sample
+// ACPINS sample interval - max number of ms to sample
+// used only when ADVPWR - for rectified MID400 chips which block
+// half cycle
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
 
