@@ -2,7 +2,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,10 @@
 #define EVSE_STATE_GFI_TEST_FAILED 0x09 // GFI self-test failure
 #define EVSE_STATE_OVER_TEMPERATURE 0x0A // over temperature error shutdown
 #define EVSE_STATE_OVER_CURRENT 0x0B // over current error shutdown
-#define EVSE_FAULT_STATE_END EVSE_STATE_OVER_CURRENT
+//reserved #define EVSE_STATE_PILOT_ERROR 0x0C // pilot self test error
+//reserved #define EVSE_STATE_TEMP_SENSOR_FAULT 0x0D // temp sensor dead
+#define EVSE_STATE_RELAY_CLOSURE_FAULT 0x0E
+#define EVSE_FAULT_STATE_END EVSE_STATE_RELAY_CLOSURE_FAULT
            
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
 #define EVSE_STATE_DISABLED 0xff // disabled
@@ -80,6 +83,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECF_MONO_LCD           0x0100 // monochrome LCD backlight
 #define ECF_GFI_TEST_DISABLED  0x0200 // no GFI self test
 #define ECF_TEMP_CHK_DISABLED  0x0400 // no Temperature Monitoring
+#define ECF_CGMI               0x1000 // continuous GMI
 #define ECF_BUTTON_DISABLED    0x8000 // front panel button disabled
 #define ECF_DEFAULT            0x0000
 
@@ -114,6 +118,15 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define HS_MISSEDPULSE_NOACK    0x02    //HEARTBEAT_SUPERVISION missed a pulse and this has not been acknowleged
 #define HS_MISSEDPULSE          0x01    //HEARTBEAT_SUPERVISION missed a pulse and this is the semi-permanent record flag
 //#define DEBUG_HS //Uncomment this for debugging statemnts sent to serial port
+
+
+// acpinstate bits - when set, means pin has voltage detected
+#define ACPIN1_OPEN 2
+#define ACPIN2_OPEN 1
+#define ACPINS_OPEN (ACPIN1_OPEN|ACPIN2_OPEN)
+// for ECF_CGMI
+#define GND_TEST_PIN_OPEN ACPIN2_OPEN
+#define RLY_TEST_PIN_OPEN ACPIN1_OPEN
 
 class J1772EVSEController {
   J1772Pilot m_Pilot;
@@ -309,6 +322,7 @@ public:
   void SetHardFault() { setVFlags(ECVF_HARD_FAULT); }
   void ClrHardFault() { clrVFlags(ECVF_HARD_FAULT); }
   int8_t InHardFault() { return vFlagIsSet(ECVF_HARD_FAULT); }
+  int8_t CGMIisEnabled() { return flagIsSet(ECF_CGMI); }
   unsigned long GetResetMs();
 
   uint8_t SetMaxHwCurrentCapacity(uint8_t amps);
@@ -353,7 +367,7 @@ public:
   }
 #ifdef AUTOSVCLEVEL
   uint8_t AutoSvcLevelEnabled() { return (m_wFlags & ECF_AUTO_SVC_LEVEL_DISABLED) ? 0 : 1; }
-  void EnableAutoSvcLevel(uint8_t tf);
+  uint8_t EnableAutoSvcLevel(uint8_t tf);
   void SetAutoSvcLvlSkipped(uint8_t tf) {
     if (tf) setVFlags(ECVF_AUTOSVCLVL_SKIPPED);
     else clrVFlags(ECVF_AUTOSVCLVL_SKIPPED);

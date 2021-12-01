@@ -1,5 +1,18 @@
 Change Log
 
+20211201 SCL V8.0.0d
+- more refinements to CGMI - POST stuck relay check
+20211128 SCL V8.0.0c
+- fixed bugs in CGMI code
+20211123 SCL V8.0.0a
+- acpinstate: added ACPINx_OPEN
+- first cut for CGMI - continuous GMI support:
+  -> PD4: at any time, if PD3 is low, declare EVSE_STATE_NO_GROUND.
+  -> PD3: we will read it only when we think the relay should be open. If we detect a low state on PD4 when the relay is supposed to be open, go to EVSE_STATE_STUCK_RELAY. This is exactly the current behavior, except that we only monitor one pin.	
+- take out SAMPLE_ACPINS #ifdef.. always sample
+- added INVERT_V6_DETECTION: DO NOT USE 
+  -> only enabled for lincomatic's beta V6 board
+	
 2021119 SCL V7.1.6
 - fixed bug - RAPI $GI was implemented as $SI
 - fixed bug, $GI was returning $OK $GI xxx

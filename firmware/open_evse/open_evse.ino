@@ -717,7 +717,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       if (updmode == OBD_UPD_HARDFAULT) {
-        LcdMsg_P(g_psEvseError,g_psNoGround);
+        LcdMsg_P(g_EvseController.CGMIisEnabled() ? g_psSvcReq : g_psEvseError,g_psNoGround);
       }
       else {
 	// 2nd line will be updated below with auto retry count
@@ -732,6 +732,15 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
+#endif //Adafruit RGB LCD
+      // n.b. blue LED is off
+      break;
+    case EVSE_STATE_RELAY_CLOSURE_FAULT:
+      SetGreenLed(0);
+      SetRedLed(1);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdMsg_P(g_psSvcReq,g_psRelayClosureFault);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;

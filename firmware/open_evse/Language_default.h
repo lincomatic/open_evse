@@ -59,7 +59,7 @@
 #define STR_STUCK_RELAY				  "STUCK RELAY"
 #define STR_DISABLED				   "Disabled"
 #define STR_RESETTING                              "Restarting..."
-
+#define STR_RELAY_CLOSURE_FAULT "OPEN RELAY"
 #define STR_WAITING					   "Waiting"
 #define STR_SLEEPING				   "Sleeping"
 #define STR_CONNECTED			     "Connected"

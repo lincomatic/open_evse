@@ -473,15 +473,18 @@ void J1772EVSEController::EnableStuckRelayChk(uint8_t tf)
 }
 
 #ifdef AUTOSVCLEVEL
-void J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
+uint8_t J1772EVSEController::EnableAutoSvcLevel(uint8_t tf)
 {
+  int rc = 0;
   if (tf) {
-    m_wFlags &= ~ECF_AUTO_SVC_LEVEL_DISABLED;
+    if (CGMIisEnabled()) rc = 1;
+    else clrFlags(ECF_AUTO_SVC_LEVEL_DISABLED);
   }
   else {
-    m_wFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
+    setFlags(ECF_AUTO_SVC_LEVEL_DISABLED);
   }
-  SaveEvseFlags();
+  if (!rc) SaveEvseFlags();
+  return rc;
 }
 #endif // AUTOSVCLEVEL
 
@@ -627,7 +630,7 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
 
 #ifdef ADVPWR
 
-// acpinstate : bit 1 = AC pin 1, bit0 = AC pin 2
+// acpinstate : when an acpinstate bit is set, voltage is detected at the pin
 uint8_t J1772EVSEController::ReadACPins()
 {
 #ifndef OPENEVSE_2
@@ -635,8 +638,8 @@ uint8_t J1772EVSEController::ReadACPins()
   // AC pins are active low, so we set them high
   // and then if voltage is detected on a pin, it will go low
   //
-  uint8_t ac1 = 2;
-  uint8_t ac2 = 1;
+  uint8_t ac1 = ACPIN1_OPEN;
+  uint8_t ac2 = ACPIN2_OPEN;
   unsigned long startms = millis();
   
   do {
@@ -653,10 +656,9 @@ uint8_t J1772EVSEController::ReadACPins()
   // active *high*. '3' is the value for "both AC lines dead"
   // and '0' is the value for "both AC lines live". There is
   // no need to sample, as the hardware does a peak-hold.
-  return (pinAC1.read() ? 0 : 3);
+  return (pinAC1.read() ? 0 : ACPINS_OPEN);
 #endif // OPENEVSE_2
 }
-
 
 
 uint8_t J1772EVSEController::doPost()
@@ -859,7 +861,8 @@ uint8_t J1772EVSEController::doPost()
 #endif
     if (StuckRelayChkEnabled()) {
       RelayOff = ReadACPins();
-      if ((RelayOff & 3) != 3) {
+      if ((CGMIisEnabled() && !(RelayOff & RLY_TEST_PIN_OPEN)) ||
+          (!CGMIisEnabled() && (RelayOff != ACPINS_OPEN))) {
 	svcState = SR;
 #ifdef LCD16X2
 	g_OBD.LcdMsg_P(g_psTestFailed,g_psStuckRelay);
@@ -1011,12 +1014,22 @@ void J1772EVSEController::Init()
   else {
     m_wFlags = rflgs;
     svclvl = GetCurSvcLevel();
-
   }
+
+  // FORCE CGMI ON - TAKE THIS CODE OUT
+  m_wFlags |= ECF_CGMI;
+
+  if (CGMIisEnabled() && !flagIsSet(ECF_AUTO_SVC_LEVEL_DISABLED)) {
+    // can't do auto svc level when CGMI enabled, revert to default
+    setFlags(ECF_AUTO_SVC_LEVEL_DISABLED);
+    svclvl = DEFAULT_SERVICE_LEVEL;
+  }
+
 
 #ifdef NOCHECKS
   m_wFlags |= ECF_DIODE_CHK_DISABLED|ECF_VENT_REQ_DISABLED|ECF_GND_CHK_DISABLED|ECF_STUCK_RELAY_CHK_DISABLED|ECF_GFI_TEST_DISABLED|ECF_TEMP_CHK_DISABLED;
 #endif
+
 
 #ifdef SERDBG
   EnableSerDbg(1);
@@ -1279,82 +1292,105 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
 #ifdef ADVPWR
   uint8_t acpinstate = ReadACPins();
-  
-  if (chargingIsOn()) { // relay closed
-    if ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY) {
-      // ground check - can only test when relay closed
-      if (GndChkEnabled() && ((acpinstate & 3) == 3)) {
-	// bad ground
-	tmpevsestate = EVSE_STATE_NO_GROUND;
-	m_EvseState = EVSE_STATE_NO_GROUND;
-	
-	chargingOff(); // open the relay
-	if ((prevevsestate != EVSE_STATE_NO_GROUND) && (((uint8_t)(m_NoGndTripCnt+1)) < 254)) {
-	  m_NoGndTripCnt++;
-	  eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
-	}
-	m_NoGndStart = curms;
-	
-	nofault = 0;
-      }
 
-#ifdef AUTOSVCLEVEL
-      // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
-      // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
-      if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
-	if (!acpinstate) {
-	  // set to L2
-	  SetSvcLevel(2,1);
-	}
-	SetAutoSvcLvlSkipped(0);
-      }
-#endif // AUTOSVCLEVEL
+  if (CGMIisEnabled() && GndChkEnabled() && (acpinstate & GND_TEST_PIN_OPEN)) {
+    // bad ground
+    tmpevsestate = EVSE_STATE_NO_GROUND;
+    m_EvseState = EVSE_STATE_NO_GROUND;
+    chargingOff(); // open the relay
+    if ((prevevsestate != EVSE_STATE_NO_GROUND) &&
+        (((uint8_t)(m_NoGndTripCnt+1)) < 254)) {
+      m_NoGndTripCnt++;
+      eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
     }
+    nofault = 0;
   }
-  else { // !chargingIsOn() - relay open
-    if (prevevsestate == EVSE_STATE_NO_GROUND) {
-      // check to see if EV disconnected
-      if (phigh == 0xffff) {
-	ReadPilot();
+  
+  if (nofault) {
+    if (chargingIsOn()) { // relay closed
+      if (StuckRelayChkEnabled() && CGMIisEnabled() && ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY) && (acpinstate & RLY_TEST_PIN_OPEN)) {
+        // relay didn't close
+        chargingOff(); // open the relay
+        tmpevsestate = EVSE_STATE_RELAY_CLOSURE_FAULT;
+        m_EvseState = EVSE_STATE_RELAY_CLOSURE_FAULT;
+        nofault = 0;
       }
-      if (!EvConnected()) {
-	// EV disconnected - cancel fault
-	m_EvseState = EVSE_STATE_UNKNOWN;
-	return;
-      }
-
-      if (((m_NoGndRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) &&
-	  ((curms - m_NoGndStart) > GFI_TIMEOUT)) {
-	m_NoGndRetryCnt++;
-      }
-      else {
-	tmpevsestate = EVSE_STATE_NO_GROUND;
-	m_EvseState = EVSE_STATE_NO_GROUND;
-	
-	nofault = 0;
+      else if (!CGMIisEnabled() && ((curms - m_ChargeOnTimeMS) > GROUND_CHK_DELAY)) {
+        // ground check - can only test when relay closed
+        if (GndChkEnabled() && (acpinstate == ACPINS_OPEN)) {
+          // bad ground
+          tmpevsestate = EVSE_STATE_NO_GROUND;
+          m_EvseState = EVSE_STATE_NO_GROUND;
+          
+          chargingOff(); // open the relay
+          if ((prevevsestate != EVSE_STATE_NO_GROUND) && (((uint8_t)(m_NoGndTripCnt+1)) < 254)) {
+            m_NoGndTripCnt++;
+            eeprom_write_byte((uint8_t*)EOFS_NOGND_TRIP_CNT,m_NoGndTripCnt);
+          }
+          m_NoGndStart = curms;
+          
+          nofault = 0;
+        }
+        
+#ifdef AUTOSVCLEVEL
+        // if EV was plugged in during POST, we couldn't do AutoSvcLevel detection,
+        // so we had to hardcode L1. During first charge session, we can probe and set to L2 if necessary
+        if (AutoSvcLvlSkipped() && (m_EvseState == EVSE_STATE_C)) {
+          if (!acpinstate) {
+            // set to L2
+            SetSvcLevel(2,1);
+          }
+          SetAutoSvcLvlSkipped(0);
+        }
+#endif // AUTOSVCLEVEL
       }
     }
-    else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
-      if (((acpinstate & 3) != 3)) { // Stuck Relay reading
-	if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
-	  m_StuckRelayStartTimeMS = curms; // mark start state
-	}
-        if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
-               ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
-	     (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
-	  // stuck relay
-	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (((uint8_t)(m_StuckRelayTripCnt+1)) < 254)) {
-	    m_StuckRelayTripCnt++;
-	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
-	  }   
-	  tmpevsestate = EVSE_STATE_STUCK_RELAY;
-	  m_EvseState = EVSE_STATE_STUCK_RELAY;
-	  nofault = 0;
-	}
-      } // end of stuck relay reading
-      else m_StuckRelayStartTimeMS = 0; // not stuck - reset
-    } // end of StuckRelayChkEnabled
-  } // end of !chargingIsOn() - relay open
+    else { // !chargingIsOn() - relay open
+      if (!CGMIisEnabled() && (prevevsestate == EVSE_STATE_NO_GROUND)) {
+        // check to see if EV disconnected
+        if (phigh == 0xffff) {
+          ReadPilot();  // update EV connect state
+        }
+        if (!EvConnected()) {
+          // EV disconnected - cancel fault
+          m_EvseState = EVSE_STATE_UNKNOWN;
+          return;
+        }
+        
+        if (((m_NoGndRetryCnt < GFI_RETRY_COUNT) || (GFI_RETRY_COUNT == 255)) &&
+            ((curms - m_NoGndStart) > GFI_TIMEOUT)) {
+          m_NoGndRetryCnt++;
+        }
+        else {
+          tmpevsestate = EVSE_STATE_NO_GROUND;
+          m_EvseState = EVSE_STATE_NO_GROUND;
+          
+          nofault = 0;
+        }
+      }
+      else if (StuckRelayChkEnabled()) {    // stuck relay check - can test only when relay open
+        if ((CGMIisEnabled() && !(acpinstate & RLY_TEST_PIN_OPEN)) ||
+            (!CGMIisEnabled() && (acpinstate != ACPINS_OPEN))) { // Stuck Relay reading
+          if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && !m_StuckRelayStartTimeMS) { //check for first occurence
+            m_StuckRelayStartTimeMS = curms; // mark start state
+          }
+          if ( ( ((curms - m_ChargeOffTimeMS) > STUCK_RELAY_DELAY) && //  charge off de-bounce
+                 ((curms - m_StuckRelayStartTimeMS) > STUCK_RELAY_DELAY) ) ||  // start delay de-bounce
+               (prevevsestate == EVSE_STATE_STUCK_RELAY) ) { // already in error state
+            // stuck relay
+            if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (((uint8_t)(m_StuckRelayTripCnt+1)) < 254)) {
+              m_StuckRelayTripCnt++;
+              eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
+            }   
+            tmpevsestate = EVSE_STATE_STUCK_RELAY;
+            m_EvseState = EVSE_STATE_STUCK_RELAY;
+            nofault = 0;
+          }
+        } // end of stuck relay reading
+        else m_StuckRelayStartTimeMS = 0; // not stuck - reset
+      } // end of StuckRelayChkEnabled
+    } // end of !chargingIsOn() - relay open
+  } // end of if (nofault)
 #endif // ADVPWR
    
 #ifdef GFI
@@ -1693,17 +1729,25 @@ if (TempChkEnabled()) {
     else if (m_EvseState == EVSE_STATE_NO_GROUND) {
       // Ground not detected
       chargingOff(); // turn off charging current
-      m_Pilot.SetState(PILOT_STATE_P12);
+      if (CGMIisEnabled()) {
+        m_Pilot.SetState(PILOT_STATE_N12);
+        HardFault();
+      }
+      else m_Pilot.SetState(PILOT_STATE_P12);
     }
     else if (m_EvseState == EVSE_STATE_STUCK_RELAY) {
       // Stuck relay detected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_N12);
-#ifdef UL_COMPLIANT
       // per discussion w/ UL Fred Reyes 20150217
       // always hard fault stuck relay
       HardFault();
-#endif // UL_COMPLIANT
+    }
+    else if (m_EvseState == EVSE_STATE_RELAY_CLOSURE_FAULT) {
+      // Stuck relay detected
+      chargingOff(); // turn off charging current
+      m_Pilot.SetState(PILOT_STATE_N12);
+      HardFault();
     }
     else {
       m_Pilot.SetState(PILOT_STATE_P12);

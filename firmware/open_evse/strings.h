@@ -106,6 +106,7 @@ extern const char g_psNoGround[] PROGMEM;
 extern const char g_psStuckRelay[] PROGMEM;
 extern const char g_psDisabled[] PROGMEM;
 extern const char g_psResetting[] PROGMEM;
+extern const char g_psRelayClosureFault[] PROGMEM;
 //extern const char g_psWaiting[] PROGMEM;
 extern const char g_psSleeping[] PROGMEM;
 extern const char g_psEvConnected[] PROGMEM;
