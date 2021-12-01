@@ -2279,6 +2279,10 @@ void DelayTimer::Init() {
   else {
     m_DelayTimerEnabled = rtmp;
   }
+
+  if (m_DelayTimerEnabled) g_EvseController.SetDelayTimerOnFlag();
+  else g_EvseController.ClrDelayTimerOnFlag();
+
   rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerHour = DEFAULT_START_HOUR;
@@ -2397,6 +2401,7 @@ void DelayTimer::Enable(){
   ClrManualOverride();
   //  g_EvseController.SaveSettings();
   //  CheckTime();
+  g_EvseController.SetDelayTimerOnFlag();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::Disable(){
@@ -2404,6 +2409,7 @@ void DelayTimer::Disable(){
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   ClrManualOverride();
   //  g_EvseController.SaveSettings();
+  g_EvseController.ClrDelayTimerOnFlag();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){

@@ -2,7 +2,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2021 Sam C. Lin
+ * Copyright (c) 2011-2019 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,7 +100,9 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_SESSION_ENDED      0x0200 // used for charging session time calc
 #define ECVF_EV_CONNECTED_PREV  0x0400 // prev EV connected flag
 #define ECVF_UI_IN_MENU         0x0800 // onboard UI currently in a menu
+#define ECVF_TIMER_ON           0x1000 // delay timer enabled
 #define ECVF_CHARGE_LIMIT       0x2000
+// reserved #define ECVF_BOOT_LOCK          0x4000 // locked at boot
 #define ECVF_AMMETER_CAL        0x8000
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
@@ -553,6 +555,8 @@ int GetHearbeatTrigger();
   }
   void SetInMenu() { setVFlags(ECVF_UI_IN_MENU); }
   void ClrInMenu() { clrVFlags(ECVF_UI_IN_MENU); }
+  void SetDelayTimerOnFlag() {setVFlags(ECVF_TIMER_ON); }
+  void ClrDelayTimerOnFlag() {clrVFlags(ECVF_TIMER_ON); }
 #ifdef BTN_MENU
   void ButtonEnable(uint8_t tf) {
     if (!tf) setFlags(ECF_BUTTON_DISABLED); 
