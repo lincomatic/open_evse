@@ -1016,8 +1016,9 @@ void J1772EVSEController::Init()
     svclvl = GetCurSvcLevel();
   }
 
-  // FORCE CGMI ON - TAKE THIS CODE OUT
+#ifdef ENABLE_CGMI
   m_wFlags |= ECF_CGMI;
+#endif // ENABLE_CGMI
 
   if (CGMIisEnabled() && !flagIsSet(ECF_AUTO_SVC_LEVEL_DISABLED)) {
     // can't do auto svc level when CGMI enabled, revert to default

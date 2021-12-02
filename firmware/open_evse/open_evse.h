@@ -62,6 +62,9 @@ typedef unsigned long time_t;
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
 
+// enable CGMI support
+//#define ENABLE_CGMI
+
 // enable $GI
 #define MCU_ID_LEN 10
 
