@@ -41,7 +41,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D8.0.0d"
+#define VERSION "D8.1.0a"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -130,7 +130,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-//#define MENNEKES_LOCK
+#define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -486,8 +486,6 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #ifdef MENNEKES_LOCK
 // requires external 12V H-bridge driver such as Polulu 1451
-#define MENNEKES_LOCK_STATE EVSE_STATE_B // lock in State B
-//#define MENNEKES_LOCK_STATE EVSE_STATE_C // lock in State C
 
 //D11 - MOSI
 #define MENNEKES_LOCK_PINA_REG &PINB

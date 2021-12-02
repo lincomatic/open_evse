@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2019 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -166,6 +166,12 @@ S4 0|1 - set auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
    1 = locked - EVSE won't charge until unlocked
    when auth lock is on, will not transition to State C and a lock icon is
    displayed in States A & B.
+S5 A|M|0|1 - Mennekes lock setting
+   A = enable automatic mode - locked when connected, unlocked otherwise
+   M = enable manual control mode
+   0 = unlock (valid only in manual mode)
+   1 = lock (valid only in manual mode)
+   n.b. requires MENNEKES_LOCK. manual mode is volatile - always boots in automatic mode
 SA currentscalefactor currentoffset - set ammeter settings
 SC amps [V|M]- set current capacity
  response:
@@ -230,6 +236,16 @@ G4 - get auth lock (needs AUTH_LOCK defined and AUTH_LOCK_REG undefined)
  response: $OK lockstate
   lockstate = 0=unlocked, =1=locked
  $G4^57
+
+G5 - get Mennekes settings
+ response: $OK state mode
+   state: 0 = unlocked
+          1 = locked
+   mode: A = automatic mode - locked when connected, unlocked otherwise
+         M = manual control mode
+   Note: lock mode is also indicated by ECVF_MENNEKES_MANUAL
+   n.b. requires MENNEKES_LOCK
+
 GA - get ammeter settings
  response: $OK currentscalefactor currentoffset
  $GA^22
@@ -342,7 +358,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.1.4"
+#define RAPIVER "5.2.0"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1

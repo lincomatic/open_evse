@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2014 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -30,25 +30,31 @@ void MennekesLock::Init()
   pinA.init(MENNEKES_LOCK_PINA_REG,MENNEKES_LOCK_PINA_IDX,DigitalPin::OUT);
   pinB.init(MENNEKES_LOCK_PINB_REG,MENNEKES_LOCK_PINB_IDX,DigitalPin::OUT);
 
-  Unlock();
+  Unlock(1);
 }
 
-void MennekesLock::Lock()
+void MennekesLock::Lock(int8_t force)
 {
-  pinA.write(1);
-  pinB.write(0);
-  delay(300);
-  pinA.write(0);
-  pinB.write(0);
+  if (force || !isLocked) {
+    pinA.write(1);
+    pinB.write(0);
+    delay(300);
+    pinA.write(0);
+    pinB.write(0);
+    isLocked = 1;
+  }
 }
 
-void MennekesLock::Unlock()
+void MennekesLock::Unlock(int8_t force)
 {
-  pinA.write(0);
-  pinB.write(1);
-  delay(300);
-  pinA.write(0);
-  pinB.write(0);
+  if (force || isLocked) {
+    pinA.write(0);
+    pinB.write(1);
+    delay(300);
+    pinA.write(0);
+    pinB.write(0);
+    isLocked = 0;
+  }
 }
 
 #endif // MENNEKES_LOCK

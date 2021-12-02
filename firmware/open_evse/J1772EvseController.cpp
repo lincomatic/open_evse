@@ -358,9 +358,6 @@ void J1772EVSEController::HardFault(int8_t recoverable)
 #ifdef RAPI
   RapiSendEvseState();
 #endif
-#ifdef MENNEKES_LOCK
-  m_MennekesLock.Unlock();
-#endif // MENNEKES_LOCK
   while (1) {
     ProcessInputs(); // spin forever or until user resets via menu
     // if pilot not in N12 state, we can recover from the hard fault when EV
@@ -541,6 +538,10 @@ void J1772EVSEController::Disable()
     m_EvseState = EVSE_STATE_DISABLED;
     // panic stop so we won't wait for EV to open its contacts first
     chargingOff();
+#ifdef MENNEKES_LOCK
+    if (!MennekesIsManual()) m_MennekesLock.Unlock(1);
+#endif // MENNEKES_LOCK
+
     g_OBD.Update(OBD_UPD_FORCE);
 #ifdef RAPI
     RapiSendEvseState();
@@ -1193,8 +1194,18 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
     else ClrEvConnectedPrev();
 
     // can determine connected state only if not -12VDC
-    if (ph >= m_ThreshData.m_ThreshAB) ClrEvConnected();
-    else SetEvConnected();
+    if (ph >= m_ThreshData.m_ThreshAB) {
+      ClrEvConnected();
+#ifdef MENNEKES_LOCK
+      if (!MennekesIsManual()) m_MennekesLock.Unlock(0);
+#endif // MENNEKES_LOCK
+    }
+    else {
+      SetEvConnected();
+#ifdef MENNEKES_LOCK
+      if (!MennekesIsManual()) m_MennekesLock.Lock(0);
+#endif // MENNEKES_LOCK
+    }
   }
 
   if (plow) {
@@ -1623,16 +1634,6 @@ if (TempChkEnabled()) {
   
   // state transition
   if (forcetransition || (m_EvseState != prevevsestate)) {
-#ifdef MENNEKES_LOCK
-    if (m_EvseState == MENNEKES_LOCK_STATE) {
-      m_MennekesLock.Lock();
-    }
-    else {
-      m_MennekesLock.Unlock();
-    }
-#endif // MENNEKES_LOCK
-
-
     if (m_EvseState == EVSE_STATE_A) { // EV not connected
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);

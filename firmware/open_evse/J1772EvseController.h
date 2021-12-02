@@ -2,7 +2,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -389,7 +389,7 @@ public:
   uint8_t ReadACPins();
 #endif // ADVPWR
 
-  void HardFault(uint8_t recoverable);
+  void HardFault(int8_t recoverable);
 
   void SetLimitSleep(int8_t tf) {
     if (tf) setVFlags(ECVF_LIMIT_SLEEP);
@@ -572,6 +572,15 @@ int GetHearbeatTrigger();
   void SetMV(uint32_t mv) { m_Voltage = mv; }
 #endif
   int32_t GetVoltage() { return m_Voltage; }
+#ifdef MENNEKES_LOCK
+  void SetMennekesManual() { m_wVFlags |= ECVF_MENNEKES_MANUAL; }
+  void ClrMennekesManual() { m_wVFlags &= ~ECVF_MENNEKES_MANUAL; }
+  int8_t MennekesIsManual() { return (m_wVFlags & ECVF_MENNEKES_MANUAL) ? 1 : 0; }
+  int8_t MennekesIsLocked() { return m_MennekesLock.IsLocked(); }
+  void LockMennekes() { m_MennekesLock.Lock(1); }
+  void UnlockMennekes() { m_MennekesLock.Unlock(1); }
+#endif // MENNEKES_LOCK
+
 };
 
 #ifdef FT_ENDURANCE

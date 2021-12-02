@@ -1,5 +1,22 @@
 Change Log
 
+20211201 SCL V8.1.0a
+- added ECVF_TIMER_ON so we don't have to poll to test if delay timer is on
+- revamp MENNEKES_LOCK
+  -> auto mode: locked when EVSE connected, unlocked when disconnected
+     -> to implement this, need to get rid of states were pilot = N12, because
+	we can't detect connection state
+	-> don't ever set pilot to N12, even in fault states. only set to N12 
+	in EVSE_STATE_DISABLED
+	  -> always automatically unlocks in EVSE_STATE_DISABLED, even if
+	  in manual mode
+	-> add recoverable parameter to HardFault()
+  -> add volatile manual mode - when enabled, Mennekes lock is under full manual
+	control
+  -> add S5/G5 RAPI commands to set/fetch Mennekes settings
+  -> ECVF_MENNEKES_MANUAL also reflects auto/manual mode
+- RAPIVER 5.2.0
+- usurped ECVF_AMMETER_CAL with ECVF_MENNEKES_MANUAL, so the code is currently turned off
 20211201 SCL V8.0.0d
 - more refinements to CGMI - POST stuck relay check
 20211128 SCL V8.0.0c
