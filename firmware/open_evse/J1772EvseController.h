@@ -389,7 +389,7 @@ public:
   uint8_t ReadACPins();
 #endif // ADVPWR
 
-  void HardFault();
+  void HardFault(uint8_t recoverable);
 
   void SetLimitSleep(int8_t tf) {
     if (tf) setVFlags(ECVF_LIMIT_SLEEP);

@@ -351,7 +351,7 @@ void J1772EVSEController::chargingOff()
 #endif
 } 
 
-void J1772EVSEController::HardFault()
+void J1772EVSEController::HardFault(int8_t recoverable)
 {
   SetHardFault();
   g_OBD.Update(OBD_UPD_HARDFAULT);
@@ -367,7 +367,7 @@ void J1772EVSEController::HardFault()
     // is unplugged
     if (m_Pilot.GetState() != PILOT_STATE_N12) {
       ReadPilot(); // update EV connect state
-      if (!EvConnected()) {
+      if (!EvConnected() && recoverable) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
 	break;
@@ -1424,7 +1424,7 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 	m_GfiRetryCnt++;
 	
 	if ((GFI_RETRY_COUNT != 255) && (m_GfiRetryCnt > GFI_RETRY_COUNT)) {
-	  HardFault();
+	  HardFault(1);
 	  return;
 	}
 	else {
@@ -1674,7 +1674,7 @@ if (TempChkEnabled()) {
        // GFI test failed - hard fault
         m_EvseState = EVSE_STATE_GFI_TEST_FAILED;
 	m_Pilot.SetState(PILOT_STATE_P12);
-	HardFault();
+	HardFault(1);
 	return;
       }
 #endif // UL_GFI_SELFTEST
@@ -1697,7 +1697,7 @@ if (TempChkEnabled()) {
       // vent required not supported
       chargingOff(); // turn off charging current
       m_Pilot.SetState(PILOT_STATE_P12);
-      HardFault();
+      HardFault(1);
     }
     else if (m_EvseState == EVSE_STATE_GFCI_FAULT) {
       // vehicle state F
@@ -1713,8 +1713,7 @@ if (TempChkEnabled()) {
 	wdt_reset();
       }
       chargingOff(); // open the EVSE relays hopefully the EV has already disconnected by now by the J1772 specification
-      m_Pilot.SetState(PILOT_STATE_N12);  // This will tell the EV that the EVSE has major problems requiring disconnecting from the EV
-      HardFault();
+      HardFault(1);
     }
 #endif //TEMPERATURE_MONITORING
     else if (m_EvseState == EVSE_STATE_DIODE_CHK_FAILED) {
@@ -1724,30 +1723,21 @@ if (TempChkEnabled()) {
       // and keep checking
       m_Pilot.SetPWM(m_CurrentCapacity);
       m_Pilot.SetState(PILOT_STATE_P12);
-      HardFault();
+      HardFault(1);
     }
     else if (m_EvseState == EVSE_STATE_NO_GROUND) {
       // Ground not detected
       chargingOff(); // turn off charging current
-      if (CGMIisEnabled()) {
-        m_Pilot.SetState(PILOT_STATE_N12);
-        HardFault();
-      }
-      else m_Pilot.SetState(PILOT_STATE_P12);
+      m_Pilot.SetState(PILOT_STATE_P12);
     }
     else if (m_EvseState == EVSE_STATE_STUCK_RELAY) {
       // Stuck relay detected
       chargingOff(); // turn off charging current
-      m_Pilot.SetState(PILOT_STATE_N12);
+#ifdef UL_COMPLIANT
       // per discussion w/ UL Fred Reyes 20150217
       // always hard fault stuck relay
-      HardFault();
-    }
-    else if (m_EvseState == EVSE_STATE_RELAY_CLOSURE_FAULT) {
-      // Stuck relay detected
-      chargingOff(); // turn off charging current
-      m_Pilot.SetState(PILOT_STATE_N12);
-      HardFault();
+      HardFault(0);
+#endif // UL_COMPLIANT
     }
     else {
       m_Pilot.SetState(PILOT_STATE_P12);
@@ -1784,7 +1774,7 @@ if (TempChkEnabled()) {
   if (!nofault && (prevevsestate == EVSE_STATE_C)) {
     // if fault happens immediately (within 2 sec) after charging starts, hard fault
     if ((curms - m_ChargeOnTimeMS) <= 2000) {
-      HardFault();
+      HardFault(1);
       return;
     }
   }
@@ -1830,7 +1820,7 @@ if (TempChkEnabled()) {
 	  chargingOff(); // open the EVSE relays hopefully the EV has already discon
 
 	  // spin until EV is disconnected
-	  HardFault();
+	  HardFault(1);
 	  
 	  m_OverCurrentStartMs = 0; // clear overcurrent
 	}
