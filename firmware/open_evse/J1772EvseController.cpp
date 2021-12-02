@@ -1787,7 +1787,11 @@ if (TempChkEnabled()) {
   ReadVoltmeter();
 #endif // VOLTMETER
 #ifdef AMMETER
-  if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0)) || AmmeterCalEnabled()) {
+  if (((m_EvseState == EVSE_STATE_C) && (m_CurrentScaleFactor > 0))
+#ifdef ECVF_AMMETER_CAL  
+      || AmmeterCalEnabled()
+#endif
+      ) {
     
 #ifndef FAKE_CHARGING_CURRENT
     readAmmeter();

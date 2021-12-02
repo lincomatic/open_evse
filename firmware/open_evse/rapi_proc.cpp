@@ -393,14 +393,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // RTC      
-#ifdef AMMETER
+#if defined(AMMETER) && defined(ECVF_AMMETER_CAL)
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
 	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
 	rc = 0;
       }
       break;
-#endif // AMMETER
+#endif // AMMETER && ECVF_AMMETER_CAL
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {

@@ -834,7 +834,11 @@ void OnboardDisplay::Update(int8_t updmode)
 
 #ifdef LCD16X2
 #if defined(AMMETER)
-    if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
+    if (((curstate == EVSE_STATE_C)
+#ifdef ECVF_AMMETER_CAL
+         || g_EvseController.AmmeterCalEnabled()
+#endif 
+         ) && AmmeterIsDirty()) {
       SetAmmeterDirty(0);
 
       uint32_t current = g_EvseController.GetChargingCurrent();

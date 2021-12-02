@@ -103,7 +103,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_TIMER_ON           0x1000 // delay timer enabled
 #define ECVF_CHARGE_LIMIT       0x2000
 // reserved #define ECVF_BOOT_LOCK          0x4000 // locked at boot
-#define ECVF_AMMETER_CAL        0x8000
+#define ECVF_MENNEKES_MANUAL    0x8000 // Mennekes lock manual mode
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
 #else
@@ -470,6 +470,7 @@ int GetHearbeatTrigger();
     m_CurrentScaleFactor = scale;
     eeprom_write_word((uint16_t*)EOFS_CURRENT_SCALE_FACTOR,scale);
   }
+#ifdef ECVF_AMMETER_CAL
   uint8_t AmmeterCalEnabled() { 
     return vFlagIsSet(ECVF_AMMETER_CAL);
   }
@@ -477,6 +478,7 @@ int GetHearbeatTrigger();
     if (tf) setVFlags(ECVF_AMMETER_CAL);
     else clrVFlags(ECVF_AMMETER_CAL);
   }
+#endif // ECVF_AMMETER_CAL
   void ZeroChargingCurrent() { m_ChargingCurrent = 0; }
   uint8_t GetInstantaneousChargingAmps() {
     readAmmeter();
