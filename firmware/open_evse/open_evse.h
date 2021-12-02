@@ -59,7 +59,7 @@ typedef unsigned long time_t;
 #ifdef OEV6
 //#define INVERT_V6_DETECTION // DO NOT USE: ONLY FOR lincomatic's BETA V6 board
 #define RELAY_PWM
-#define RELAY_HOLD_DELAY_TUNING // enable Z0
+//#define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
 
 // enable CGMI support
