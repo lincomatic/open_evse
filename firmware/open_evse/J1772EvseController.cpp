@@ -1,7 +1,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -631,7 +631,6 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
 uint8_t J1772EVSEController::ReadACPins()
 {
 #ifndef OPENEVSE_2
-#ifdef SAMPLE_ACPINS
   //
   // AC pins are active low, so we set them high
   // and then if voltage is detected on a pin, it will go low
@@ -649,9 +648,6 @@ uint8_t J1772EVSEController::ReadACPins()
     }
   } while ((ac1 || ac2) && ((millis() - startms) < AC_SAMPLE_MS));
   return ac1 | ac2;
-#else // !SAMPLE_ACPINS
-  return (pinAC1.read() ? 2 : 0) | (pinAC2.read() ? 1 : 0);
-#endif // SAMPLE_ACPINS
 #else
   // For OpenEVSE II, there is only ACLINE1_PIN, and it is
   // active *high*. '3' is the value for "both AC lines dead"
@@ -916,8 +912,13 @@ void J1772EVSEController::Init()
 {
 #ifdef OEV6
   DPIN_MODE_INPUT(V6_ID_REG,V6_ID_IDX);
+#ifdef INVERT_V6_DETECTION
+  if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 0;
+  else m_isV6 = 1;
+#else
   if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
   else m_isV6 = 0;
+#endif
   //  Serial.print("isV6: ");Serial.println(isV6());
 #endif
 

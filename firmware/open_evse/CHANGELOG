@@ -1,5 +1,9 @@
 Change Log
 
+2021119 SCL V7.1.6
+- fixed bug - RAPI $GI was implemented as $SI
+- fixed bug, $GI was returning $OK $GI xxx
+
 2021119 SCL V7.1.5
 - added RAPI $GI command to get AVR serial number. enable with MCU_ID_LEN
 
