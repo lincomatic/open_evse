@@ -7,11 +7,11 @@ Firmware for OpenEVSE controller used in OpenEVSE Charging Stations sold in the 
 
 Based on OpenEVSE: Open Source Hardware J1772 Electric Vehicle Supply Equipment
 
-## USA:
+## USA
 
 TODO: add notes about USA OpenEVSE
 
-## UK/EU:
+## UK/EU
 
 - Disable `AUTOSVCLEVEL` (autodetection is designed for split-phase)
 - Charging level default to `L2`
@@ -28,8 +28,8 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 
 ## API Documentation
 
-- WIFI API: http://github.com/openevse/ESP32_WiFi_V4.x/
-- RAPI API: https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h
+- WIFI API: <http://github.com/openevse/ESP32_WiFi_V4.x/>
+- RAPI API: <https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h>
 
 ## Resources
 
@@ -49,7 +49,7 @@ NOTES:
 - Working versions of the required libraries are included with the firmware code. This avoids potential issues related to using the wrong versions of the libraries.
 - Highly recommend using the tested pre-compiled firmware (see releases page)
 
-## Flash pre-compiled using avrdude:
+## Flash pre-compiled using avrdude
 
 `$ avrdude -p atmega328p -B6 -c usbasp -P usb -e -U flash:w:firmware.hex`
 
@@ -57,7 +57,7 @@ ISP programmer required e.g [USBASP](https://www.amazon.co.uk/Hobby-Components-U
 
 ### Set AVR fuses
 
-This only needs to be done once in the factory 
+This only needs to be done once in the factory
 
 `avrdude -c USBasp -p m328p -U lfuse:w:0xFF:m -U hfuse:w:0xDF:m -U efuse:w:0xFD:m -B6`
 
