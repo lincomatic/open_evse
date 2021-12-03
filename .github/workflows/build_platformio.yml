@@ -21,6 +21,9 @@ jobs:
           - env: openevse_1-6-23
             python: 3.x
             platformio: 5.2.3
+          - env: openevse_1-8-3
+            python: 3.x
+            platformio: 5.2.3
           - env: openevse_latest
             python: 3.x
             platformio: 5.2.3
