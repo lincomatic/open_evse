@@ -26,7 +26,7 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 - `PP_AUTO_AMPACITY` enabled to set max current based on non-tethered cable connected
 - Three-phase option with `THREEPHASE` enabled to calculate three-phase energy
 
-## API Documentation 
+## API Documentation
 
 - WIFI API: http://github.com/openevse/ESP32_WiFi_V4.x/
 - RAPI API: https://github.com/openenergymonitor/open_evse/blob/master/firmware/open_evse/rapi_proc.h
@@ -40,15 +40,14 @@ EmonEVSE (non-tethered type-2 EVSE unit)
 - [OpenEVSE Controller Hardware Repo](https://github.com/OpenEVSE/OpenEVSE_PLUS)
 - [OpenEVSE Project Homepage](https://openevse.com)
 
-
 ***
-
 
 Firmware compile & upload help: [firmware/open_evse/LoadingFirmware.md](firmware/open_evse/LoadingFirmware.md)
 
 NOTES:
+
 - Working versions of the required libraries are included with the firmware code. This avoids potential issues related to using the wrong versions of the libraries.
-- Highly recommend using the tested pre-compiled firmware (see releases page) 
+- Highly recommend using the tested pre-compiled firmware (see releases page)
 
 ## Flash pre-compiled using avrdude:
 

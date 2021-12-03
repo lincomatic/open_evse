@@ -631,6 +631,7 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
 uint8_t J1772EVSEController::ReadACPins()
 {
 #ifndef OPENEVSE_2
+#ifdef SAMPLE_ACPINS
   //
   // AC pins are active low, so we set them high
   // and then if voltage is detected on a pin, it will go low
@@ -648,6 +649,9 @@ uint8_t J1772EVSEController::ReadACPins()
     }
   } while ((ac1 || ac2) && ((millis() - startms) < AC_SAMPLE_MS));
   return ac1 | ac2;
+#else // !SAMPLE_ACPINS
+  return (pinAC1.read() ? 2 : 0) | (pinAC2.read() ? 1 : 0);
+#endif // SAMPLE_ACPINS
 #else
   // For OpenEVSE II, there is only ACLINE1_PIN, and it is
   // active *high*. '3' is the value for "both AC lines dead"
