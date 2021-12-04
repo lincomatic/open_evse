@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
-      - ci_updates
+      - stable
   pull_request:
 
 jobs:
@@ -19,11 +18,11 @@ jobs:
 
   build_platform_io:
     name: Build using PlatformIO
-    uses: jeremypoulter/open_evse/.github/workflows/build_platformio.yml@ci_updates
+    uses: OpenEVSE/open_evse/.github/workflows/build_platformio.yml@stable
 
   build_arduino:
     name: Build using Arduino
-    uses: jeremypoulter/open_evse/.github/workflows/build_arduino.yml@ci_updates
+    uses: OpenEVSE/open_evse/.github/workflows/build_arduino.yml@stable
 
   release:
     name: Create pre-release
@@ -33,4 +32,4 @@ jobs:
       - build_arduino
     if: github.ref == 'refs/heads/ci_updates'
 
-    uses: jeremypoulter/open_evse/.github/workflows/release.yml@ci_updates
+    uses: OpenEVSE/open_evse/.github/workflows/release.yml@stable
