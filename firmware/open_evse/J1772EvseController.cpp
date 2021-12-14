@@ -1,7 +1,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 int g_CycleCnt = -1;
 long g_CycleHalfStart;
 uint8_t g_CycleState;
-#endif 
+#endif
 
 //                                               A/B B/C C/D D DS
 THRESH_DATA J1772EVSEController::m_ThreshData = {875,780,690,0,260};
@@ -82,7 +82,7 @@ void J1772EVSEController::readAmmeter()
     is_first_sample = 0;
     last_sample = sample;
     switch(zero_crossings) {
-    case 0: 
+    case 0:
       continue; // Still waiting to start sampling
     case 1:
     case 2:
@@ -98,7 +98,7 @@ void J1772EVSEController::readAmmeter()
       return;
     }
   }
-  // ran out of time. Assume that it's simply not oscillating any. 
+  // ran out of time. Assume that it's simply not oscillating any.
   m_AmmeterReading = 0;
 
   WDT_RESET();
@@ -349,7 +349,7 @@ void J1772EVSEController::chargingOff()
 #ifdef AMMETER
   m_ChargingCurrent = 0;
 #endif
-} 
+}
 
 void J1772EVSEController::HardFault()
 {
@@ -533,7 +533,7 @@ void J1772EVSEController::Enable()
 
 void J1772EVSEController::Disable()
 {
-  if (m_EvseState != EVSE_STATE_DISABLED) { 
+  if (m_EvseState != EVSE_STATE_DISABLED) {
     m_Pilot.SetState(PILOT_STATE_N12);
     m_EvseState = EVSE_STATE_DISABLED;
     // panic stop so we won't wait for EV to open its contacts first
@@ -682,10 +682,10 @@ uint8_t J1772EVSEController::doPost()
 
   m_Pilot.SetState(PILOT_STATE_P12); //check to see if EV is plugged in
 
-  g_OBD.SetRedLed(1); 
+  g_OBD.SetRedLed(1);
 #ifdef LCD16X2 //Adafruit RGB LCD
   g_OBD.LcdMsg_P(g_psPwrOn,g_psSelfTest);
-#endif //Adafruit RGB LCD 
+#endif //Adafruit RGB LCD
 
 #ifdef AUTOSVCLEVEL
   if (AutoSvcLevelEnabled()) {
@@ -701,7 +701,7 @@ uint8_t J1772EVSEController::doPost()
     if (SerDbgEnabled()) {
       Serial.print("AC millivolts: ");Serial.println(ac_volts);
       Serial.print("SvcState: ");Serial.println((int)svcState);
-    }  
+    }
 #endif //#ifdef SERDBG
 #ifdef LCD16X2
     g_OBD.LcdMsg_P(g_psAutoDetect,(svcState == L2) ? g_psLevel2 : g_psLevel1);
@@ -793,9 +793,9 @@ uint8_t J1772EVSEController::doPost()
       delay(RelaySettlingTime); //allow relay to fully open before running other tests
         
       // decide input power state based on the status read  on L1 and L2
-      // either 2 SPST or 1 DPST relays can be configured 
-      // valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off 
-      //  
+      // either 2 SPST or 1 DPST relays can be configured
+      // valid svcState is L1 - one hot, L2 both hot, OG - open ground both off, SR - stuck relay when shld be off
+      //
       if (RelayOff == none) { // relay not stuck on when off
 	switch ( Relay1 ) {
 	case ( both ): //
@@ -833,7 +833,7 @@ uint8_t J1772EVSEController::doPost()
 	Serial.print("Relay1: ");Serial.println((int)Relay1);
 	Serial.print("Relay2: ");Serial.println((int)Relay2);
 	Serial.print("SvcState: ");Serial.println((int)svcState);
-      }  
+      }
 #endif //#ifdef SERDBG
 
       // update LCD
@@ -916,8 +916,13 @@ void J1772EVSEController::Init()
 {
 #ifdef OEV6
   DPIN_MODE_INPUT(V6_ID_REG,V6_ID_IDX);
+#ifdef INVERT_V6_DETECTION
+  if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 0;
+  else m_isV6 = 1;
+#else
   if (DPIN_READ(V6_ID_REG,V6_ID_IDX)) m_isV6 = 1;
   else m_isV6 = 0;
+#endif
   //  Serial.print("isV6: ");Serial.println(isV6());
 #endif
 
@@ -1093,7 +1098,7 @@ void J1772EVSEController::Init()
   ShowDisabledTests();
 #endif
  
-  uint8_t fault; 
+  uint8_t fault;
   do {
     fault = 0; // reset post fault
     uint8_t psvclvl = doPost(); // auto detect service level overrides any saved values
@@ -1125,7 +1130,7 @@ void J1772EVSEController::Init()
 #endif
     }
   } while ( fault && ( m_EvseState == EVSE_STATE_GFI_TEST_FAILED || m_EvseState == EVSE_STATE_NO_GROUND ||  m_EvseState == EVSE_STATE_STUCK_RELAY ));
-#endif // ADVPWR  
+#endif // ADVPWR
 
   SetSvcLevel(svclvl);
 
@@ -1190,12 +1195,12 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
 
 
 //TABLE A1 - PILOT LINE VOLTAGE RANGES (recommended.. adjust as necessary
-//                           Minimum Nominal Maximum 
-//Positive Voltage, State A  11.40 12.00 12.60 
-//Positive Voltage, State B  8.36 9.00 9.56 
-//Positive Voltage, State C  5.48 6.00 6.49 
-//Positive Voltage, State D  2.62 3.00 3.25 
-//Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60 
+//                           Minimum Nominal Maximum
+//Positive Voltage, State A  11.40 12.00 12.60
+//Positive Voltage, State B  8.36 9.00 9.56
+//Positive Voltage, State C  5.48 6.00 6.49
+//Positive Voltage, State D  2.62 3.00 3.25
+//Negative Voltage - States B, C, D, and F -11.40 -12.00 -12.60
 void J1772EVSEController::Update(uint8_t forcetransition)
 {
   uint16_t plow;
@@ -1345,7 +1350,7 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 	  if ((prevevsestate != EVSE_STATE_STUCK_RELAY) && (((uint8_t)(m_StuckRelayTripCnt+1)) < 254)) {
 	    m_StuckRelayTripCnt++;
 	    eeprom_write_byte((uint8_t*)EOFS_STUCK_RELAY_TRIP_CNT,m_StuckRelayTripCnt);
-	  }   
+	  }
 	  tmpevsestate = EVSE_STATE_STUCK_RELAY;
 	  m_EvseState = EVSE_STATE_STUCK_RELAY;
 	  nofault = 0;
@@ -1404,9 +1409,9 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
 #ifdef TEMPERATURE_MONITORING                 //  A state for OverTemp fault
 if (TempChkEnabled()) {
-  if ((g_TempMonitor.m_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  || 
+  if ((g_TempMonitor.m_TMP007_temperature >= TEMPERATURE_INFRARED_PANIC)  ||
       (g_TempMonitor.m_MCP9808_temperature >= TEMPERATURE_AMBIENT_PANIC)  ||
-      (g_TempMonitor.m_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  { 
+      (g_TempMonitor.m_DS3231_temperature >= TEMPERATURE_AMBIENT_PANIC))  {
     tmpevsestate = EVSE_STATE_OVER_TEMPERATURE;
     m_EvseState = EVSE_STATE_OVER_TEMPERATURE;
     nofault = 0;
@@ -1474,7 +1479,7 @@ if (TempChkEnabled()) {
         g_CycleCnt = 0;
         g_CycleHalfStart = curms;
         g_CycleState = EVSE_STATE_B;
-      } 
+      }
 
       if (g_CycleCnt >= 0) {
         if (g_CycleState == EVSE_STATE_B) {
@@ -1524,7 +1529,7 @@ if (TempChkEnabled()) {
   m_TmpEvseState = tmpevsestate;
 
 #ifdef FT_GFI_RETRY
-  if (nofault && (prevevsestate == EVSE_STATE_C) && 
+  if (nofault && (prevevsestate == EVSE_STATE_C) &&
       ((curms - m_ChargeOnTimeMS) > 10000)) {
     g_OBD.LcdMsg("Induce","Fault");
     for(int i = 0; i < GFI_TEST_CYCLES; i++) {
@@ -1615,7 +1620,7 @@ if (TempChkEnabled()) {
     g_TempMonitor.ClrOverTemperatureLogged();
 #endif
     }
-    else if (m_EvseState == EVSE_STATE_B) { // connected 
+    else if (m_EvseState == EVSE_STATE_B) { // connected
       chargingOff(); // turn off charging current
 #ifdef AUTH_LOCK
       // if locked, don't turn on PWM
@@ -1801,13 +1806,44 @@ if (TempChkEnabled()) {
   else {
     m_OverCurrentStartMs = 0; // clear overcurrent
   }
-#endif // OVERCURRENT_THRESHOLD    
+#endif // OVERCURRENT_THRESHOLD
 #endif // AMMETER
 
 
 #ifdef HEARTBEAT_SUPERVISION
     this->HsExpirationCheck();  //Check to see if HS is engaged, and if so whether we missed a pulse
 #endif //HEARTBEAT_SUPERVISION
+
+#ifdef TEMPERATURE_MONITORING
+    if(TempChkEnabled()) {
+      uint8_t currcap = GetMaxCurrentCapacity();
+      uint8_t setit = 0;
+
+      if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
+					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
+					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
+	setit = 1;    // set to the user's original setting for current
+      }           
+      else if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
+						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
+						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
+	currcap /= 2;    // set to the throttled back level
+	setit = 3;
+      }    
+      if (setit) {
+        if (setit <= 2) {
+          g_TempMonitor.SetOverTemperature(setit-1);
+	}
+        else {
+	  g_TempMonitor.SetOverTemperatureShutdown(setit-3);
+	}
+	SetCurrentCapacity(currcap,0,1);
+    	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
+    	  m_Pilot.SetPWM(m_CurrentCapacity);
+        }
+      }
+    }
+#endif // TEMPERATURE_MONITORING
 
   if (m_EvseState == EVSE_STATE_C) {
     m_ElapsedChargeTimePrev = m_ElapsedChargeTime;
@@ -1826,27 +1862,12 @@ if (TempChkEnabled()) {
 	currcap /= 2;   // set to the throttled back level
 	setit = 2;
       }
-
-      else if (g_TempMonitor.OverTemperature() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_RESTORE_AMPERAGE ) &&  // all sensors need to show return to lower levels
-					      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ) &&
-					      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_RESTORE_AMPERAGE  ))) {  // restore the original L2 current advice to the EV
-	setit = 1;    // set to the user's original setting for current
-      }           
-      
-      
       else if (!g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   >= TEMPERATURE_INFRARED_SHUTDOWN ) ||  // any sensor reaching threshold trips action
 						       (g_TempMonitor.m_MCP9808_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  )  ||
 						       (g_TempMonitor.m_DS3231_temperature  >= TEMPERATURE_AMBIENT_SHUTDOWN  ))) {   // Throttle back the L2 current advice to the EV
   currcap /= 4;
 	setit = 4;
       }
-      
-      else if (g_TempMonitor.OverTemperatureShutdown() && ((g_TempMonitor.m_TMP007_temperature   <= TEMPERATURE_INFRARED_THROTTLE_DOWN ) &&  // all sensors need to show return to lower levels
-						      (g_TempMonitor.m_MCP9808_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN )  &&
-						      (g_TempMonitor.m_DS3231_temperature  <= TEMPERATURE_AMBIENT_THROTTLE_DOWN ))) {   //  restore the throttled down current advice to the EV since things have cooled down again
-	currcap /= 2;    // set to the throttled back level
-	setit = 3;
-      }    
       if (setit) {
         if (setit <= 2) {
           g_TempMonitor.SetOverTemperature(setit-1);
@@ -1857,7 +1878,7 @@ if (TempChkEnabled()) {
 	SetCurrentCapacity(currcap,0,1);
     	if (m_Pilot.GetState() != PILOT_STATE_PWM) {
     	  m_Pilot.SetPWM(m_CurrentCapacity);
-	      }
+        }
       }
     }
   }

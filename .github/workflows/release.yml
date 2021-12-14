@@ -1,0 +1,41 @@
+
+name: Create pre-release
+
+on:
+  workflow_call:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install jq
+      run: |
+        sudo apt-get install jq -y
+
+    - name: Download the built assets
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+
+    - name: Rename images to something more sensible
+      run: |
+        find artifacts -name '*.hex' | while read -r image; do
+          dir=$(dirname "${image}")
+          board=$(basename "${dir}")
+          echo mv "$image" "$board.hex"
+          mv "$image" "$board.hex"
+        done
+        jq -s . $(find -name info.json) > build_info.json
+        jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' build_info.json > build_info.csv
+
+    - name: Upload assets to latest release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: |
+          *.hex
+          build_info.json
+          build_info.csv

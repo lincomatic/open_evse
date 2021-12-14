@@ -1,0 +1,6 @@
+{
+    "board": "arduino:avr:diecimila",
+    "configuration": "cpu=atmega328",
+    "sketch": "open_evse.ino",
+    "output": "../build"
+}

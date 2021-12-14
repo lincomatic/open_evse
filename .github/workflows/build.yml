@@ -1,0 +1,35 @@
+name: Build/Release OpenEVSE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stable
+  pull_request:
+
+jobs:
+  info:
+    name: Get event information
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump context
+        uses: crazy-max/ghaction-dump-context@v1
+
+
+  build_platform_io:
+    name: Build using PlatformIO
+    uses: OpenEVSE/open_evse/.github/workflows/build_platformio.yml@stable
+
+  build_arduino:
+    name: Build using Arduino
+    uses: OpenEVSE/open_evse/.github/workflows/build_arduino.yml@stable
+
+  release:
+    name: Create pre-release
+
+    needs:
+      - build_platform_io
+      - build_arduino
+    if: github.ref == 'refs/heads/ci_updates'
+
+    uses: OpenEVSE/open_evse/.github/workflows/release.yml@stable

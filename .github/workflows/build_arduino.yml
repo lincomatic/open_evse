@@ -1,0 +1,78 @@
+
+name: Build using Arduino
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: openevse_arduino_1-6-15
+            arduino-platform: "arduino:avr"
+            version: 1.6.15
+            fqbn: "arduino:avr:openevse"
+          - name: openevse_arduino_1-6-23
+            arduino-platform: "arduino:avr"
+            version: 1.6.23
+            fqbn: "arduino:avr:openevse"
+          - name: openevse_arduino_1-8-3
+            arduino-platform: "arduino:avr"
+            version: 1.8.3
+            fqbn: "arduino:avr:openevse"
+
+    steps:
+      - name: Cache Arduino
+        uses: actions/cache@v2
+        with:
+          path: ~/.arduino15
+          key: ${{ runner.os }}-${{ matrix.name }}-arduino-15-${{ hashFiles('**/packages.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.name }}-arduino-15-
+
+      - uses: actions/checkout@v2
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install ${{ matrix.arduino-platform }}@${{ matrix.version }}
+
+      - name: Copy support files
+        run: |
+          cp arduino/1.6.15/boards.local.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
+          cp arduino/1.6.15/programmers.txt ~/.arduino15/packages/arduino/hardware/avr/${{ matrix.version }}/
+
+      - name: Compile Sketch
+        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} --export-binaries --verbose firmware/open_evse
+
+      - name: Get compiler and output info
+        run: |
+          NAME=${{ matrix.name }}
+          BUILT_TOOL=Arduino
+          ARDUINO_DIR=~/.arduino15/packages/arduino
+          AVR_CORE_VERSION=${{ matrix.version }}
+          AVR_CORE_DIR=$ARDUINO_DIR/hardware/avr/$AVR_CORE_VERSION
+
+          # EVIL, should use `jq`
+          GCC_PACKAGE=$(grep "\"avr\"" ~/.arduino15/package_index.json -A 100 | grep "\"$AVR_CORE_VERSION\"" -A 100 | grep "\"avr-gcc\"" -A 1 | grep "\"version\"" | head -n 1 | cut -d \" -f4)
+          TOOLCHAIN=$ARDUINO_DIR/tools/avr-gcc/$GCC_PACKAGE
+
+          ELF=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.elf
+          HEX=firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
+
+          source ci/info_common.sh info.json
+
+      - name: Upload output to GitHub
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            firmware/open_evse/build/arduino.avr.openevse/open_evse.ino.hex
+            info.json

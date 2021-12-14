@@ -3,9 +3,11 @@ archive/**
 genrapi/**
 craig/*
 utils/ma/*
+lib/**
 *.sav
 *.zip
 *.bak
+*.gch
 *~
 \#*
 #################
@@ -75,7 +77,7 @@ local.properties
 **/*.dotCover
 
 ## TODO: If you have NuGet Package Restore enabled, uncomment this
-#**/packages/ 
+#**/packages/
 
 # Visual C++ cache files
 ipch/
@@ -91,7 +93,7 @@ ipch/
 # ReSharper is a .NET coding add-in
 _ReSharper*
 
-# Installshield output folder 
+# Installshield output folder
 [Ee]xpress
 
 # DocProject is a documentation generator add-in
@@ -132,7 +134,7 @@ UpgradeLog*.XML
 ############
 
 # Windows image file caches
-Thumbs.db 
+Thumbs.db
 
 # Folder config file
 Desktop.ini
@@ -172,3 +174,17 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+
+#############
+Platformio
+############
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+
+# VS Code
+.vscode
+
+# build files
+.hex

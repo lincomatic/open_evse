@@ -33,6 +33,18 @@
 const char RAPI_VER[] PROGMEM = RAPIVER;
 
 
+#ifdef MCU_ID_LEN
+// mcuid *must* be of size MCU_ID_LEN
+#include <avr/boot.h>
+void getMcuId(uint8_t *mcuid)
+{
+  for (int i=0;i < MCU_ID_LEN;i++) {
+    mcuid[i] = boot_signature_byte_get(0x0E + i);
+  }
+}
+#endif // MCU_ID_LEN
+
+
 // convert 2-digit hex string to uint8_t
 uint8_t htou8(const char *s)
 {
@@ -253,7 +265,7 @@ int EvseRapiProcessor::processCmd()
   bufCnt = 0;
 
   char *s = tokens[0];
-  switch(*(s++)) { 
+  switch(*(s++)) {
   case 'F': // function
     switch(*s) {
     case '0': // enable/disable LCD update
@@ -277,7 +289,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'D': // disable EVSE
       g_EvseController.Disable();
       rc = 0;
@@ -301,7 +313,7 @@ int EvseRapiProcessor::processCmd()
 	    g_EvseController.EnableDiodeCheck(u1.u8);
 	    break;
 	  case 'E': // command echo
-	    echo = ((u1.u8 == '0') ? 0 : 1);	      
+	    echo = ((u1.u8 == '0') ? 0 : 1);
 	    break;
 #ifdef ADVPWR
 	  case 'F': // GFI self test
@@ -348,7 +360,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // LCD16X2      
+#endif // LCD16X2
     case 'R': // reset EVSE
       g_EvseController.Reboot();
       rc = 0;
@@ -370,8 +382,8 @@ int EvseRapiProcessor::processCmd()
 #endif // RGBLCD
       }
       break;
-#endif // LCD16X2      
-#ifdef RTC      
+#endif // LCD16X2
+#ifdef RTC
     case '1': // set RTC
       if (tokenCnt == 7) {
 	extern void SetRTC(uint8_t y,uint8_t m,uint8_t d,uint8_t h,uint8_t mn,uint8_t s);
@@ -380,7 +392,7 @@ int EvseRapiProcessor::processCmd()
 	rc = 0;
       }
       break;
-#endif // RTC      
+#endif // RTC
 #ifdef AMMETER
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
@@ -670,6 +682,25 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // CHARGE_LIMIT
+#ifdef MCU_ID_LEN
+    case 'I': // get MCU ID
+      {
+        uint8_t mcuid[MCU_ID_LEN];
+        getMcuId(mcuid);
+        char *s = buffer;
+        *(s++) = ' ';
+        for (int i=0;i < 6;i++) {
+          *(s++) = mcuid[i];
+        }
+        for (int i=6;i < MCU_ID_LEN;i++) {
+          sprintf(s,"%02X",mcuid[i]);
+          s += 2;
+        }
+        bufCnt = 1; // flag response text output
+        rc = 0;
+      }
+      break;
+#endif // MCU_ID_LEN
 #ifdef VOLTMETER
     case 'M':
       u1.i = g_EvseController.GetVoltScaleFactor();

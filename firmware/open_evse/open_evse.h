@@ -19,6 +19,14 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+ 
+// UK/EU specific settings (by OpenEnergyMonitor):
+// - Disable AUTOSVCLEVEL (autodetection is designed for split-phase)
+// - Charging level default to L2
+// - Set MAX_CURRENT_CAPACITY_L2 32 (European Limit)
+// - Add '.EU' to version number
+// - Enable LCD Re-draw every couple of min (required for EMC/CE)
+
 #pragma once
 
 #define OPEN_EVSE
@@ -41,7 +49,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "7.1.3"
+#define VERSION "D7.1.6"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -57,12 +65,18 @@ typedef unsigned long time_t;
 // support V6 hardware
 #define OEV6
 #ifdef OEV6
+//#define INVERT_V6_DETECTION // DO NOT USE: ONLY FOR lincomatic's BETA V6 board
 #define RELAY_PWM
 #define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
 
+// enable $GI
+#define MCU_ID_LEN 10
+
 // auto detect L1/L2
+#ifndef NO_AUTOSVCLEVEL
 #define AUTOSVCLEVEL
+#endif
 
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
@@ -109,7 +123,7 @@ typedef unsigned long time_t;
 #define WATCHDOG
 
 // auto detect ampacity by PP pin resistor
-//#define PP_AUTO_AMPACITY
+// #define PP_AUTO_AMPACITY
 
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
@@ -123,7 +137,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-//#define MENNEKES_LOCK
+// #define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -229,9 +243,6 @@ extern AutoCurrentCapacityController g_ACCController;
 // Advanced Powersupply... Ground check, stuck relay, L1/L2 detection.
 #define ADVPWR
 
-// valid only if ADVPWR defined - for rectified MID400 chips which block
-// half cycle (for ground check on both legs)
-#define SAMPLE_ACPINS
 // single button menus (needs LCD enabled)
 // connect an SPST-NO button between pin defined by BTN_REG/BTN_IDX and GND or enable ADAFRUIT_BTN to use the
 // select button of the Adafruit RGB LCD
@@ -264,7 +275,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DELAYTIMER
 
 #if defined(DELAYTIMER) && defined(BTN_MENU)
-//#define DELAYTIMER_MENU
+#define DELAYTIMER_MENU
 #endif
 
 #else // !RTC
@@ -321,12 +332,12 @@ extern AutoCurrentCapacityController g_ACCController;
 // switch to m_relayHoldPwm
 // ONLY WORKS PWM-CAPABLE PINS!!!
 // use Arduino pin number PD5 = 5, PD6 = 6
-#define RELAY_PWM
-#define DEFAULT_RELAY_CLOSE_MS 100
+//#define RELAY_PWM
+#define DEFAULT_RELAY_CLOSE_MS 25
 #define DEFAULT_RELAY_HOLD_PWM 75 // (0-255, where 0=0%, 255=100%
 // enables RAPI $Z0 for tuning PWM (see rapi_proc.h for $Z0 syntax)
 // PWM parameters written to/loaded from EEPROM
-#define RELAY_HOLD_DELAY_TUNING // enable Z0
+//#define RELAY_HOLD_DELAY_TUNING // enable Z0
 
 //-- end features
 
@@ -412,18 +423,30 @@ extern AutoCurrentCapacityController g_ACCController;
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected
+#ifndef DEFAULT_SERVICE_LEVEL
 #define DEFAULT_SERVICE_LEVEL 2 // 1=L1, 2=L2
+#endif
 
 // current capacity in amps
+#ifndef DEFAULT_CURRENT_CAPACITY_L1
 #define DEFAULT_CURRENT_CAPACITY_L1 12
-#define DEFAULT_CURRENT_CAPACITY_L2 24
+#endif
+#ifndef DEFAULT_CURRENT_CAPACITY_L2
+#define DEFAULT_CURRENT_CAPACITY_L2 16
+#endif
 
 // minimum allowable current in amps
+#ifndef MIN_CURRENT_CAPACITY_J1772
 #define MIN_CURRENT_CAPACITY_J1772 6
+#endif
 
 // maximum allowable current in amps
-#define MAX_CURRENT_CAPACITY_L1 24 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
+#ifndef MAX_CURRENT_CAPACITY_L1
+#define MAX_CURRENT_CAPACITY_L1 16 // J1772 Max for L1 on a 20A circuit = 16, 15A circuit = 12
+#endif
+#ifndef MAX_CURRENT_CAPACITY_L2
 #define MAX_CURRENT_CAPACITY_L2 80 // J1772 Max for L2 = 80
+#endif
 
 //J1772EVSEController
 
@@ -563,7 +586,9 @@ extern AutoCurrentCapacityController g_ACCController;
 #define STUCK_RELAY_DELAY 1000 // delay after charging opened to test, ms
 #define RelaySettlingTime  250 // time for relay to settle in post, ms
 
-// for SAMPLE_ACPINS - max number of ms to sample
+// ACPINS sample interval - max number of ms to sample
+// used only when ADVPWR - for rectified MID400 chips which block
+// half cycle
 #define AC_SAMPLE_MS 20 // 1 cycle @ 60Hz = 16.6667ms @ 50Hz = 20ms
 
 
@@ -733,7 +758,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #else
 #define TEMPERATURE_AMBIENT_SHUTDOWN 680
 #endif
-                                                  
+
 //  At this temperature gracefully tell the EV to quit drawing any current, and leave the EVSE in
 //  an over temperature error state.  The EVSE can be restart from the button or unplugged.
 //  If temperatures get to this level it is advised to open the enclosure to look for trouble.
@@ -1013,7 +1038,7 @@ class Btn {
   uint8_t buttonState;
   unsigned long lastDebounceTime;  // the last time the output pin was toggled
   unsigned long vlongDebounceTime;  // for verylong press
-  
+
 public:
   Btn();
   void init();
@@ -1028,7 +1053,7 @@ class Menu {
 public:
   PGM_P m_Title;
   uint8_t m_CurIdx;
-  
+
   void init(const char *firstitem);
 
   Menu();
@@ -1306,7 +1331,7 @@ public:
   }
   void ClrManualOverride() { m_ManualOverride = 0; }
   uint8_t ManualOverrideIsSet() { return m_ManualOverride; }
-  
+
   uint8_t IsTimerEnabled(){
     return m_DelayTimerEnabled;
   };
@@ -1336,7 +1361,7 @@ public:
     eeprom_write_byte((uint8_t*)EOFS_TIMER_STOP_MIN, m_StopTimerMin);
     //    g_EvseController.SaveSettings();
   };
-  uint8_t IsInAwakeTimeInterval(); // 
+  uint8_t IsInAwakeTimeInterval(); //
   uint8_t IsTimerValid(){
      if (m_StartTimerHour || m_StartTimerMin || m_StopTimerHour || m_StopTimerMin){ // Check not all equal 0
        if ((m_StartTimerHour == m_StopTimerHour) && (m_StartTimerMin == m_StopTimerMin)){ // Check start time not equal to stop time

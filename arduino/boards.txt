@@ -1,0 +1,24 @@
+
+##############################################################
+## OpenEVSE with Programmer selected from Tools->Programmer
+## ---------------------------------------------
+openevse.name=[Programmer]OpenEVSE
+openevse.upload.tool=arduino:avrdude
+openevse.upload.protocol=arduino
+openevse.upload.maximum_size=32768
+openevse.upload.maximum_data_size=2048
+
+openevse.bootloader.tool=avrdude
+openevse.bootloader.low_fuses=0xFF
+openevse.bootloader.high_fuses=0xDF
+openevse.bootloader.extended_fuses=0x05
+openevse.bootloader.unlock_bits=0x3F
+openevse.bootloader.lock_bits=0x0F
+openevse.bootloader.file=optiboot/optiboot_atmega328.hex
+
+openevse.build.mcu=atmega328p
+openevse.build.f_cpu=16000000L
+openevse.build.board=AVR_DUEMILANOVE
+openevse.build.core=arduino:arduino
+openevse.build.variant=arduino:standard
+openevse.menu.cpu.atmega328=ATmega328
