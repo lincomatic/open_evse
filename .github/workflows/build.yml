@@ -30,6 +30,6 @@ jobs:
     needs:
       - build_platform_io
       - build_arduino
-    if: github.ref == 'refs/heads/ci_updates'
+    if: github.ref == 'refs/heads/stable'
 
     uses: OpenEVSE/open_evse/.github/workflows/release.yml@stable
