@@ -1,5 +1,10 @@
 Change Log
 
+20211216 SCL V8.1.1
+- reset elapsed time when car plugged in
+- J1772EvseController::Update() - just call ReadPilot() once at the top of function
+  -> previously had ReadPilot() sprinkled around to try to avoid reading when not needed to save CPU cycles -> probably not necssary
+
 20211216 SCL V8.1.0
 - merged in mennekes branch
 - change version number
