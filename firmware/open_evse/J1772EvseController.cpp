@@ -1236,6 +1236,12 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
   ReadPilot(&plow,&phigh); // always read so we can update EV connect state, too
 
+  if (EvConnectedTransition()) {
+    if (EvConnected()) {
+      m_AccumulatedChargeTime = 0;
+      m_ElapsedChargeTime = 0;
+    }
+  }
 
   if (m_EvseState == EVSE_STATE_SLEEPING) {
     int8_t cancelTransition = 1;
