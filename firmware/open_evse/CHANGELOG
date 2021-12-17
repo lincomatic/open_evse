@@ -1,5 +1,9 @@
 Change Log
 
+20211216 SCL V8.1.0
+- merged in mennekes branch
+- change version number
+	
 20211201 SCL V8.1.0a
 - added ECVF_TIMER_ON so we don't have to poll to test if delay timer is on
 - revamp MENNEKES_LOCK
