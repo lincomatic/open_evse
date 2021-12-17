@@ -1233,9 +1233,11 @@ void J1772EVSEController::Update(uint8_t forcetransition)
     m_PrevEvseState = m_EvseState; // cancel state transition
     return;
   }
-  else if (m_EvseState == EVSE_STATE_SLEEPING) {
-    ReadPilot(&plow,&phigh); // always read so we can update EV connect state, too
 
+  ReadPilot(&plow,&phigh); // always read so we can update EV connect state, too
+
+
+  if (m_EvseState == EVSE_STATE_SLEEPING) {
     int8_t cancelTransition = 1;
     if (chargingIsOn()) {
       // wait for pilot voltage to go > STATE C. This will happen if
@@ -1360,9 +1362,6 @@ void J1772EVSEController::Update(uint8_t forcetransition)
     else { // !chargingIsOn() - relay open
       if (!CGMIisEnabled() && (prevevsestate == EVSE_STATE_NO_GROUND)) {
         // check to see if EV disconnected
-        if (phigh == 0xffff) {
-          ReadPilot();  // update EV connect state
-        }
         if (!EvConnected()) {
           // EV disconnected - cancel fault
           m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1419,8 +1418,6 @@ void J1772EVSEController::Update(uint8_t forcetransition)
       m_GfiFaultStartMs = curms;
     }
     else { // was already in GFI fault
-      // check to see if EV disconnected
-      ReadPilot();  // update EV connect state
       if (!EvConnected()) {
 	// EV disconnected - cancel fault
 	m_EvseState = EVSE_STATE_UNKNOWN;
@@ -1474,8 +1471,6 @@ if (TempChkEnabled()) {
       prevevsestate = EVSE_STATE_UNKNOWN;
       m_EvseState = EVSE_STATE_UNKNOWN;
     }
-
-    ReadPilot(&plow,&phigh);
 
     if (DiodeCheckEnabled() && (m_Pilot.GetState() == PILOT_STATE_PWM) && (plow >= m_ThreshData.m_ThreshDS)) {
       // diode check failed
