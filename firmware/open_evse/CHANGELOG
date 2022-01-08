@@ -1,5 +1,8 @@
 Change Log
 
+20220107
+- set ECF_AUTO_SVC_LEVEL_DISABLED when !AUTOSVCLEVEL
+
 20211216 SCL V8.1.1
 - reset elapsed time when car plugged in
 - J1772EvseController::Update() - just call ReadPilot() once at the top of function

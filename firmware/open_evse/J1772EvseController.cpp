@@ -1017,6 +1017,10 @@ void J1772EVSEController::Init()
     svclvl = GetCurSvcLevel();
   }
 
+#ifndef AUTOSVCLEVEL
+  m_wFlags |= ECF_AUTO_SVC_LEVEL_DISABLED;
+#endif
+
 #ifdef ENABLE_CGMI
   m_wFlags |= ECF_CGMI;
 #endif // ENABLE_CGMI
