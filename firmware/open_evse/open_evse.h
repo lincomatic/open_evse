@@ -49,7 +49,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "D7.1.6"
+#define VERSION "D8.1.1"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -67,8 +67,11 @@ typedef unsigned long time_t;
 #ifdef OEV6
 //#define INVERT_V6_DETECTION // DO NOT USE: ONLY FOR lincomatic's BETA V6 board
 #define RELAY_PWM
-#define RELAY_HOLD_DELAY_TUNING // enable Z0
+//#define RELAY_HOLD_DELAY_TUNING // enable Z0
 #endif // OEV6
+
+// enable CGMI support
+//#define ENABLE_CGMI
 
 // enable $GI
 #define MCU_ID_LEN 10
@@ -137,7 +140,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define TIME_LIMIT
 
 // support Mennekes (IEC 62196) type 2 locking pin
-// #define MENNEKES_LOCK
+#define MENNEKES_LOCK
 
 // Support for Nick Sayer's OpenEVSE II board, which has alternate hardware for ground check/stuck relay check and a voltmeter for L1/L2.
 //#define OPENEVSE_2
@@ -505,8 +508,6 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #ifdef MENNEKES_LOCK
 // requires external 12V H-bridge driver such as Polulu 1451
-#define MENNEKES_LOCK_STATE EVSE_STATE_B // lock in State B
-//#define MENNEKES_LOCK_STATE EVSE_STATE_C // lock in State C
 
 //D11 - MOSI
 #define MENNEKES_LOCK_PINA_REG &PINB

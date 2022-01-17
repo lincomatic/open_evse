@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2019 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -393,14 +393,14 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // RTC
-#ifdef AMMETER
+#if defined(AMMETER) && defined(ECVF_AMMETER_CAL)
     case '2': // ammeter calibration mode
       if (tokenCnt == 2) {
 	g_EvseController.EnableAmmeterCal((*tokens[1] == '1') ? 1 : 0);
 	rc = 0;
       }
       break;
-#endif // AMMETER
+#endif // AMMETER && ECVF_AMMETER_CAL
 #ifdef TIME_LIMIT
     case '3': // set time limit
       if (tokenCnt == 2) {
@@ -420,6 +420,29 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // AUTH_LOCK && !AUTH_LOCK_REG
+#ifdef MENNEKES_LOCK
+    case '5': // mennekes setting
+      if (tokenCnt == 2) {
+	rc = 0;
+        switch(*tokens[1]) {
+        case '0':
+          g_EvseController.UnlockMennekes();
+          break;
+        case '1':
+          g_EvseController.LockMennekes();
+          break;
+        case 'A':
+          g_EvseController.ClrMennekesManual();
+          break;
+        case 'M':
+          g_EvseController.SetMennekesManual();
+          break;
+        default:
+          rc = 1;
+        }
+      }
+      break;
+#endif // MENNEKES_LOCK
 #ifdef AMMETER
     case 'A':
       if (tokenCnt == 3) {
@@ -599,6 +622,14 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // AUTH_LOCK && !AUTH_LOCK_REG
+#ifdef MENNEKES_LOCK
+    case '5': // get mennekes setting
+      sprintf(buffer,"%d %c",g_EvseController.MennekesIsLocked(),
+              g_EvseController.MennekesIsManual() ? 'M' : 'A');
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // MENNEKES_LOCK
 #ifdef AMMETER
     case 'A':
       u1.i = g_EvseController.GetCurrentScaleFactor();

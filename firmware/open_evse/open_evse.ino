@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2019 Sam C. Lin
+ * Copyright (c) 2011-2021 Sam C. Lin
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
@@ -717,7 +717,7 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       if (updmode == OBD_UPD_HARDFAULT) {
-        LcdMsg_P(g_psEvseError,g_psNoGround);
+        LcdMsg_P(g_EvseController.CGMIisEnabled() ? g_psSvcReq : g_psEvseError,g_psNoGround);
       }
       else {
 	// 2nd line will be updated below with auto retry count
@@ -732,6 +732,15 @@ void OnboardDisplay::Update(int8_t updmode)
 #ifdef LCD16X2 //Adafruit RGB LCD
       LcdSetBacklightColor(RED);
       LcdMsg_P(updmode == OBD_UPD_HARDFAULT ? g_psSvcReq : g_psEvseError,g_psStuckRelay);
+#endif //Adafruit RGB LCD
+      // n.b. blue LED is off
+      break;
+    case EVSE_STATE_RELAY_CLOSURE_FAULT:
+      SetGreenLed(0);
+      SetRedLed(1);
+#ifdef LCD16X2 //Adafruit RGB LCD
+      LcdSetBacklightColor(RED);
+      LcdMsg_P(g_psSvcReq,g_psRelayClosureFault);
 #endif //Adafruit RGB LCD
       // n.b. blue LED is off
       break;
@@ -825,7 +834,11 @@ void OnboardDisplay::Update(int8_t updmode)
 
 #ifdef LCD16X2
 #if defined(AMMETER)
-    if (((curstate == EVSE_STATE_C) || g_EvseController.AmmeterCalEnabled()) && AmmeterIsDirty()) {
+    if (((curstate == EVSE_STATE_C)
+#ifdef ECVF_AMMETER_CAL
+         || g_EvseController.AmmeterCalEnabled()
+#endif 
+         ) && AmmeterIsDirty()) {
       SetAmmeterDirty(0);
 
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -2270,6 +2283,10 @@ void DelayTimer::Init() {
   else {
     m_DelayTimerEnabled = rtmp;
   }
+
+  if (m_DelayTimerEnabled) g_EvseController.SetDelayTimerOnFlag();
+  else g_EvseController.ClrDelayTimerOnFlag();
+
   rtmp = eeprom_read_byte((uint8_t*)EOFS_TIMER_START_HOUR);
   if (rtmp == 0xff) { // uninitialized EEPROM
     m_StartTimerHour = DEFAULT_START_HOUR;
@@ -2388,6 +2405,7 @@ void DelayTimer::Enable(){
   ClrManualOverride();
   //  g_EvseController.SaveSettings();
   //  CheckTime();
+  g_EvseController.SetDelayTimerOnFlag();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::Disable(){
@@ -2395,6 +2413,7 @@ void DelayTimer::Disable(){
   eeprom_write_byte((uint8_t*)EOFS_TIMER_FLAGS, m_DelayTimerEnabled);
   ClrManualOverride();
   //  g_EvseController.SaveSettings();
+  g_EvseController.ClrDelayTimerOnFlag();
   g_OBD.Update(OBD_UPD_FORCE);
 }
 void DelayTimer::PrintTimerIcon(){

@@ -1,5 +1,47 @@
 Change Log
 
+20220107
+- set ECF_AUTO_SVC_LEVEL_DISABLED when !AUTOSVCLEVEL
+
+20211216 SCL V8.1.1
+- reset elapsed time when car plugged in
+- J1772EvseController::Update() - just call ReadPilot() once at the top of function
+  -> previously had ReadPilot() sprinkled around to try to avoid reading when not needed to save CPU cycles -> probably not necssary
+
+20211216 SCL V8.1.0
+- merged in mennekes branch
+- change version number
+	
+20211201 SCL V8.1.0a
+- added ECVF_TIMER_ON so we don't have to poll to test if delay timer is on
+- revamp MENNEKES_LOCK
+  -> auto mode: locked when EVSE connected, unlocked when disconnected
+     -> to implement this, need to get rid of states were pilot = N12, because
+	we can't detect connection state
+	-> don't ever set pilot to N12, even in fault states. only set to N12 
+	in EVSE_STATE_DISABLED
+	  -> always automatically unlocks in EVSE_STATE_DISABLED, even if
+	  in manual mode
+	-> add recoverable parameter to HardFault()
+  -> add volatile manual mode - when enabled, Mennekes lock is under full manual
+	control
+  -> add S5/G5 RAPI commands to set/fetch Mennekes settings
+  -> ECVF_MENNEKES_MANUAL also reflects auto/manual mode
+- RAPIVER 5.2.0
+- usurped ECVF_AMMETER_CAL with ECVF_MENNEKES_MANUAL, so the code is currently turned off
+20211201 SCL V8.0.0d
+- more refinements to CGMI - POST stuck relay check
+20211128 SCL V8.0.0c
+- fixed bugs in CGMI code
+20211123 SCL V8.0.0a
+- acpinstate: added ACPINx_OPEN
+- first cut for CGMI - continuous GMI support:
+  -> PD4: at any time, if PD3 is low, declare EVSE_STATE_NO_GROUND.
+  -> PD3: we will read it only when we think the relay should be open. If we detect a low state on PD4 when the relay is supposed to be open, go to EVSE_STATE_STUCK_RELAY. This is exactly the current behavior, except that we only monitor one pin.	
+- take out SAMPLE_ACPINS #ifdef.. always sample
+- added INVERT_V6_DETECTION: DO NOT USE 
+  -> only enabled for lincomatic's beta V6 board
+	
 2021119 SCL V7.1.6
 - fixed bug - RAPI $GI was implemented as $SI
 - fixed bug, $GI was returning $OK $GI xxx

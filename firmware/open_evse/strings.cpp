@@ -103,7 +103,7 @@ const char g_psDisabled[] PROGMEM =  STR_DISABLED;
 const char g_psSleeping[] PROGMEM = STR_SLEEPING;
 const char g_psEvConnected[] PROGMEM = STR_CONNECTED;
 const char g_psResetting[] PROGMEM = STR_RESETTING;
-
+const char g_psRelayClosureFault[] PROGMEM = STR_RELAY_CLOSURE_FAULT;
 #ifdef SHOW_DISABLED_TESTS
 const char g_psDisabledTests[] PROGMEM = STR_TEST_DISABLED;
 #endif

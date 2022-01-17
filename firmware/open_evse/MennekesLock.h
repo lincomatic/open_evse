@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2016 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -24,11 +24,13 @@
 #pragma once
 
 class MennekesLock {
+  int8_t isLocked;
   DigitalPin pinA;
   DigitalPin pinB;
  public:
   MennekesLock() {}
   void Init();
-  void Lock();
-  void Unlock();
+  void Lock(int8_t force);
+  void Unlock(int8_t force);
+  int8_t IsLocked() { return isLocked; }
 };
