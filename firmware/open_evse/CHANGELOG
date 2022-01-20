@@ -1,6 +1,10 @@
 Change Log
 
-20220107
+20220119 SCL
+- changes to facilitate PlatformIO builds
+  -> #defines that apply to Arduino IDE builds should be kept out of the #ifndef PLATFORMIO block in open_evse.h
+	
+20220107 SCL
 - set ECF_AUTO_SVC_LEVEL_DISABLED when !AUTOSVCLEVEL
 
 20211216 SCL V8.1.1
