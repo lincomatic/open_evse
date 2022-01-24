@@ -349,13 +349,6 @@ int EvseRapiProcessor::processCmd()
 	for (u3.i=4;u3.i < tokenCnt;u3.i++) {
 	  *(tokens[u3.i]-1) = ' ';
 	}
-	// spaces encoded as 0x01 - restore
-	char *s = tokens[3];
-	u4.i = strlen(s);
-	for (u3.i=0;u3.i < u4.i;u3.i++) {
-	  if (*s == 0xef) *s = ' ';
-	  s++;
-	}
 	g_OBD.LcdPrint(u1.u,u2.u,tokens[3]);
 	rc = 0;
       }

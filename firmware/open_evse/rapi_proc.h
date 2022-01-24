@@ -121,8 +121,7 @@ FD - disable EVSE
 FE - enable EVSE
  $FE*AF
 FP x y text - print text on lcd display
-  substitute character 0xef for spaces within a string. LCD display code
-  replaces 0xef with spaces
+  OPTIONAL: can substitute character 0x11 for spaces within a string, because they print as <SPC> on HD44780. More reliable.
 FR - restart EVSE
  $FR*BC
 FS - sleep EVSE
@@ -358,7 +357,7 @@ Z0 closems holdpwm
 
 #ifdef RAPI
 
-#define RAPIVER "5.2.0"
+#define RAPIVER "5.2.1"
 
 #define WIFI_MODE_AP 0
 #define WIFI_MODE_CLIENT 1
