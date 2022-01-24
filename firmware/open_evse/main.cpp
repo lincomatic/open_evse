@@ -525,7 +525,7 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 
 void OnboardDisplay::Update(int8_t updmode)
 {
-  if (updateDisabled() && !g_EvseController.InHardFault()) return;
+  if (updateDisabled() && !g_EvseController.InFaultState()) return;
 
   uint8_t curstate = g_EvseController.GetState();
 #ifdef LCD16X2
