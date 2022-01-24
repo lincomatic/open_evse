@@ -1,5 +1,12 @@
 Change Log
 
+20220124 V8.2.0 SCL
+- don't convert 0x01 in $FP strings to <SPC>, because it filters out STOP icon
+  -> just send 0x11 as space instead. prints as <SPC> on HD44780
+- bump RAPIVER to 5.2.1
+- change index of delay timer CLOCK icon from 0 -> 6, because otherwise, it can't be displayed via $FP
+- fix bug, wasn't overriding OBD::updatesDisabled() during fault state
+	
 20220119 SCL
 - changes to facilitate PlatformIO builds
   -> #defines that apply to Arduino IDE builds should be kept out of the #ifndef PLATFORMIO block in open_evse.h
