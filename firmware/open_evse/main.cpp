@@ -369,7 +369,7 @@ OnboardDisplay::OnboardDisplay()
 
 
 #if defined(DELAYTIMER)
-const char CustomChar_0[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0}; // clock
+const char CustomChar_6[8] PROGMEM = {0x0,0xe,0x15,0x17,0x11,0xe,0x0,0x0}; // clock
 #endif
 #ifdef DELAYTIMER
 const char CustomChar_1[8] PROGMEM = {0x0,0x0,0xe,0xe,0xe,0x0,0x0,0x0}; // stop (cube)
@@ -435,7 +435,7 @@ void OnboardDisplay::Init()
   LcdSetBacklightColor(WHITE);
 
 #if defined(DELAYTIMER)
-  MakeChar(0,CustomChar_0);
+  MakeChar(0,CustomChar_6);
 #endif
 #ifdef DELAYTIMER
   MakeChar(1,CustomChar_1);
@@ -971,12 +971,12 @@ void OnboardDisplay::Update(int8_t updmode)
       if (g_DelayTimer.IsTimerEnabled()){
 	LcdSetCursor(9,0);
 	LcdWrite(2);
-	LcdWrite(0);
+	LcdWrite(6);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStartTimerHour(),g_DelayTimer.GetStartTimerMin());
 	LcdPrint(11,0,g_sTmp);
 	LcdSetCursor(9,1);
 	LcdWrite(1);
-	LcdWrite(0);
+	LcdWrite(6);
 	sprintf(g_sTmp,g_sHHMMfmt,g_DelayTimer.GetStopTimerHour(),g_DelayTimer.GetStopTimerMin());
 	LcdPrint(11,1,g_sTmp);
       } else {
@@ -2419,7 +2419,7 @@ void DelayTimer::Disable(){
 void DelayTimer::PrintTimerIcon(){
 #ifdef LCD16X2
   if (!ManualOverrideIsSet() && IsTimerEnabled() && IsTimerValid()){
-    g_OBD.LcdWrite(0);
+    g_OBD.LcdWrite(6);
   }
 #endif // LCD16X2
 }
