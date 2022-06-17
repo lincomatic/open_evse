@@ -309,6 +309,7 @@ void J1772EVSEController::chargingOn()
   }
   else {
     m_AccumulatedChargeTime += m_ElapsedChargeTime;
+    m_ElapsedChargeTime = 0;
   }
 
   m_ChargeOnTimeMS = millis();
