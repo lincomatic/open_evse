@@ -1,7 +1,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2021 Sam C. Lin
+ * Copyright (c) 2011-2023 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1078,6 +1078,10 @@ void J1772EVSEController::Init()
 #endif
 
   m_wVFlags = ECVF_DEFAULT;
+
+#ifdef BOOTLOCK
+  m_wVFlags |= ECVF_BOOT_LOCK;
+#endif
 
   m_MaxHwCurrentCapacity = eeprom_read_byte((uint8_t*)EOFS_MAX_HW_CURRENT_CAPACITY);
   if (!m_MaxHwCurrentCapacity || (m_MaxHwCurrentCapacity == (uint8_t)0xff)) {

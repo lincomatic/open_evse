@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2023 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -445,6 +445,19 @@ int EvseRapiProcessor::processCmd()
       }
       break;
 #endif // AMMETER
+#ifdef BOOTLOCK
+    case 'B':
+      if (g_EvseController.InFaultState()) {
+        strcpy(buffer,"1");
+      }
+      else {
+        g_EvseController.ClearBootLock();
+        strcpy(buffer,"0");
+      }
+      bufCnt=1;
+      rc = 0;
+      break;
+#endif // BOOTLOCK
     case 'C': // current capacity
       if ((tokenCnt == 2) || (tokenCnt == 3)) {
 	u2.u8 = dtou32(tokens[1]);

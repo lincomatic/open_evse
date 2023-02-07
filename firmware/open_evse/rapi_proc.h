@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2013-2021 Sam C. Lin <lincomatic@gmail.com>
+ * Copyright (c) 2013-2023 Sam C. Lin <lincomatic@gmail.com>
  *
  * This file is part of Open EVSE.
 
@@ -172,6 +172,10 @@ S5 A|M|0|1 - Mennekes lock setting
    1 = lock (valid only in manual mode)
    n.b. requires MENNEKES_LOCK. manual mode is volatile - always boots in automatic mode
 SA currentscalefactor currentoffset - set ammeter settings
+SB - clear boot lock
+  when BOOTLOCK is defined, EVSE won't allow charging after boot up until SB is received
+ response: $OK 0 = unlock success
+           $OK 1 = unlock fail - EVSE currently in fault state
 SC amps [V|M]- set current capacity
  response:
    if amps < minimum current capacity, will set to minimum and return $NK ampsset

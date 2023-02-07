@@ -69,6 +69,9 @@ typedef unsigned long time_t;
 // auto detect L1/L2
 #define AUTOSVCLEVEL
 
+// on boot, EVSE locked until receives $SB 
+//#define BOOTLOCK
+
 // show disabled tests before POST
 #define SHOW_DISABLED_TESTS
 
