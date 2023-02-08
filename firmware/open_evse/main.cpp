@@ -2457,11 +2457,12 @@ uint8_t StateTransitionReqFunc(uint8_t curPilotState,uint8_t newPilotState,uint8
       retEvseState = EVSE_STATE_A;
     }
   }
-  else { // EVSE_STATE_A
+  /*  else { // EVSE_STATE_A
     // reset back to default max current
     uint8_t amps = g_EvseController.GetMaxCurrentCapacity();
     g_EvseController.SetCurrentCapacity(amps,0,1);
   }
+  */
   //  Serial.print(" r: ");Serial.print(retEvseState);Serial.print(" a: ");Serial.print(g_ACCController.GetCurAmps());
   //  Serial.print(" c: ");Serial.print(curEvseState);Serial.print(" n: ");Serial.print(newEvseState);Serial.print(" r: ");Serial.print(retEvseState);
 

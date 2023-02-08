@@ -610,6 +610,16 @@ uint8_t J1772EVSEController::GetMaxCurrentCapacity()
   if ((ampacity == 0xff) || (ampacity == 0)) {
     ampacity = (svclvl == 1) ? DEFAULT_CURRENT_CAPACITY_L1 : DEFAULT_CURRENT_CAPACITY_L2;
   }
+
+#ifdef PP_AUTO_AMPACITY
+  if ((m_EvseState >= EVSE_STATE_B) && (m_EvseState <= EVSE_STATE_C)) {
+    uint8_t ppamps =  g_ACCController.GetPPMaxAmps();
+    if (ppamps < ampacity) {
+      ampacity = ppamps;
+    }
+  }
+#endif // PP_AUTO_AMPACITY
+
   
   if (ampacity < MIN_CURRENT_CAPACITY_J1772) {
     ampacity = MIN_CURRENT_CAPACITY_J1772;
