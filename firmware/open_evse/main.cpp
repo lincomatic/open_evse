@@ -1783,8 +1783,8 @@ Menu *RTCMenuDay::Select()
 RTCMenuYear::RTCMenuYear()
 {
 }
-#define YEAR_MIN 18
-#define YEAR_MAX 28
+#define YEAR_MIN 23
+#define YEAR_MAX 33
 void RTCMenuYear::Init()
 {
   g_OBD.LcdPrint_P(0,g_psRTC_Year);
