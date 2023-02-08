@@ -263,25 +263,6 @@ void wdt_init(void)
 
 
 #ifdef TEMPERATURE_MONITORING
-#ifdef TEMPERATURE_MONITORING_NY
-void TempMonitor::LoadThresh()
-{
-  m_ambient_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_AMBIENT);
-  if (m_ambient_thresh == 0xffff) {
-    m_ambient_thresh = TEMPERATURE_AMBIENT_THROTTLE_DOWN;
-  }
-  m_ir_thresh = eeprom_read_word((uint16_t *)EOFS_THRESH_IR);
-  if (m_ir_thresh == 0xffff) {
-    m_ir_thresh = TEMPERATURE_INFRARED_THROTTLE_DOWN;
-  }
-}
-
-void TempMonitor::SaveThresh()
-{
-  eeprom_write_word((uint16_t *)EOFS_THRESH_AMBIENT,m_ambient_thresh);
-  eeprom_write_word((uint16_t *)EOFS_THRESH_IR,m_ir_thresh);
-}
-#endif // TEMPERATURE_MONITORING_NY
 
 void TempMonitor::Init()
 {
