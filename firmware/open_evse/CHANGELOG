@@ -1,5 +1,8 @@
 Change Log
 
+20230206 SCL
+- added BOOTLOCK - when defined, EVSE locked until receives $SB
+
 20220408 V8.2.1 SCL
 - fix bug: SaveSettings() should save GetMaxCurrentCapacity() instead of GetCurrentCapacity(), in case called during throttling
 	

@@ -2,7 +2,7 @@
 /*
  * This file is part of Open EVSE.
  *
- * Copyright (c) 2011-2021 Sam C. Lin
+ * Copyright (c) 2011-2023 Sam C. Lin
  *
  * Open EVSE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ typedef uint8_t (*EvseStateTransitionReqFunc)(uint8_t prevPilotState,uint8_t cur
 #define ECVF_UI_IN_MENU         0x0800 // onboard UI currently in a menu
 #define ECVF_TIMER_ON           0x1000 // delay timer enabled
 #define ECVF_CHARGE_LIMIT       0x2000
-// reserved #define ECVF_BOOT_LOCK          0x4000 // locked at boot
+#define ECVF_BOOT_LOCK          0x4000 // locked at boot
 #define ECVF_MENNEKES_MANUAL    0x8000 // Mennekes lock manual mode
 #if defined(AUTH_LOCK) && (AUTH_LOCK != 0)
 #define ECVF_DEFAULT            ECVF_AUTH_LOCKED|ECVF_SESSION_ENDED
@@ -388,6 +388,17 @@ public:
 
   uint8_t ReadACPins();
 #endif // ADVPWR
+
+  void ClearBootLock() {
+    clrVFlags(ECVF_BOOT_LOCK);
+  }
+  uint8_t IsBootLocked() {
+#ifdef BOOTLOCK
+    return vFlagIsSet(ECVF_BOOT_LOCK) ? 1 : 0;
+#else
+    return 0;
+#endif
+  }
 
   void HardFault(int8_t recoverable);
 

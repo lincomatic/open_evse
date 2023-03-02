@@ -2,7 +2,7 @@
 /*
  * Open EVSE Firmware
  *
- * Copyright (c) 2011-2021 Sam C. Lin
+ * Copyright (c) 2011-2023 Sam C. Lin
  * Copyright (c) 2011-2014 Chris Howell <chris1howell@msn.com>
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
@@ -2486,11 +2486,21 @@ void setup()
   g_EvseController.SetStateTransitionReqFunc(&StateTransitionReqFunc);
 #endif //PP_AUTO_AMPACITY
 
-  EvseReset();
-
 #ifdef TEMPERATURE_MONITORING
   g_TempMonitor.Init();
 #endif
+
+  EvseReset();
+
+#ifdef BOOTLOCK
+#ifdef LCD16X2
+  g_OBD.LcdMsg_P(PSTR("Waiting for"),PSTR("Initialization.."));
+#endif // LCD16X2
+  while (g_EvseController.IsBootLocked()) {
+    ProcessInputs();
+  }
+#endif // BOOTLOCK
+
 
   WDT_ENABLE();
 }  // setup()
