@@ -45,6 +45,7 @@ uint8_t AutoCurrentCapacityController::ReadPPMaxAmps()
 
   //  Serial.print("pp: ");Serial.print(adcval);Serial.print(" amps: ");Serial.println(amps);
 
+  ppMaxAmps = amps;
   return amps;
 }
 
@@ -54,7 +55,9 @@ uint8_t AutoCurrentCapacityController::AutoSetCurrentCapacity()
   uint8_t amps = ReadPPMaxAmps();
 
   if (amps) {
-    g_EvseController.SetCurrentCapacity(amps,0,1);
+    if (g_EvseController.GetCurrentCapacity() > ppMaxAmps) {
+      g_EvseController.SetCurrentCapacity(ppMaxAmps,1,1);
+    }
     return 0;
   }
   else {

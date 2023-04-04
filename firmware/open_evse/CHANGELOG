@@ -1,5 +1,11 @@
 Change Log
 
+20230207 SCL
+- PP_AUTO_AMPACITY changes
+  -> used to change current capacity to PP ampacity. now, only change it
+	if currently higher than PP ampacity
+  -> GetMaxCurrentCapacity() is limited to PP ampacity in STATE B/C
+	
 20230206 SCL
 - added BOOTLOCK - when defined, EVSE locked until receives $SB
 

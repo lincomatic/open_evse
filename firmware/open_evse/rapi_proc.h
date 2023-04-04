@@ -260,6 +260,8 @@ GC - get current capacity info
  hmaxamps - max hardware allowed current capacity MAX_CURRENT_CAPACITY_Ln
  pilotamps - current capacity advertised by pilot
  cmaxamps - max configured allowed current capacity (saved to EEPROM)
+     if PP_AUTO_AMPACITY is enabled, then  in STATE B/C returns max capacity
+     read from PP if lower than max configured capacity
  n.b. maxamps,emaxamps values are dependent on the active service level (L1/L2)
  $GC^20
 
