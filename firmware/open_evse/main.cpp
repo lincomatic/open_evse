@@ -2486,12 +2486,13 @@ void setup()
 #ifdef PP_AUTO_AMPACITY
   g_EvseController.SetStateTransitionReqFunc(&StateTransitionReqFunc);
 #endif //PP_AUTO_AMPACITY
-
+  EvseReset();
+  
 #ifdef TEMPERATURE_MONITORING
   g_TempMonitor.Init();
 #endif
 
-  EvseReset();
+  
 
 #ifdef BOOTLOCK
 #ifdef LCD16X2
