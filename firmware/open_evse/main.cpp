@@ -920,9 +920,9 @@ void OnboardDisplay::Update(int8_t updmode)
       if (!(g_TempMonitor.OverTemperature() || TEMPERATURE_DISPLAY_ALWAYS)) { 
 #endif // TEMPERATURE_MONITORING
 #ifndef KWH_RECORDING
-      int h = hour(elapsedTime);          // display the elapsed charge time
-      int m = minute(elapsedTime);
-      int s = second(elapsedTime);
+      int h = elapsedTime / 3600;
+      int m = (elapsedTime % 3600) / 60;
+      int s = elapsedTime % 60;
       sprintf(g_sTmp,"%02d:%02d:%02d",h,m,s);
 #ifdef RTC
       g_sTmp[8]=' ';
