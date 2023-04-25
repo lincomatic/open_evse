@@ -159,6 +159,7 @@ extern AutoCurrentCapacityController g_ACCController;
 #define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // OPENEVSE_2
 
+#ifndef NO_GFI
 // GFI support
 #define GFI
 
@@ -172,6 +173,7 @@ extern AutoCurrentCapacityController g_ACCController;
 // 2) if enabled, any a fault occurs immediately after charge is initiated,
 //    hard fault until power cycled. Otherwise, do the standard delay/retry sequence
 #define UL_COMPLIANT
+#endif // NO_GFI
 
 #ifdef UL_COMPLIANT
 #define ADVPWR
