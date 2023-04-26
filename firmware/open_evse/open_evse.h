@@ -152,12 +152,32 @@ extern AutoCurrentCapacityController g_ACCController;
 #define VOLTMETER_POLL_INTERVAL (35)
 // This is just a wild guess
 // #define VOLTMETER_SCALE_FACTOR (266)     // original guess
-//#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
-#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
 // #define VOLTMETER_OFFSET_FACTOR (40000)  // original guess
+//#define DEFAULT_VOLT_SCALE_FACTOR (262)        // calibrated for Craig K OpenEVSE II build
 //#define DEFAULT_VOLT_OFFSET (46800)     // calibrated for Craig K OpenEVSE II build
+#ifndef DEFAULT_VOLT_SCALE_FACTOR
+#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
+#endif // DEFAULT_VOLT_SCALE_FACTOR
+#ifndef DEFAULT_VOLT_OFFSET
 #define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
+#endif // DEFAULT_VOLT_OFFSET
 #endif // OPENEVSE_2
+
+#ifdef ZMPT101B
+#define VOLTMETER
+// NOTE: ZMPT101B scales the sine wave of input voltage down to ADC range and offsets it
+// upwards so that all the input is in positive range. A typical off the shelf unit will map
+// the zero input to half of VCC. This slightly changes the calculation compared to OPENEVSE_2.
+// Because we are operating with integers still, it might be useful to pick up a unit with gain
+// adjustment and only work with a scale factor of 1 or 2.
+
+// Values below this will be considered ADC noise TODO: this might be useful for other builds too
+// N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
+#define VOLTMETER_PIN 2
+//#define VOLTMETER_THRESHOLD (10)    // Values below this will be considered ADC noise TODO: this might be useful for other builds too
+#define DEFAULT_VOLT_SCALE_FACTOR (298)
+#define DEFAULT_VOLT_OFFSET (12018)
+#endif // ZMPT101B
 
 #ifndef NO_GFI
 // GFI support
@@ -444,11 +464,24 @@ extern AutoCurrentCapacityController g_ACCController;
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx
 #define PP_PIN 2 // PP_READ - ADC2
 #ifdef VOLTMETER
-// N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
-// voltmeter pin is ADC2 on OPENEVSE_2
-#define VOLTMETER_PIN 2 // analog AC Line voltage voltmeter pin ADCx
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+#define VOLTMETER_POLL_INTERVAL (35)
+
+// NOTE: ZMPT101B scales the sine wave of input voltage down to ADC range and offsets it
+// upwards so that all the input is in positive range. A typical off the shelf unit will map
+// the zero input to half of VCC. This slightly changes the calculation compared to OPENEVSE_2.
+// Because we are operating with integers still, it might be useful to pick up a unit with gain
+// adjustment and only work with a scale factor of 1 or 2.
+
+//#define VOLTMETER_THRESHOLD (10)    // Values below this will be considered ADC noise TODO: this might be useful for other builds too
+// 35 ms is just a bit longer than 1.5 cycles at 50 Hz
+//#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
+//#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
 #endif // VOLTMETER
 #ifdef OPENEVSE_2
+// N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
+// voltmeter pin is ADC2 on OPENEVSE_2
+#define VOLTMETER_PIN 2 // ADC2
 // This pin must match the last write to CHARGING_PIN, modulo a delay. If
 // it is low when CHARGING_PIN is high, that's a missing ground.
 // If it's high when CHARGING_PIN is low, that's a stuck relay.
