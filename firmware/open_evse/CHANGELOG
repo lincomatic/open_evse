@@ -1,5 +1,11 @@
 Change Log
 
+20230425 V8.2.2 SCL
+- fix compiler warning change int reading to uint16_t
+- added NO_GFI from landwellsong
+- add ZMPT101B support from landswellsong
+- after 1 year of testing, update platform to atmelavr@3.0.0 in platformio
+	
 20230207 SCL
 - PP_AUTO_AMPACITY changes
   -> used to change current capacity to PP ampacity. now, only change it

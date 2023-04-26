@@ -41,7 +41,7 @@
 #define clrBits(flags,bits) (flags &= ~(bits))
 
 #ifndef VERSION
-#define VERSION "8.2.1"
+#define VERSION "8.2.2"
 #endif // !VERSION
 
 #include "Language_default.h"   //Default language should always be included as bottom layer
@@ -172,11 +172,17 @@ extern AutoCurrentCapacityController g_ACCController;
 // adjustment and only work with a scale factor of 1 or 2.
 
 // Values below this will be considered ADC noise TODO: this might be useful for other builds too
+#ifndef VOLTMETER_PIN
 // N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
 #define VOLTMETER_PIN 2
-//#define VOLTMETER_THRESHOLD (10)    // Values below this will be considered ADC noise TODO: this might be useful for other builds too
-#define DEFAULT_VOLT_SCALE_FACTOR (298)
-#define DEFAULT_VOLT_OFFSET (12018)
+#endif // VOLTMETER_PIN
+#define VOLTMETER_THRESHOLD (10)    // Values below this will be considered ADC noise TODO: this might be useful for other builds too
+#ifndef DEFAULT_VOLT_SCALE_FACTOR
+#define DEFAULT_VOLT_SCALE_FACTOR (298)        // calibrated for lincomatic's OEII
+#endif // DEFAULT_VOLT_SCALE_FACTOR
+#ifndef DEFAULT_VOLT_OFFSET
+#define DEFAULT_VOLT_OFFSET (12018)     // calibrated for lincomatic's OEII
+#endif // DEFAULT_VOLT_OFFSET
 #endif // ZMPT101B
 
 #ifndef NO_GFI
