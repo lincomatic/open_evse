@@ -720,7 +720,7 @@ uint8_t J1772EVSEController::doPost()
 #else //!OPENEVSE_2
     
     delay(150); // delay reading for stable pilot before reading
-    int reading = adcPilot.read(); //read pilot
+    uint16_t reading = adcPilot.read(); //read pilot
 #ifdef SERDBG
     if (SerDbgEnabled()) {
       Serial.print("Pilot: ");Serial.println((int)reading);
